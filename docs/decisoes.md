@@ -93,3 +93,38 @@ Pedido do Kayo: o RH envia o saldo atual de cada um, o gestor importa, e daí em
 - **Correção fica no histórico** (antes → depois), visível só para a pessoa e o gestor.
 - **A planilha do RH não fica guardada:** é lida na hora (colunas `NOME`, `SALDO` e, se tiver, `DATA`) e descartada. Os nomes precisam bater com o cadastro do Hub; os que não batem são listados.
 - **Exportar:** saldos e dias lançados em Excel (`openpyxl`, que já era dependência) ou CSV com `;`.
+
+## Rotinas: calculadas, não agendadas (fase 7)
+
+Segue a regra da v1. Uma rotina não cria nada sozinha: toda vez que o quadro é montado, o Hub vê quais rotinas valem hoje (dia da semana, ativa e horário já chegou) e desenha o cartão delas em "A fazer" do responsável. Não existe tarefa das 14:50 que possa falhar porque o PC estava desligado ou travado.
+
+- **Vira demanda quando alguém mexe:** mover, editar, dispensar ou marcar uma pasta. Até lá o cartão é só cálculo, e o app aponta para ele por `rotina-<número>-<dia>`. A demanda nasce dentro da mesma gravação da ação: se a ação for recusada (por exemplo, "Aguardando"), nada fica criado pela metade.
+- **Uma por rotina e por dia:** o banco tem um índice único em (rotina, dia). Dois PCs mexendo no mesmo cartão ao mesmo tempo dão na mesma demanda.
+- **Dispensar** (excluir o cartão do dia) vale só para hoje: amanhã a rotina aparece de novo.
+- **Mudar o cadastro** vale para os próximos cálculos. Um cartão que já virou demanda guarda o título e o dono dele; o horário, o prazo e as pastas seguem o cadastro.
+- **Só o gestor e os administradores** cadastram e mudam rotinas, como na visão do gestor. Todo mundo vê a lista. Cada mudança vai para o histórico.
+- Mudança no banco: migração 5 (tabelas `routines` e `routine_folders`, e `routine_id`/`routine_day` nas demandas). O número 4 é da fase 6 (banco de horas), feita em paralelo.
+
+**Prazo (pedido do Kayo):** cada rotina pode ter um "até HH:MM". O cartão aparece no horário da rotina e, se não estiver concluído depois do prazo, fica atrasado como qualquer demanda atrasada (borda vermelha, entra no aviso "N demandas atrasadas" da TV e no filtro de atrasadas do gestor). No dia seguinte, um cartão que virou demanda e ficou aberto continua atrasado pela data.
+
+**Pastas:** uma rotina pode ter pastas que marcam (as transferências usam B, C e F). Cada pasta marca a sua no app; a primeira marcada leva o cartão para Fazendo, com todas marcadas ele vai sozinho para Concluído hoje e desmarcar uma reabre em Fazendo. Enquanto falta pasta, o botão Concluir não aparece e o servidor recusa concluir à mão, para "liberada depois de" significar "todas as pastas marcaram".
+
+**Liberada depois de:** a rotina só começa (nem marca pasta) quando as rotinas que ela espera estão concluídas no dia. Só conta a espera de hoje e só de rotinas que valem hoje: uma rotina que não roda naquele dia da semana, ou que foi dispensada, não segura ninguém.
+
+**Aviso sonoro na TV:** o `/api/tv` manda as rotinas de hoje com o horário. A TV toca o som uma vez quando o horário chega e mostra uma faixa por cima de qualquer tela por 20 segundos. As rotinas já tocadas ficam guardadas no navegador (memória e `localStorage`), então recarregar a página não toca de novo; se a TV ligar mais de 10 minutos depois do horário, ela não toca atrasado. O som (`static/aviso.wav`, ~60 KB, três notas de sino) é gerado por `tools/gerar_som.py` só com a biblioteca padrão: nenhuma dependência nova e nada baixado da internet.
+
+**Som sem clique:** navegadores bloqueiam som de página que ninguém clicou, e na TV ninguém clica. O Hub abre o Edge com `--autoplay-policy=no-user-gesture-required`, que não precisa de administrador. Se o Edge já estava aberto antes (o Edge costuma ficar rodando em segundo plano), essa opção pode não valer; aí basta liberar o site uma vez em `edge://settings/content/mediaAutoplay` (passo a passo no [roteiro](roteiros/fase-7-rotinas.md#som-na-tv)). Se o som estiver bloqueado, a faixa aparece igual, com o aviso "Som bloqueado pelo navegador".
+
+**Reservada:** rotina não tem a opção reservada no cadastro. Se alguém marcar o cartão de hoje como reservado, a TV recebe só "Demanda reservada" (sem horário, pastas nem espera) e o aviso sonoro daquela rotina não vai para a TV.
+
+### Em aberto (o Kayo confirma)
+
+Padrões escolhidos sem resposta do Kayo; todos mudam pela página Rotinas ou com um ajuste pequeno no código:
+
+1. **PHD só de segunda a sexta.** O Kayo disse "diária"; se for também no sábado, é marcar "sáb" na rotina.
+2. **Comparativo de rotas às 10:00** nas terças e quintas: o horário não foi informado.
+3. **Responsável das rotinas sugeridas** é quem clica em "Criar rotinas sugeridas". Trocar em Editar para o responsável de verdade de cada uma.
+4. **Qualquer pessoa marca qualquer pasta** (o Hub não sabe de quem é cada pasta). O histórico guarda quem marcou. Se cada um só puder marcar a própria pasta, é preciso cadastrar a pasta de cada pessoa.
+5. **Rotina com pastas só conclui quando todas marcarem** (o Concluir à mão é recusado) e a primeira pasta marcada leva o cartão para Fazendo.
+6. **Um aviso só, no horário em que o cartão aparece**, com a faixa por 20 s. Não há um segundo aviso no prazo; se ajudar, dá para tocar de novo no "até HH:MM".
+7. **Feriado não é descontado:** a rotina aparece mesmo em feriado; dispensar o cartão do dia resolve.

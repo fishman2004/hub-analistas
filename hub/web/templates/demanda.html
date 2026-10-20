@@ -4,6 +4,7 @@
 {% block main %}
 <h1>{{ 'Editar demanda' if v.id else 'Nova demanda' }}</h1>
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if v.routine %}<p class="ajuda">Este é o cartão de hoje de uma <a href="/rotinas">rotina</a>. O que mudar aqui vale só para hoje; amanhã a rotina aparece de novo como está cadastrada.</p>{% endif %}
 
 <form class="ficha" method="post" action="/demandas{{ '/' ~ v.id if v.id else '' }}">
   <div>
@@ -46,8 +47,14 @@
 </form>
 
 {% if v.id %}
+{% if v.routine %}
+<form method="post" action="/demandas/{{ v.id }}/excluir" onsubmit="return confirm('Dispensar a rotina hoje? Amanhã ela aparece de novo.')" class="excluir">
+  <button class="perigo">Dispensar a rotina hoje</button>
+</form>
+{% else %}
 <form method="post" action="/demandas/{{ v.id }}/excluir" onsubmit="return confirm('Excluir esta demanda?')" class="excluir">
   <button class="perigo">Excluir demanda</button>
 </form>
+{% endif %}
 {% endif %}
 {% endblock %}

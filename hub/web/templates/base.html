@@ -15,6 +15,7 @@
     <nav aria-label="Menu principal">
       <a href="/" {% if active == 'quadro' %}aria-current="page"{% endif %}>Quadro</a>
       {% if can_open_gestor(user) %}<a href="/gestor" {% if active == 'gestor' %}aria-current="page"{% endif %}>Gestor</a>{% endif %}
+      <a href="/rotinas" {% if active == 'rotinas' %}aria-current="page"{% endif %}>Rotinas</a>
       <a href="/paineis" {% if active == 'paineis' %}aria-current="page"{% endif %}>Painéis</a>
       <a href="/horas" {% if active == 'horas' %}aria-current="page"{% endif %}>Banco de horas</a>
       <a href="/historico" {% if active == 'historico' %}aria-current="page"{% endif %}>Histórico</a>

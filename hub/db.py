@@ -96,6 +96,30 @@ MIGRATIONS: list[tuple[int, str]] = [
             UNIQUE (person_id, day)
         );
     """),
+    (5, """
+        -- v2 · rotinas com horário: o cadastro, a demanda de cada dia (uma só por rotina) e as pastas marcadas
+        CREATE TABLE routines (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            weekdays TEXT NOT NULL,              -- "0,1,2,3,4": segunda = 0 ... domingo = 6
+            starts_at TEXT NOT NULL,             -- "HH:MM": quando o cartão aparece e a TV avisa
+            deadline TEXT,                       -- "HH:MM" ou vazio: depois disso, atrasada
+            owner_id INTEGER NOT NULL REFERENCES people(id),
+            folders TEXT NOT NULL DEFAULT '',    -- pastas que marcam, por exemplo "BCF"
+            waits_for TEXT NOT NULL DEFAULT '',  -- rotinas que precisam terminar antes, "3,4"
+            active INTEGER NOT NULL DEFAULT 1
+        );
+        ALTER TABLE demands ADD COLUMN routine_id INTEGER REFERENCES routines(id);
+        ALTER TABLE demands ADD COLUMN routine_day TEXT;
+        CREATE UNIQUE INDEX demands_routine_day ON demands(routine_id, routine_day);
+        CREATE TABLE routine_folders (
+            demand_id INTEGER NOT NULL REFERENCES demands(id),
+            folder TEXT NOT NULL,
+            person_id INTEGER REFERENCES people(id),
+            at TEXT NOT NULL,
+            PRIMARY KEY (demand_id, folder)
+        );
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
