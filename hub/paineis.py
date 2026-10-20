@@ -46,7 +46,7 @@ FILES = (
             {"vendedor": "ID", "foco": "PRODUTO FOCO", "classe": "CLASSIFICACAO", "meta": "META",
              "meta2": "META II"}),
     Arquivo("vendas", "(DADOS) - 8081 - Vendas", "Vendas (8081)",
-            {"rca": "ID RCA", "posicao": "POSICAO PED", "data": "DATA PEDIDO", "cliente": "ID CLIENTE",
+            {"data": "DATA PEDIDO", "cliente": "ID CLIENTE",
              "produto": "ID PRODUTO", "fornecedor": "ID FORNECEDOR", "valor": "VALOR"}),
 )
 FILES_BY_KEY = {f.key: f for f in FILES}
@@ -57,7 +57,6 @@ SETTING_STALE = "paineis.velho.horas"
 STALE_DEFAULT, STALE_MIN, STALE_MAX = 24, 1, 168
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
 
-CANCELED = {"C"}  # posição do pedido que não conta como venda (cancelado)
 TIERS = ((100, "bom"), (80, "atencao"), (70, "alerta"))  # abaixo de 70%: "critico"
 MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
          "novembro", "dezembro"]
@@ -174,12 +173,12 @@ def _parse(key: str, path: Path):
     if key == "metas_kpi":
         return [(code(r["vendedor"]), str(r["foco"] or "").strip(), str(r["classe"] or "").strip(),
                  number(r["meta"]), number(r["meta2"])) for r in rows if r["foco"]]
-    # vendas: só o que o cálculo usa, já sem os cancelados
+    # vendas: só o que o cálculo usa. Todas as posições (L, B, M, F) contam; cancelado nem vem na extração
     out = []
     for r in rows:
-        if str(r["posicao"] or "").strip().upper() in CANCELED or r["data"] in (None, ""):
-            continue  # cancelado, ou linha de total sem data no fim da exportação
-        out.append(Venda(code(r["rca"]), code(r["cliente"]), code(r["produto"]), code(r["fornecedor"]),
+        if r["data"] in (None, ""):
+            continue  # linha de total sem data no fim da exportação
+        out.append(Venda(code(r["cliente"]), code(r["produto"]), code(r["fornecedor"]),
                          day(r["data"]), number(r["valor"])))
     if not out:
         raise PlanilhaError("Nenhuma venda no arquivo.")
@@ -188,7 +187,6 @@ def _parse(key: str, path: Path):
 
 @dataclass(frozen=True)
 class Venda:
-    rca: str
     cliente: str
     produto: str
     fornecedor: str
@@ -199,9 +197,13 @@ class Venda:
 # ---------- cálculo ----------
 
 def workdays(year: int, month: int) -> list[date]:
-    """Dias úteis do mês: segunda a sexta (feriados não são descontados)."""
+    """Dias de venda do mês: segunda a sábado (sábado é dia de venda até meio-dia). Feriados não são descontados."""
     last = calendar.monthrange(year, month)[1]
-    return [d for d in (date(year, month, n) for n in range(1, last + 1)) if d.weekday() < 5]
+    return [d for d in (date(year, month, n) for n in range(1, last + 1)) if is_sales_day(d)]
+
+
+def is_sales_day(d: date) -> bool:
+    return d.weekday() < 6  # domingo não tem meta
 
 
 def pct(real: float, meta: float) -> int | None:
@@ -221,14 +223,24 @@ def _pace_tier(real_pct: int | None, expected: int) -> str:
     return tier(round(real_pct / expected * 100) if expected else real_pct)
 
 
-def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
-    """Meta x realizado por pasta e no total, no mês da venda mais recente do arquivo."""
+def _month(vendas: list[Venda]) -> tuple[date, list[Venda], list[date], int]:
+    """O mês da venda mais recente: último dia, vendas do mês, dias de venda e % esperado até o último dia."""
     last = max(v.dia for v in vendas)
     month = [v for v in vendas if (v.dia.year, v.dia.month) == (last.year, last.month)]
-    business = workdays(last.year, last.month)
-    elapsed = sum(d <= last for d in business)
-    expected = round(elapsed / len(business) * 100)
-    is_workday = last.weekday() < 5
+    days = workdays(last.year, last.month)
+    return last, month, days, round(sum(d <= last for d in days) / len(days) * 100)
+
+
+def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
+    """Meta x realizado por pasta e no total, no mês da venda mais recente do arquivo.
+
+    Positivação é a contagem distinta de clientes de cada fornecedor (FORNECEDOR II): o cliente conta
+    uma vez no mês para o fornecedor, não importa quantos pedidos nem quantos vendedores. A pasta e o
+    total somam os fornecedores, do mesmo jeito que a meta (que vem por fornecedor). No dia, contam os
+    clientes positivados pela primeira vez no mês naquele dia.
+    """
+    last, month, days, expected = _month(vendas)
+    sales_day = is_sales_day(last)
 
     meta_fin: dict[str, float] = {}
     meta_pos: dict[str, float] = {}
@@ -243,8 +255,7 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
 
     real_fin: dict[str, float] = {}
     day_fin: dict[str, float] = {}
-    positivados: dict[str, set] = {}
-    day_pos: dict[str, set] = {}
+    first_buy: dict[tuple, date] = {}  # (pasta, fornecedor, cliente) -> primeiro dia de compra no mês
     unknown = set()
     daily_total = [0.0] * (calendar.monthrange(last.year, last.month)[1] + 1)
     for v in month:
@@ -255,11 +266,11 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
         group, pasta = info
         real_fin[pasta] = real_fin.get(pasta, 0) + v.valor
         daily_total[v.dia.day] += v.valor
-        # positivação: cada cliente que comprou do fornecedor, contado uma vez por vendedor
-        positivados.setdefault(pasta, set()).add((v.rca, group, v.cliente))
         if v.dia == last:
             day_fin[pasta] = day_fin.get(pasta, 0) + v.valor
-            day_pos.setdefault(pasta, set()).add((v.rca, group, v.cliente))
+        key = (pasta, group, v.cliente)
+        if key not in first_buy or v.dia < first_buy[key]:
+            first_buy[key] = v.dia
 
     pastas = sorted(set(meta_fin) | set(real_fin))
 
@@ -267,9 +278,13 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
         return {**values, TOTAL: sum(values.values())}
 
     meta_fin, meta_pos, real_fin, day_fin = totals(meta_fin), totals(meta_pos), totals(real_fin), totals(day_fin)
-    real_pos = totals({p: len(s) for p, s in positivados.items()})
-    day_pos_n = totals({p: len(s) for p, s in day_pos.items()})
-    share = 1 / len(business)
+    real_pos: dict[str, int] = {}
+    day_pos: dict[str, int] = {}
+    for (pasta, _, _), first in first_buy.items():
+        real_pos[pasta] = real_pos.get(pasta, 0) + 1
+        day_pos[pasta] = day_pos.get(pasta, 0) + (first == last)
+    real_pos, day_pos = totals(real_pos), totals(day_pos)
+    share = 1 / len(days)
 
     def month_cards(real: dict, meta: dict) -> list[dict]:
         cards = []
@@ -281,7 +296,7 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
     def day_bars(real: dict, meta: dict) -> list[dict]:
         bars = []
         for p in [TOTAL] + pastas:
-            value = pct(real.get(p, 0), meta.get(p, 0) * share) if is_workday else None
+            value = pct(real.get(p, 0), meta.get(p, 0) * share) if sales_day else None
             bars.append({"pasta": p, "pct": value, "tier": tier(value)})
         return bars
 
@@ -290,11 +305,11 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
     passed = 0
     for n in range(1, len(daily_total)):
         d = date(last.year, last.month, n)
-        passed += d.weekday() < 5
+        passed += is_sales_day(d)
         accumulated += daily_total[n]
-        target = round(passed / len(business) * 100)
+        target = round(passed / len(days) * 100)
         real = pct(accumulated, meta_fin[TOTAL]) if d <= last else None
-        evolution.append({"dia": n, "util": d.weekday() < 5, "meta": target, "real": real,
+        evolution.append({"dia": n, "util": is_sales_day(d), "meta": target, "real": real,
                           "tier": _pace_tier(real, target) if real is not None else "futuro"})
 
     warnings = []
@@ -303,38 +318,40 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
     if unknown:
         warnings.append(f"{len(unknown)} fornecedor(es) com venda que não estão na planilha de fornecedores.")
     return {
-        "year": last.year, "month": last.month, "last_day": last, "expected": expected, "is_workday": is_workday,
+        "year": last.year, "month": last.month, "last_day": last, "expected": expected, "is_workday": sales_day,
         "financeiro": {"mes": month_cards(real_fin, meta_fin), "dia": day_bars(day_fin, meta_fin)},
-        "positivacao": {"mes": month_cards(real_pos, meta_pos), "dia": day_bars(day_pos_n, meta_pos)},
+        "positivacao": {"mes": month_cards(real_pos, meta_pos), "dia": day_bars(day_pos, meta_pos)},
         "evolucao": evolution, "warnings": warnings,
     }
 
 
 def compute_focos(focos: dict, metas_kpi: list, vendas: list[Venda]) -> dict:
-    """Produtos foco: clientes que compraram algum produto do foco (um por vendedor) x a meta."""
-    last = max(v.dia for v in vendas)
-    business = workdays(last.year, last.month)
-    expected = round(sum(d <= last for d in business) / len(business) * 100)
+    """Produtos foco: META é positivação (clientes distintos que compraram algum produto do foco)
+    e META II é financeiro (soma de VALOR dos produtos do foco)."""
+    last, month, _, expected = _month(vendas)
     goals: dict[str, dict] = {}
     for _, name, klass, meta, meta2 in metas_kpi:
         g = goals.setdefault(normalize(name), {"nome": name, "classe": klass, "meta": 0.0, "meta2": 0.0})
         g["meta"] += meta
         g["meta2"] += meta2
-    reached: dict[str, set] = {}
-    for v in vendas:
-        if (v.dia.year, v.dia.month) != (last.year, last.month) or v.produto not in focos:
-            continue
-        reached.setdefault(normalize(focos[v.produto]), set()).add((v.rca, v.cliente))
+    clients: dict[str, set] = {}
+    value: dict[str, float] = {}
+    for v in month:
+        if v.produto in focos:
+            key = normalize(focos[v.produto])
+            clients.setdefault(key, set()).add(v.cliente)
+            value[key] = value.get(key, 0) + v.valor
     known = {normalize(f) for f in focos.values()}
     rows = []
     for key, g in goals.items():
-        if g["meta"] <= 0:
+        if g["meta"] <= 0 and g["meta2"] <= 0:
             continue
-        value = pct(len(reached.get(key, ())), g["meta"])
-        rows.append({"nome": g["nome"], "classe": g["classe"], "pct": value, "tier": _pace_tier(value, expected),
-                     # onde fica a META II na mesma barra (100% = META)
-                     "meta2": pct(g["meta2"], g["meta"]) if g["meta2"] > 0 else None})
-    rows.sort(key=lambda r: -(r["pct"] or 0))
+        pos = pct(len(clients.get(key, ())), g["meta"])
+        fin = pct(value.get(key, 0), g["meta2"])
+        rows.append({"nome": g["nome"], "classe": g["classe"],
+                     "pos": pos, "pos_tier": _pace_tier(pos, expected),
+                     "fin": fin, "fin_tier": _pace_tier(fin, expected)})
+    rows.sort(key=lambda r: -(r["pos"] if r["pos"] is not None else r["fin"] or 0))
     missing = [g["nome"] for k, g in goals.items() if k not in known]
     warnings = [f"{len(missing)} produto(s) foco sem nenhum produto na planilha de produtos foco."] if missing else []
     return {"year": last.year, "month": last.month, "last_day": last, "expected": expected, "focos": rows,
@@ -513,7 +530,7 @@ def tv_metas_mes(db: Database, now: datetime) -> dict | None:
 def tv_metas_dia(db: Database, now: datetime) -> dict | None:
     snap = store_for(db).get()
     if snap is None or snap.metas is None or not snap.metas["is_workday"]:
-        return None  # sábado e domingo não têm meta diária
+        return None  # domingo não tem meta diária
     m = snap.metas
     return {**_header(db, snap, m, METAS_NEEDS, now), "financeiro": m["financeiro"]["dia"],
             "positivacao": m["positivacao"]["dia"]}

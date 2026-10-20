@@ -90,58 +90,68 @@ def test_xlsx_header_can_start_below_blank_rows(tmp_path):
 FORN = {"1": ("GRUPO X", "A"), "2": ("GRUPO X", "A"), "3": ("GRUPO Y", "B")}  # 1 e 2 são divisões unificadas
 
 
-def v(rca, cliente, forn, dia, valor, produto="p"):
-    return Venda(rca, cliente, produto, forn, date(2026, 9, dia), valor)
+def v(cliente, forn, dia, valor, produto="p"):
+    return Venda(cliente, produto, forn, date(2026, 9, dia), valor)
 
 
 def test_month_goals_by_folder_and_total():
-    # setembro/2026 tem 22 dias úteis; até quinta 17/09 passaram 13 (59%)
-    assert len(workdays(2026, 9)) == 22
+    # setembro/2026 tem 26 dias de venda (segunda a sábado); até quinta 17/09 passaram 15 (58%)
+    assert len(workdays(2026, 9)) == 26
     metas = [("10", "1", 1000, 4), ("11", "1", 1000, 4), ("10", "3", 2000, 2), ("10", "99", 500, 1)]
     vendas = [
-        v("10", "c1", "1", 1, 300), v("10", "c1", "2", 2, 200),  # mesmo cliente no grupo X: positiva 1 vez
-        v("11", "c1", "1", 3, 100),                               # outro vendedor: positiva de novo
-        v("10", "c2", "3", 17, 500), v("10", "c3", "3", 17, 500),
-        v("10", "c9", "77", 17, 999),                              # fornecedor fora da planilha: não conta
-        Venda("10", "c1", "p", "1", date(2026, 8, 31), 5000),     # mês anterior: não conta
+        v("c1", "1", 1, 300), v("c1", "2", 2, 200),  # mesmo cliente no fornecedor unificado X: positiva 1 vez
+        v("c1", "1", 3, 100),                         # voltou no cliente: não positiva de novo
+        v("c4", "1", 17, 60),
+        v("c1", "3", 10, 100),                        # o mesmo cliente no fornecedor Y conta para Y
+        v("c2", "3", 17, 500), v("c3", "3", 17, 500),
+        v("c9", "77", 17, 999),                       # fornecedor fora da planilha: não conta
+        Venda("c1", "p", "1", date(2026, 8, 31), 5000),  # mês anterior: não conta
     ]
     m = compute_metas(FORN, metas, vendas)
-    assert m["last_day"] == date(2026, 9, 17) and m["expected"] == 59 and m["is_workday"]
+    assert m["last_day"] == date(2026, 9, 17) and m["expected"] == 58 and m["is_workday"]
     fin = {c["pasta"]: c["pct"] for c in m["financeiro"]["mes"]}
-    assert fin == {"A": 30, "B": 50, "T": 40}  # A: 600/2000, B: 1000/2000, T: 1600/4000
+    assert fin == {"A": 33, "B": 55, "T": 44}  # A: 660/2000, B: 1100/2000, T: 1760/4000
     pos = {c["pasta"]: c["pct"] for c in m["positivacao"]["mes"]}
-    assert pos == {"A": 25, "B": 100, "T": 40}  # A: 2/8, B: 2/2, T: 4/10
-    # cor do mês = ritmo: B fez 50% com 59% esperado (85% do ritmo); A fez 30% (51%)
+    assert pos == {"A": 25, "B": 150, "T": 50}  # A: 2 clientes de X / 8, B: 3 de Y / 2, T: 5/10
+    # cor do mês = ritmo: B fez 55% com 58% esperado (95% do ritmo); A fez 33% (57%); T 44% (76%)
     tiers = {c["pasta"]: c["tier"] for c in m["financeiro"]["mes"]}
-    assert tiers == {"A": "critico", "B": "atencao", "T": "critico"}  # T: 40 de 59 = 68%
-    # meta do dia = meta do mês / 22 dias úteis; no dia 17 só a pasta B vendeu (1000 de 2000/22)
+    assert tiers == {"A": "critico", "B": "atencao", "T": "alerta"}
+    # meta do dia = meta do mês / 26 dias de venda
     dia = {c["pasta"]: c["pct"] for c in m["financeiro"]["dia"]}
-    assert dia == {"T": 550, "A": 0, "B": 1100}
+    assert dia == {"T": 689, "A": 78, "B": 1300}
     assert [c["pasta"] for c in m["financeiro"]["dia"]] == ["T", "A", "B"]
+    # positivação do dia = clientes positivados pela primeira vez no mês naquele dia
+    pos_dia = {c["pasta"]: c["pct"] for c in m["positivacao"]["dia"]}
+    assert pos_dia == {"T": 780, "A": 325, "B": 2600}  # A: c4 (1 de 8/26), B: c2 e c3 (2 de 2/26)
     assert len(m["warnings"]) == 2  # meta e venda de fornecedores fora da planilha
     evo = {e["dia"]: e for e in m["evolucao"]}
-    assert len(evo) == 30 and evo[17]["real"] == 40 and evo[17]["meta"] == 59 and evo[18]["real"] is None
-    assert evo[1]["real"] == 8 and evo[5]["util"] is False and evo[5]["meta"] == evo[4]["meta"]
+    assert len(evo) == 30 and evo[17]["real"] == 44 and evo[17]["meta"] == 58 and evo[18]["real"] is None
+    assert evo[1]["real"] == 8 and evo[5]["util"] is True  # sábado é dia de venda
+    assert evo[6]["util"] is False and evo[6]["meta"] == evo[5]["meta"]  # domingo não
     assert evo[30]["meta"] == 100 and evo[18]["tier"] == "futuro"
 
 
-def test_saturday_has_no_daily_goal():
-    m = compute_metas(FORN, [("10", "1", 1000, 4)], [v("10", "c1", "1", 19, 100)])  # 19/09 é sábado
+def test_saturday_has_daily_goal_sunday_does_not():
+    m = compute_metas(FORN, [("10", "1", 2600, 4)], [v("c1", "1", 19, 50)])  # 19/09 é sábado
+    assert m["is_workday"] and m["financeiro"]["dia"][0]["pct"] == 50
+    m = compute_metas(FORN, [("10", "1", 1000, 4)], [v("c1", "1", 20, 100)])  # 20/09 é domingo
     assert not m["is_workday"]
     assert all(c["pct"] is None and c["tier"] == "sem-meta" for c in m["financeiro"]["dia"])
 
 
-def test_focus_products_count_clients_per_seller():
+def test_focus_products_positivation_and_financial_goal():
     focos = {"p1": "PILHAS", "p2": "PILHAS", "p3": "HIGIENE"}
-    metas = [("10", "PILHAS", "VAREJO", 4, 6), ("11", "Pilhas", "VAREJO", 6, 0), ("10", "HIGIENE", "VAREJO", 5, 0),
+    # META = positivação (clientes); META II = financeiro
+    metas = [("10", "PILHAS", "VAREJO", 4, 600), ("11", "Pilhas", "VAREJO", 6, 0), ("10", "HIGIENE", "VAREJO", 5, 0),
              ("10", "SEM PRODUTO", "FARMA", 2, 0)]
-    vendas = [v("10", "c1", "1", 1, 1, "p1"), v("10", "c1", "1", 2, 1, "p2"), v("11", "c1", "1", 2, 1, "p1"),
-              v("10", "c2", "1", 3, 1, "p3"), v("10", "c3", "1", 17, 1, "x")]
+    vendas = [v("c1", "1", 1, 100, "p1"), v("c1", "1", 2, 50, "p2"), v("c1", "1", 2, 30, "p1"),
+              v("c2", "1", 3, 40, "p3"), v("c3", "1", 17, 1, "x")]
     f = compute_focos(focos, metas, vendas)
     rows = {r["nome"]: r for r in f["focos"]}
-    assert rows["PILHAS"]["pct"] == 20 and rows["PILHAS"]["meta2"] == 60  # 2 de 10; META II = 6/10
-    assert rows["HIGIENE"]["pct"] == 20 and rows["HIGIENE"]["meta2"] is None
-    assert rows["SEM PRODUTO"]["pct"] == 0
+    assert rows["PILHAS"]["pos"] == 10 and rows["PILHAS"]["fin"] == 30  # 1 cliente de 10; 180 de 600
+    assert rows["HIGIENE"]["pos"] == 20 and rows["HIGIENE"]["fin"] is None  # sem META II
+    assert rows["SEM PRODUTO"]["pos"] == 0
+    assert [r["nome"] for r in f["focos"]] == ["HIGIENE", "PILHAS", "SEM PRODUTO"]
     assert f["warnings"] == ["1 produto(s) foco sem nenhum produto na planilha de produtos foco."]
 
 
@@ -165,10 +175,10 @@ def test_examples_reach_the_tv_with_percentages_only(db):
     assert {"metas-mes", "metas-dia", "produtos-foco"} <= set(data)
     mes = data["metas-mes"]["data"]
     assert mes["mes"] == "Setembro de 2026" and mes["ate"] == "17/09" and mes["dia_semana"] == "quinta"
-    assert mes["atualizado"] == "09:00" and mes["velho"] is False and mes["esperado"] == 59
+    assert mes["atualizado"] == "09:00" and mes["velho"] is False and mes["esperado"] == 58
     assert [c["pasta"] for c in mes["financeiro"]] == list("ABCDEFG") + ["T"]
     # nenhum valor em reais, quantidade ou nome de vendedor/cliente: só %, letras das pastas e textos fixos
-    allowed_numbers = {"pct", "esperado", "meta", "real", "meta2", "dia"}
+    allowed_numbers = {"pct", "esperado", "meta", "real", "dia", "pos", "fin"}
     for sid in ("metas-mes", "metas-dia", "produtos-foco"):
         for path, value in walk(data[sid]["data"]):
             key = path.rsplit(".", 1)[-1].removesuffix("[]")

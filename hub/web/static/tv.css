@@ -154,7 +154,6 @@ body {
 .cheio { height: 100%; border-radius: .3rem; transition: width .6s ease; }
 .linha-100 { position: absolute; top: -.35rem; bottom: -.35rem; width: .15rem; background: var(--suave); opacity: .8; transform: translateX(-50%); }
 .marca-esperado { position: absolute; top: -.45rem; bottom: -.45rem; width: .3rem; border-radius: .15rem; background: var(--esperado); transform: translateX(-50%); box-shadow: 0 0 0 .12rem var(--painel); }
-.marca-meta2 { position: absolute; top: 50%; width: .9rem; height: .9rem; background: var(--pausa); transform: translate(-50%, -50%) rotate(45deg); box-shadow: 0 0 0 .15rem var(--painel); }
 
 /* metas do mês */
 .tela[data-tela="metas-mes"] .evolucao { flex: 1.25; }
@@ -194,11 +193,14 @@ body {
 .focos-bloco { flex: 1; }
 .focos { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 1.1rem; transition: opacity .45s ease; }
 .focos.trocando { opacity: 0; }
-.linha-foco { display: grid; grid-template-columns: minmax(0, 26rem) 1fr 7rem; align-items: center; gap: 1.5rem; flex: none; }
+.focos-colunas, .linha-foco { display: grid; grid-template-columns: minmax(0, 24rem) 1fr 1fr; align-items: center; gap: 2.5rem; }
+.focos-colunas h2 .pagina { float: right; }
+.linha-foco { flex: none; }
+.foco-lado { display: grid; grid-template-columns: 1fr 6.5rem; align-items: center; gap: 1rem; }
+.foco-lado.sem-meta .trilho { opacity: .35; }
 .foco-nome { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
 .foco-nome span:first-child { font-size: 1.7rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .foco-classe { font-size: 1.1rem; color: var(--suave); text-transform: uppercase; letter-spacing: .06em; }
 .linha-foco .trilho { height: 1.8rem; border-radius: .45rem; }
 .linha-foco .cheio { border-radius: .45rem; }
 .linha-foco .pct { font-size: 2.1rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
-.legenda-item i.marca-meta2 { position: static; width: .8rem; height: .8rem; border-radius: 0; transform: rotate(45deg); box-shadow: none; }

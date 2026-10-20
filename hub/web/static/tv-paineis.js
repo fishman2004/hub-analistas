@@ -16,7 +16,7 @@
   }
 
   // cabeçalho: título, período, "atualizado às" e o aviso de dados velhos; ritmo=true explica as cores do mês
-  function cabecalho(sec, titulo, dados, ritmo, meta2) {
+  function cabecalho(sec, titulo, dados, ritmo) {
     const topo = sec.querySelector(".painel-topo");
     topo.replaceChildren();
     const esq = el("div", "painel-titulo");
@@ -36,11 +36,6 @@
     if (ritmo) {
       const item = el("span", "legenda-item");
       item.append(el("i", "marca-esperado"), document.createTextNode("esperado até hoje (" + dados.esperado + "%)"));
-      leg.append(item);
-    }
-    if (meta2) {
-      const item = el("span", "legenda-item");
-      item.append(el("i", "marca-meta2 na-legenda"), document.createTextNode("META II"));
       leg.append(item);
     }
     topo.append(leg);

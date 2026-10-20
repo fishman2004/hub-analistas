@@ -1,11 +1,12 @@
-// Tela "Produtos foco": clientes positivados em cada produto foco, em % da meta, do melhor para o pior.
+// Tela "Produtos foco": para cada produto foco, a positivação (META) e o financeiro (META II), em %
+// da meta, do melhor para o pior.
 // Se não couber tudo, passa as páginas com fade no mesmo tempo das colunas do Quadro (a TV nunca rola).
 (function () {
   "use strict";
   const { el } = HubTV;
   const { textoPct, cabecalho, barra } = HubPainel;
   const FADE_MS = 450;
-  let estado = { paginas: [], pagina: 0, escala: 150, esperado: 0 };
+  let estado = { paginas: [], pagina: 0, escalas: [120, 120], esperado: 0 };
   let secao = null;
   let segundosPagina = 10;
   let ultimaTroca = Date.now();
@@ -16,11 +17,12 @@
     nome.append(el("span", "", f.nome));
     if (f.classe) nome.append(el("span", "foco-classe", f.classe));
     l.append(nome);
-    l.append(barra(f.pct, f.tier, estado.escala, [
-      { valor: estado.esperado, classe: "marca-esperado" },
-      { valor: f.meta2, classe: "marca-meta2" },
-    ]));
-    l.append(el("div", "pct", textoPct(f.pct)));
+    [[f.pos, f.pos_tier], [f.fin, f.fin_tier]].forEach(([valor, faixa], i) => {
+      const lado = el("div", "foco-lado" + (valor === null ? " sem-meta" : ""));
+      lado.append(barra(valor, faixa, estado.escalas[i], [{ valor: estado.esperado, classe: "marca-esperado" }]));
+      lado.append(el("div", "pct", textoPct(valor)));
+      l.append(lado);
+    });
     return l;
   }
 
@@ -49,10 +51,11 @@
     desenhar(sec, dados, tudo) {
       secao = sec;
       segundosPagina = tudo.page_seconds || 10;
-      cabecalho(sec, "Produtos foco", dados, true, dados.focos.some((f) => f.meta2 !== null));
+      cabecalho(sec, "Produtos foco", dados, true);
       const caixa = sec.querySelector(".focos");
       if (caixa.classList.contains("trocando")) return;  // no meio do fade: atualiza no próximo ciclo
-      estado.escala = Math.max(150, ...dados.focos.map((f) => Math.max(f.pct || 0, f.meta2 || 0) + 10));
+      // cada coluna com a própria escala: um financeiro de 300% não esmaga as barras de positivação
+      estado.escalas = ["pos", "fin"].map((k) => Math.max(120, ...dados.focos.map((f) => (f[k] || 0) + 10)));
       estado.esperado = dados.esperado;
       // mede quantas linhas cabem com uma linha de verdade
       caixa.replaceChildren(linha(dados.focos[0]));
