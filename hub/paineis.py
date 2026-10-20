@@ -207,12 +207,13 @@ class Venda:
 
 
 def seller_pasta(rca: object, supervisor: object) -> str:
-    """A pasta do vendedor pelo nome na 8081: "A-XX-07-NOME" é da pasta A, com supervisor "A-XX (NOME)".
+    """A pasta do vendedor pela 8081. A referência é o supervisor: "A-XX (NOME)" é da pasta A,
+    "G- FARMA (NOME)" do Canal Farma (G) e "P-TELEVENDAS (NOME)" do Televendas (TLV).
 
-    O Televendas aparece como "P-TLV- NOME" com supervisor "P-TELEVENDAS (NOME)". Sem pasta no nome
-    do vendedor, vale a do supervisor; sem nenhuma, volta "" (o cálculo decide o que fazer).
+    Sem pasta no supervisor, vale a do nome do vendedor ("A-XX-07- NOME", "P-TLV- NOME"); sem
+    nenhuma, volta "" (o cálculo decide o que fazer).
     """
-    for name in (rca, supervisor):
+    for name in (supervisor, rca):
         parts = [p.strip() for p in normalize(name).split("-")]
         if TLV in parts or "TELEVENDAS" in normalize(name):
             return TLV

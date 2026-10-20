@@ -35,7 +35,7 @@ Cada arquivo pode ser `.xlsx`, `.xlsm` ou `.csv`. O Hub usa a **primeira aba** e
 
 - **Mês:** o mês da venda mais recente do arquivo 8081. Vendas de outros meses que estiverem no arquivo não contam.
 - **Todas as posições de pedido contam** (L liberado, B bloqueado, M montado, F faturado). O pedido cancelado já não vem na extração do sistema.
-- **Pasta = o que o pessoal da pasta vendeu**, de qualquer fornecedor. A pasta do vendedor sai do começo do nome na 8081: "A-XX-07- NOME" (supervisor "A-XX (NOME)") é da pasta A. Se o nome do vendedor não tiver a letra, vale a do supervisor. O Hub só olha os nomes para tirar essa letra; eles não ficam guardados nem vão para a TV.
+- **Pasta = o que o pessoal da pasta vendeu**, de qualquer fornecedor. A referência é o supervisor na 8081: "A-XX (NOME)" é da pasta A, "G- FARMA (NOME)" do Canal Farma (G) e "P-TELEVENDAS (NOME)" do Televendas. Se o supervisor não tiver a letra, vale a do começo do nome do vendedor ("A-XX-07- NOME"). O Hub só olha os nomes para tirar essa letra; eles não ficam guardados nem vão para a TV.
 - **Vendedor sem pasta no nome:** a venda conta na pasta do fornecedor (planilha de fornecedores, `ID FORNECEDOR` → `PASTA`), e a página Painéis avisa quantas linhas foram assim. Sem pasta pelo vendedor nem pelo fornecedor, a venda conta só no total.
 - **Total = tudo**, venha de onde vier: todas as vendas do arquivo.
 - **Metas:** vêm da planilha Totais: `META` é a meta financeira e `CARTEIRA` a meta de positivação de cada pasta. A linha `PLB` é o total da empresa (sem ela, o total é a soma das pastas). Toda pasta da planilha Totais aparece nas telas.

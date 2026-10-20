@@ -156,7 +156,10 @@ def test_folder_counts_its_own_sellers_and_total_counts_everything():
 
 def test_seller_folder_comes_from_the_name():
     assert seller_pasta("A-XX-07- PESSOA FICTICIA", "A-XX (OUTRA PESSOA)") == "A"
-    assert seller_pasta("PESSOA FICTICIA", "C-YY (OUTRA PESSOA)") == "C"  # sem pasta no vendedor: a do supervisor
+    assert seller_pasta("PESSOA FICTICIA", "C-YY (OUTRA PESSOA)") == "C"
+    assert seller_pasta("G-CG-02- PESSOA FICTICIA", "G- FARMA (OUTRA PESSOA)") == "G"  # Canal Farma
+    assert seller_pasta("B-XX-01- PESSOA FICTICIA", "G- FARMA (OUTRA PESSOA)") == "G"  # vale o supervisor
+    assert seller_pasta("D-XX-03- PESSOA FICTICIA", "SUPERVISOR SEM PASTA") == "D"  # senão, o vendedor
     assert seller_pasta("P-TLV- PESSOA FICTICIA", "P-TELEVENDAS (OUTRA)") == "TLV"
     assert seller_pasta("OUTRO NOME", "P-TELEVENDAS (OUTRA)") == "TLV"
     assert seller_pasta("PESSOA FICTICIA", None) == ""

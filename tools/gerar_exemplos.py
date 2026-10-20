@@ -52,7 +52,7 @@ def generate(out: Path = OUT) -> None:
     for k, pasta in enumerate(PASTAS):
         for n in range(1, 3):
             sellers.append((str(10 + 2 * k + n), f"{pasta}-XX-{n:02d}- VENDEDOR {pasta}{n}",
-                            f"{pasta}-XX (SUPERVISOR {pasta})", pasta))
+                            f"{pasta}- FARMA (SUPERVISOR G)" if pasta == "G" else f"{pasta}-XX (SUPERVISOR {pasta})", pasta))
     # Televendas: aparece como "P-TLV- ..." com o supervisor "P-TELEVENDAS (...)"
     sellers += [(str(60 + i), f"P-TLV- VENDEDOR {60 + i}", "P-TELEVENDAS (SUPERVISOR T)", "TLV") for i in range(1, 3)]
     suppliers = []  # (id, nome, grupo, pasta)
