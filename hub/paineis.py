@@ -48,7 +48,7 @@ FILES = (
             {"vendedor": "ID", "foco": "PRODUTO FOCO", "classe": "CLASSIFICACAO", "meta": "META",
              "meta2": "META II"}),
     Arquivo("vendas", "(DADOS) - 8081 - Vendas", "Vendas (8081)",
-            {"data": "DATA PEDIDO", "cliente": "ID CLIENTE",
+            {"data": "DATA PEDIDO", "cliente": "ID CLIENTE", "rca": "NOME RCA", "supervisor": "NOME SUPERVISOR",
              "produto": "ID PRODUTO", "fornecedor": "ID FORNECEDOR", "valor": "VALOR"}),
 )
 FILES_BY_KEY = {f.key: f for f in FILES}
@@ -64,6 +64,7 @@ MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "a
          "novembro", "dezembro"]
 DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 TOTAL = "T"
+TLV = "TLV"  # o Televendas é uma "pasta" de vendedores, não de fornecedores
 TOTAL_NAMES = {"PLB", "PB", "T", "TOTAL", "POLYBALAS"}  # como a linha do total pode vir na planilha Totais
 
 
@@ -187,8 +188,10 @@ def _parse(key: str, path: Path):
     for r in rows:
         if r["data"] in (None, ""):
             continue  # linha de total sem data no fim da exportação
+        # dos nomes só sai se a venda é do Televendas; o nome em si não fica guardado
+        tlv = "-TLV-" in normalize(r["rca"]).replace(" ", "") or "TELEVENDAS" in normalize(r["supervisor"])
         out.append(Venda(code(r["cliente"]), code(r["produto"]), code(r["fornecedor"]),
-                         day(r["data"]), number(r["valor"])))
+                         day(r["data"]), number(r["valor"]), tlv))
     if not out:
         raise PlanilhaError("Nenhuma venda no arquivo.")
     return out
@@ -201,6 +204,7 @@ class Venda:
     fornecedor: str
     dia: date
     valor: float
+    tlv: bool = False  # vendedor do Televendas ("P-TLV-..."), que vende de todos os fornecedores
 
 
 # ---------- cálculo ----------
@@ -254,7 +258,7 @@ def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict
     last, month, days, expected = _month(vendas)
     sales_day = is_sales_day(last)
 
-    known_pastas = {pasta for _, pasta in fornecedores.values()}
+    known_pastas = {pasta for _, pasta in fornecedores.values()} | {TLV}
     pastas = sorted(p for p in totais if p != TOTAL and p in known_pastas)
     # pasta com meta mas sem fornecedor na planilha de fornecedores (ex.: um canal de venda): não dá para calcular
     skipped = sorted(p for p in totais if p != TOTAL and p not in known_pastas)
@@ -270,9 +274,11 @@ def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict
     daily_total = [0.0] * (calendar.monthrange(last.year, last.month)[1] + 1)
     for v in month:
         info = fornecedores.get(v.fornecedor)
-        if info is None:
+        if info is None and not v.tlv:
             unknown.add(v.fornecedor)
-        levels = (TOTAL,) if info is None else (info[1], TOTAL)  # o total conta todas as vendas
+        # venda do Televendas vai para a TLV (e não para a pasta do fornecedor): as pastas somam o total
+        pasta = TLV if v.tlv else info[1] if info else None
+        levels = (pasta, TOTAL) if pasta else (TOTAL,)  # o total conta todas as vendas
         daily_total[v.dia.day] += v.valor
         for level in levels:
             real_fin[level] = real_fin.get(level, 0) + v.valor

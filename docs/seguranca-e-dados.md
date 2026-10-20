@@ -13,7 +13,7 @@
 | Histórico | Não | Sim |
 | PIN | Não | Ninguém (só um resumo fica guardado) |
 
-Os painéis seguem a regra do gestor: muita gente passa pela sala, então a TV mostra metas só em porcentagem. Isso também é feito **no servidor**: o endereço da TV recebe apenas percentuais e as letras das pastas, e um teste automático confere que nenhum valor, quantidade ou nome das planilhas vai junto.
+Os painéis seguem a regra do gestor: muita gente passa pela sala, então a TV mostra metas só em porcentagem. Isso também é feito **no servidor**: o endereço da TV recebe apenas percentuais e as letras das pastas, e um teste automático confere que nenhum valor, quantidade ou nome das planilhas vai junto. Os nomes de vendedor e supervisor da 8081 só são lidos para saber se a venda é do Televendas, e não ficam guardados.
 
 A demanda reservada é mascarada **no servidor**: a página da TV nunca recebe o título, então nem quem inspecionar a página consegue ver. No app vale o mesmo para quem não pode ver: o quadro, o histórico e a página da demanda chegam sem o título.
 
