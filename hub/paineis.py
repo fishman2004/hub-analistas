@@ -1,6 +1,6 @@
 """Painéis de dados (fase 5): metas de venda e positivação lidas das planilhas que o time exporta.
 
-As 5 planilhas ficam numa pasta só delas (a "pasta dos painéis"), com nomes fixos. O Hub lê,
+As 6 planilhas ficam numa pasta só delas (a "pasta dos painéis"), com nomes fixos. O Hub lê,
 calcula meta x realizado por pasta (A a G e o total) e manda para a TV **só porcentagens**:
 regra do gestor, porque muita gente passa pela sala. Valores em reais, quantidades e nomes de
 vendedores ou clientes não saem deste módulo.
@@ -32,13 +32,15 @@ class Arquivo:
     base: str  # nome do arquivo sem a extensão
     label: str
     columns: dict[str, str]  # {chave interna: nome da coluna na planilha}
+    optional: bool = False  # lida e conferida, mas nenhuma tela depende dela (ainda)
 
 
 FILES = (
-    Arquivo("metas", "(BASE) - Metas Polybalas - Financeiro e Positivações", "Metas de financeiro e positivação",
-            {"vendedor": "ID VENDEDOR", "fornecedor": "ID FORN", "meta_fin": "META FINANCEIRA",
-             "meta_pos": "META POSITIVAÇÃO"}),
-    Arquivo("focos", "(BASE) - Produtos Focos (KPI's)", "Produtos foco",
+    Arquivo("totais", "(BASE) - Metas Polybalas - Totais", "Metas por pasta (financeiro e carteira)",
+            {"pasta": "PASTA", "meta": "META", "carteira": "CARTEIRA"}),
+    Arquivo("metas_forn", "(BASE) - Metas Polybalas - Fornecedores", "Metas por fornecedor (referência)",
+            {"fornecedor": "ID FORN", "meta": "META FINANCEIRA"}, optional=True),
+    Arquivo("focos", "(BASE) - Produtos Focos KPI's", "Produtos foco",
             {"produto": "ID PRODUTO", "foco": "PRODUTO FOCO"}),
     Arquivo("fornecedores", "(BASE) - Fornecedores Polybalas", "Fornecedores e pastas",
             {"fornecedor": "ID FORNECEDOR", "nome": "FORNECEDOR", "grupo": "FORNECEDOR II", "pasta": "PASTA"}),
@@ -62,6 +64,7 @@ MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "a
          "novembro", "dezembro"]
 DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 TOTAL = "T"
+TOTAL_NAMES = {"PLB", "PB", "T", "TOTAL", "POLYBALAS"}  # como a linha do total pode vir na planilha Totais
 
 
 # ---------- pasta e configurações ----------
@@ -165,9 +168,15 @@ def _parse(key: str, path: Path):
             if supplier and pasta:
                 out[supplier] = (normalize(r["grupo"] or r["nome"]), pasta)
         return out
-    if key == "metas":
-        return [(code(r["vendedor"]), code(r["fornecedor"]), number(r["meta_fin"]), number(r["meta_pos"]))
-                for r in rows]
+    if key == "totais":
+        out = {}
+        for r in rows:
+            pasta = str(r["pasta"] or "").strip().upper()
+            if pasta:
+                out[TOTAL if pasta in TOTAL_NAMES else pasta] = (number(r["meta"]), number(r["carteira"]))
+        return out
+    if key == "metas_forn":
+        return {code(r["fornecedor"]): number(r["meta"]) for r in rows if code(r["fornecedor"])}
     if key == "focos":
         return {code(r["produto"]): str(r["foco"]).strip() for r in rows if r["foco"]}
     if key == "metas_kpi":
@@ -231,8 +240,12 @@ def _month(vendas: list[Venda]) -> tuple[date, list[Venda], list[date], int]:
     return last, month, days, round(sum(d <= last for d in days) / len(days) * 100)
 
 
-def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
+def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict:
     """Meta x realizado por pasta e no total, no mês da venda mais recente do arquivo.
+
+    As metas vêm da planilha Totais: META (financeiro) e CARTEIRA (positivação) de cada pasta, e a
+    linha PLB para o total. A pasta de cada venda sai da planilha de fornecedores; o total conta
+    todas as vendas do arquivo.
 
     Positivação é a contagem distinta de clientes, como a empresa conta: o cliente que comprou de
     2 fornecedores da pasta é 1 positivação para a pasta e 1 para o total, sem acumular. No dia, contam
@@ -241,16 +254,14 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
     last, month, days, expected = _month(vendas)
     sales_day = is_sales_day(last)
 
-    meta_fin: dict[str, float] = {}
-    meta_pos: dict[str, float] = {}
-    no_folder = 0
-    for _, supplier, fin, pos in metas:
-        if supplier not in fornecedores:
-            no_folder += 1
-            continue
-        pasta = fornecedores[supplier][1]
-        meta_fin[pasta] = meta_fin.get(pasta, 0) + fin
-        meta_pos[pasta] = meta_pos.get(pasta, 0) + pos
+    known_pastas = {pasta for _, pasta in fornecedores.values()}
+    pastas = sorted(p for p in totais if p != TOTAL and p in known_pastas)
+    # pasta com meta mas sem fornecedor na planilha de fornecedores (ex.: um canal de venda): não dá para calcular
+    skipped = sorted(p for p in totais if p != TOTAL and p not in known_pastas)
+    meta_fin = {p: totais[p][0] for p in pastas}
+    meta_pos = {p: totais[p][1] for p in pastas}
+    meta_fin[TOTAL] = totais[TOTAL][0] if TOTAL in totais else sum(meta_fin.values())
+    meta_pos[TOTAL] = totais[TOTAL][1] if TOTAL in totais else sum(meta_pos.values())
 
     real_fin: dict[str, float] = {}
     day_fin: dict[str, float] = {}
@@ -261,23 +272,17 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
         info = fornecedores.get(v.fornecedor)
         if info is None:
             unknown.add(v.fornecedor)
-            continue
-        pasta = info[1]
-        real_fin[pasta] = real_fin.get(pasta, 0) + v.valor
+        levels = (TOTAL,) if info is None else (info[1], TOTAL)  # o total conta todas as vendas
         daily_total[v.dia.day] += v.valor
-        if v.dia == last:
-            day_fin[pasta] = day_fin.get(pasta, 0) + v.valor
-        for level in (pasta, TOTAL):
+        for level in levels:
+            real_fin[level] = real_fin.get(level, 0) + v.valor
+            if v.dia == last:
+                day_fin[level] = day_fin.get(level, 0) + v.valor
+        for level in levels:
             key = (level, v.cliente)
             if key not in first_buy or v.dia < first_buy[key]:
                 first_buy[key] = v.dia
 
-    pastas = sorted(set(meta_fin) | set(real_fin))
-
-    def totals(values: dict) -> dict:
-        return {**values, TOTAL: sum(values.values())}
-
-    meta_fin, meta_pos, real_fin, day_fin = totals(meta_fin), totals(meta_pos), totals(real_fin), totals(day_fin)
     real_pos: dict[str, int] = {}
     day_pos: dict[str, int] = {}
     for (level, _), first in first_buy.items():  # o total tem a contagem própria: não é a soma das pastas
@@ -312,10 +317,12 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
                           "tier": _pace_tier(real, target) if real is not None else "futuro"})
 
     warnings = []
-    if no_folder:
-        warnings.append(f"{no_folder} linha(s) de meta com fornecedor que não está na planilha de fornecedores.")
+    if skipped:
+        warnings.append(f"Pasta(s) {', '.join(skipped)} da planilha Totais sem fornecedor na planilha de fornecedores: "
+                        "ficam fora das telas (as vendas delas contam no total).")
     if unknown:
-        warnings.append(f"{len(unknown)} fornecedor(es) com venda que não estão na planilha de fornecedores.")
+        warnings.append(f"{len(unknown)} fornecedor(es) com venda que não estão na planilha de fornecedores "
+                        "(contam só no total).")
     return {
         "year": last.year, "month": last.month, "last_day": last, "expected": expected, "is_workday": sales_day,
         "financeiro": {"mes": month_cards(real_fin, meta_fin), "dia": day_bars(day_fin, meta_fin)},
@@ -364,6 +371,7 @@ class FileStatus:
     key: str
     label: str
     base: str
+    optional: bool = False
     path: Path | None = None
     modified: datetime | None = None
     rows: int = 0
@@ -390,7 +398,7 @@ class Snapshot:
         return max(dates) if dates else None
 
 
-METAS_NEEDS = ("fornecedores", "metas", "vendas")
+METAS_NEEDS = ("fornecedores", "totais", "vendas")
 FOCOS_NEEDS = ("focos", "metas_kpi", "vendas")
 BACKGROUND = True  # no Hub de verdade, a leitura roda numa linha separada; os testes desligam
 
@@ -448,7 +456,7 @@ class PanelStore:
     def _refresh(self, folder: Path, signature) -> Snapshot:
         files, data = [], {}
         for f, (key, path, mtime_ns, size) in zip(FILES, signature):
-            status = FileStatus(f.key, f.label, f.base)
+            status = FileStatus(f.key, f.label, f.base, f.optional)
             files.append(status)
             if path is None:
                 status.error = "Arquivo não encontrado na pasta." if folder.is_dir() else "Não consegui abrir a pasta."
@@ -473,7 +481,7 @@ class PanelStore:
             _, data[key], status.error, status.rows = cached
         snap = Snapshot(folder, files)
         if all(data.get(k) is not None for k in METAS_NEEDS):
-            snap.metas = self._safe(compute_metas, data["fornecedores"], data["metas"], data["vendas"], snap)
+            snap.metas = self._safe(compute_metas, data["fornecedores"], data["totais"], data["vendas"], snap)
         if all(data.get(k) is not None for k in FOCOS_NEEDS):
             snap.focos = self._safe(compute_focos, data["focos"], data["metas_kpi"], data["vendas"], snap)
         return snap

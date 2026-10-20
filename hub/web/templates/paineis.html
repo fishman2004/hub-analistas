@@ -21,7 +21,7 @@
     {% for f in snap.files %}
     <tr>
       <td><strong>{{ f.label }}</strong><br><span class="ajuda">{{ f.base }}</span></td>
-      <td>{% if f.ok %}<span class="ok">Lida ({{ f.rows }} linhas)</span>{% else %}<span class="falha">{{ f.error }}</span>{% endif %}</td>
+      <td>{% if f.ok %}<span class="ok">Lida ({{ f.rows }} linhas)</span>{% elif f.optional %}<span class="ajuda">{{ f.error }} Opcional: nenhuma tela usa ainda.</span>{% else %}<span class="falha">{{ f.error }}</span>{% endif %}</td>
       <td>{{ f.modified.strftime('%d/%m %H:%M') if f.modified else '—' }}</td>
       {% if user.is_admin %}
       <td>
@@ -42,7 +42,7 @@
   {% if snap.metas %}
   <p>Metas de {{ "%02d"|format(snap.metas.month) }}/{{ snap.metas.year }}, com vendas até {{ snap.metas.last_day.strftime('%d/%m') }}: telas <strong>Metas do mês</strong>{% if snap.metas.is_workday %} e <strong>Metas do dia</strong>{% endif %}.</p>
   {% else %}
-  <p class="ajuda">Metas do mês e do dia ficam fora da TV até as planilhas de vendas, metas e fornecedores estarem lidas.</p>
+  <p class="ajuda">Metas do mês e do dia ficam fora da TV até as planilhas de vendas, metas por pasta (Totais) e fornecedores estarem lidas.</p>
   {% endif %}
   {% if snap.focos and snap.focos.focos %}
   <p>Tela <strong>Produtos foco</strong> com {{ snap.focos.focos|length }} produtos foco.</p>
