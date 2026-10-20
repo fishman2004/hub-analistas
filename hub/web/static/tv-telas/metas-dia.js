@@ -3,14 +3,14 @@
 (function () {
   "use strict";
   const { el } = HubTV;
-  const { textoPct, cabecalho, barra } = HubPainel;
+  const { textoPct, cabecalho, barra, letraPasta } = HubPainel;
 
   function barras(caixa, lista) {
     caixa.replaceChildren();
     const escala = Math.max(150, ...lista.map((b) => (b.pct || 0) + 10));
     for (const b of lista) {
       const linha = el("div", "linha-pasta" + (b.pasta === "T" ? " total" : ""));
-      linha.append(el("div", "letra", b.pasta === "T" ? "Total" : b.pasta));
+      linha.append(letraPasta(b.pasta, b.pasta === "T" ? "Total" : b.pasta));
       linha.append(barra(b.pct, b.tier, escala));
       linha.append(el("div", "pct", textoPct(b.pct)));
       caixa.append(linha);

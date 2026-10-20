@@ -87,7 +87,7 @@ def test_xlsx_header_can_start_below_blank_rows(tmp_path):
 
 # ---------- cálculo ----------
 
-FORN = {"1": ("GRUPO X", "A"), "2": ("GRUPO X", "A"), "3": ("GRUPO Y", "B")}  # 1 e 2 são divisões unificadas
+FORN = {"1": ("GRUPO X", "A"), "2": ("GRUPO Z", "A"), "3": ("GRUPO Y", "B")}
 
 
 def v(cliente, forn, dia, valor, produto="p"):
@@ -99,10 +99,10 @@ def test_month_goals_by_folder_and_total():
     assert len(workdays(2026, 9)) == 26
     metas = [("10", "1", 1000, 4), ("11", "1", 1000, 4), ("10", "3", 2000, 2), ("10", "99", 500, 1)]
     vendas = [
-        v("c1", "1", 1, 300), v("c1", "2", 2, 200),  # mesmo cliente no fornecedor unificado X: positiva 1 vez
+        v("c1", "1", 1, 300), v("c1", "2", 2, 200),  # mesmo cliente em 2 fornecedores da pasta A: positiva 1 vez
         v("c1", "1", 3, 100),                         # voltou no cliente: não positiva de novo
         v("c4", "1", 17, 60),
-        v("c1", "3", 10, 100),                        # o mesmo cliente no fornecedor Y conta para Y
+        v("c1", "3", 10, 100),                        # o mesmo cliente na pasta B conta para B
         v("c2", "3", 17, 500), v("c3", "3", 17, 500),
         v("c9", "77", 17, 999),                       # fornecedor fora da planilha: não conta
         Venda("c1", "p", "1", date(2026, 8, 31), 5000),  # mês anterior: não conta
@@ -112,7 +112,8 @@ def test_month_goals_by_folder_and_total():
     fin = {c["pasta"]: c["pct"] for c in m["financeiro"]["mes"]}
     assert fin == {"A": 33, "B": 55, "T": 44}  # A: 660/2000, B: 1100/2000, T: 1760/4000
     pos = {c["pasta"]: c["pct"] for c in m["positivacao"]["mes"]}
-    assert pos == {"A": 25, "B": 150, "T": 50}  # A: 2 clientes de X / 8, B: 3 de Y / 2, T: 5/10
+    # cliente único: c1 comprou nas pastas A e B, conta 1 em cada pasta e 1 só no total
+    assert pos == {"A": 25, "B": 150, "T": 40}  # A: 2 clientes / 8, B: 3 / 2, T: 4 / 10
     # cor do mês = ritmo: B fez 55% com 58% esperado (95% do ritmo); A fez 33% (57%); T 44% (76%)
     tiers = {c["pasta"]: c["tier"] for c in m["financeiro"]["mes"]}
     assert tiers == {"A": "critico", "B": "atencao", "T": "alerta"}

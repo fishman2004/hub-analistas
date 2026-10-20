@@ -66,6 +66,8 @@ Com muitas demandas, "+ N demandas" escondia justamente o que a sala precisava v
 
 O plano dizia "o Hub não calcula, só exibe". Na hora de fazer, o Kayo pediu o contrário: guardar as 5 planilhas que o time já usa (metas, fornecedores, produtos foco e a 8081 de vendas) numa pasta própria e deixar o Hub montar o painel que hoje é feito no Excel. Assim ninguém precisa preparar um arquivo extra só para a TV. As regras do cálculo estão em [paineis.md](paineis.md), num arquivo só do código (`hub/paineis.py`).
 
+**Cores das pastas** seguem o padrão da empresa (a cor da marca mais forte de cada pasta) e aparecem só na letra da pasta. As barras continuam com as cores de faixa (verde a vermelho), para a cor da pasta nunca ser confundida com o resultado.
+
 **Só porcentagens na TV**, por decisão do gestor (gerentes, vendedores e executivos passam pela sala). Isso é garantido no servidor: o `/api/tv` só recebe percentuais, as letras das pastas e textos fixos, e um teste confere que nenhum valor, quantidade ou nome das planilhas aparece na resposta.
 
 **Cor pelo ritmo no mês.** Comparar o realizado do mês com a meta cheia deixaria tudo vermelho até o fim do mês. A cor do mês compara com o esperado até o último dia com venda (dias de venda já passados, de segunda a sábado); a cor do dia compara com a meta do dia.

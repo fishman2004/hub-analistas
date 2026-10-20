@@ -36,8 +36,8 @@ Cada arquivo pode ser `.xlsx`, `.xlsm` ou `.csv`. O Hub usa a **primeira aba** e
 - **Todas as posições de pedido contam** (L liberado, B bloqueado, M montado, F faturado). O pedido cancelado já não vem na extração do sistema.
 - **Pasta:** cada venda e cada meta vai para a pasta do seu fornecedor, pela planilha de fornecedores (`ID FORNECEDOR` → `PASTA`). Fornecedor que não está nessa planilha fica de fora, e a página Painéis avisa quantos são.
 - **Financeiro:** soma de `VALOR` dividida pela soma de `META FINANCEIRA`, por pasta e no total (T).
-- **Positivação** é o atendimento único do mês, a mesma contagem distinta de `ID CLIENTE` do Excel: o cliente conta **uma vez no mês para cada fornecedor**, na primeira compra, não importa quantos pedidos nem quantos vendedores. Divisões unificadas (mesmo `FORNECEDOR II`) contam como um fornecedor só. A pasta e o total somam os fornecedores, do mesmo jeito que a meta (que vem por fornecedor), e são divididos pela soma de `META POSITIVAÇÃO`.
-- **Positivação do dia:** clientes positivados pela primeira vez no mês naquele dia.
+- **Positivação** é a contagem distinta de `ID CLIENTE` do mês, como a empresa conta: o cliente que comprou de 2 fornecedores da pasta é **1 positivação para a pasta e 1 para o total**, sem acumular. Pedidos repetidos e vendedores diferentes não contam de novo. A meta da pasta e do total é a soma de `META POSITIVAÇÃO` dos fornecedores (ver a pergunta em aberto abaixo).
+- **Positivação do dia:** clientes positivados pela primeira vez no mês naquele dia (na pasta ou no total).
 - **Dias de venda:** segunda a sábado (sábado é dia de venda até meio-dia); domingo não tem meta e feriados não são descontados. A meta do dia é a meta do mês dividida pelos dias de venda do mês.
 - **Esperado até hoje:** a parte do mês já passada em dias de venda, até o último dia com venda. Ex.: 15 de 26 dias = 58%.
 - **Total (T):** é a Polybalas inteira (o "PB" do painel do Excel).
@@ -78,3 +78,9 @@ O Hub só relê um arquivo quando a data de modificação ou o tamanho mudam. A 
 - Sábado é dia de venda (até meio-dia).
 - `META` dos produtos foco é positivação e `META II` é financeiro.
 - "PB" é a Polybalas, ou seja, o total.
+- Positivação é cliente único na pasta e no total, sem acumular ("positivação é diferente de atendimento").
+- Cor de cada pasta é o padrão da empresa: A vermelho, B rosa (#FE017E), C roxo, D azul claro, E verde escuro, F azul escuro; G (Canal Farma) sem cor própria.
+
+## Em aberto
+
+- **Meta de positivação da pasta e do total:** a planilha traz a meta por vendedor e por fornecedor. Somando, a meta do total fica bem maior que o número de clientes únicos, e a % do total sai baixa. Falta saber de onde vem a meta da pasta e do total.
