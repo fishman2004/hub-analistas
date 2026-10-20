@@ -9,6 +9,7 @@
 | Demanda **reservada** | Só "Demanda reservada", a cor e as iniciais do dono e o prazo | Tudo para o dono, quem criou, o gestor e os administradores. Os demais veem como na TV e não abrem, movem nem excluem |
 | Visão do gestor (resumo do dia e todas as demandas) | Não | Só o gestor e os administradores |
 | Prazos da semana (tela da TV) | Sim, com a reservada mascarada como no Quadro | Não se aplica |
+| Prioridades do mês | O item, a pasta, o prazo e, nos feitos, só as iniciais e a cor de quem fez | Todos veem a lista, quem fez e quando. Qualquer pessoa marca como feita; remover, só quem acrescentou ou um administrador |
 | Painéis de vendas (metas, positivação, produtos foco) | **Só porcentagens e gráficos**, nunca valores, quantidades ou nomes | Página Painéis: só a situação das planilhas (lida, quantas linhas, quando). Enviar planilha: só administradores |
 | Banco de horas (saldo e entrada/saída de cada dia) | **Nunca** (o endereço da TV nem consulta essas tabelas) | Só a própria pessoa e o gestor. Administrador sozinho não vê |
 | Rotinas (nome, dias, horário, prazo, responsável, pastas) | O cartão de cada rotina no Quadro, com horário, prazo e pastas marcadas, e o aviso no horário (nome e horário). Cartão de rotina marcado como reservado: mascarado como qualquer reservada, e o aviso dele não vai | Página Rotinas: todos veem; cadastrar e mudar, só o gestor e os administradores. Marcar pasta: qualquer pessoa, com o nome no histórico |

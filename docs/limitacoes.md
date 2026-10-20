@@ -14,4 +14,5 @@
 - **Rotinas: só as de hoje são calculadas.** Uma rotina de ontem em que ninguém mexeu some hoje sem deixar rastro (não fica atrasada); só o cartão que virou demanda (alguém moveu, editou ou marcou pasta) continua no quadro, atrasado pela data. O prazo vale dentro do mesmo dia (não passa da meia-noite) e feriados não são descontados: a rotina aparece e dá para dispensar o cartão do dia.
 - **Pastas das rotinas:** qualquer pessoa marca qualquer pasta, porque o Hub não sabe de quem é cada pasta. O histórico guarda quem marcou.
 - **O som da TV depende do navegador.** O Hub abre o Edge com a opção que libera o som, mas se o Edge já estava aberto antes ela pode não valer; aí é preciso liberar o site uma vez nas configurações do Edge (ver o [roteiro da fase 7](roteiros/fase-7-rotinas.md#som-na-tv)). O som também depende do volume da TV e da saída de áudio do PC. Se a TV estiver desligada no horário e ligar mais de 10 minutos depois, aquele aviso não toca.
-- **Ainda não tem:** prioridades do mês e integração com o Pombo. Tudo está no [roadmap](roadmap.md).
+- **Prioridades do mês:** o prazo é um dia do mês corrido (não conta dias úteis nem feriados), e o que ficou em aberto no mês anterior não passa sozinho para o mês novo.
+- **Ainda não tem:** integração com o Pombo. Está no [roadmap](roadmap.md).

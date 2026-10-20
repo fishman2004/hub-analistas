@@ -120,6 +120,24 @@ MIGRATIONS: list[tuple[int, str]] = [
             PRIMARY KEY (demand_id, folder)
         );
     """),
+    (6, """
+        -- v2 · prioridades do início do mês: a lista de cada mês (AAAA-MM), o prazo (dia do mês, opcional),
+        -- quem criou, quem fez e quando. Remover só marca deleted = 1: o item continua guardado.
+        CREATE TABLE priorities (
+            id INTEGER PRIMARY KEY,
+            month TEXT NOT NULL,
+            title TEXT NOT NULL,
+            folder TEXT,
+            due_day INTEGER,
+            position INTEGER NOT NULL,
+            created_by INTEGER REFERENCES people(id),
+            created_at TEXT NOT NULL,
+            done_by INTEGER REFERENCES people(id),
+            done_at TEXT,
+            deleted INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX priorities_month ON priorities(month);
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

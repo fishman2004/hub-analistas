@@ -24,6 +24,9 @@ from ..paineis import STALE_MAX, STALE_MIN, panel_config, save_panel_config, sav
 from ..presence import STATUSES, presence_board, set_status
 from ..rotinas import (WEEKDAY_LABELS, can_manage, create_suggested, get_routine, list_routines, save_routine,
                        set_routine_active, tv_alerts, weekdays_label)
+from ..prioridades import (DEFAULT_LIST, add_priority, can_remove, create_default_list, is_late, is_month, last_day,
+                           list_month, mark_done, month_label, month_of, parse_due_day, past_months, remove_priority,
+                           undo_done)
 from ..telas import MAX_SECONDS, MIN_SECONDS, PAGE_MAX, PAGE_MIN, rotation, save_screen_config, screen_config
 
 HERE = Path(__file__).parent
@@ -432,6 +435,65 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             return routines_page(request, user, 422, error=str(exc))
         return RedirectResponse("/rotinas", status_code=303)
 
+    # ---------- prioridades do mês ----------
+
+    def priorities_page(request: Request, user: Person, month: str = "", status_code: int = 200, **ctx) -> HTMLResponse:
+        now = clock()
+        current = month_of(now)
+        # um mês anterior abre só para consulta; mês inválido ou futuro volta para o atual
+        month = month if is_month(month) and month <= current else current
+        items = list_month(db, month)
+        ctx.setdefault("v", {"title": "", "folder": "", "prazo": ""})
+        return page(request, "prioridades.html", user, status_code, month=month, current=current, items=items,
+                    editable=month == current, months=[current] + past_months(db, now), today=now.date(),
+                    done_count=sum(p.done for p in items), late_count=sum(is_late(p, now.date()) for p in items),
+                    people={p.id: p for p in list_people(db, active_only=False)}, last_day=last_day(month),
+                    month_label=month_label, is_late=is_late, can_remove=can_remove, DEFAULT_LIST=DEFAULT_LIST, **ctx)
+
+    def back_to_priorities() -> RedirectResponse:
+        return RedirectResponse("/prioridades", status_code=303)
+
+    @app.get("/prioridades", response_class=HTMLResponse)
+    def prioridades(request: Request, mes: str = ""):
+        user = me(request)
+        return to_login() if user is None else priorities_page(request, user, mes)
+
+    @app.post("/prioridades")
+    def prioridades_acrescentar(request: Request, title: str = Form(""), folder: str = Form(""), prazo: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        try:
+            add_priority(db, clock(), user, title, folder or None, parse_due_day(prazo))
+        except ValidationError as exc:
+            return priorities_page(request, user, status_code=422, error=str(exc),
+                                   v={"title": title, "folder": folder, "prazo": prazo})
+        return back_to_priorities()
+
+    @app.post("/prioridades/padrao")
+    def prioridades_padrao(request: Request):
+        user = me(request)
+        if user is None:
+            return to_login()
+        create_default_list(db, clock(), user)  # o mês já tem lista (outro PC criou antes): não muda nada
+        return back_to_priorities()
+
+    @app.post("/prioridades/{item_id}/{action}")
+    def prioridades_item(request: Request, item_id: int, action: str):
+        user = me(request)
+        if user is None:
+            return to_login()
+        actions = {"feita": mark_done, "desfazer": undo_done, "remover": remove_priority}
+        if action not in actions:
+            return Response(status_code=404)
+        try:
+            actions[action](db, clock(), user, item_id)
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError as exc:
+            return priorities_page(request, user, status_code=422, error=str(exc))
+        return back_to_priorities()
+
     # ---------- configurações (administrador) ----------
 
     def config_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
@@ -806,4 +868,9 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         "pasta_marcada": f"{who} marcou a pasta {detail} em “{title}”",
         "pasta_desmarcada": f"{who} desmarcou a pasta {detail} em “{title}”",
         "admin_alterado": f"{who} {'tornou' if detail == 'sim' else 'tirou'} {name} {'administrador' if detail == 'sim' else 'de administrador'}",
+        "prioridade_criada": f"{who} acrescentou “{detail}” às prioridades do mês",
+        "prioridade_feita": f"{who} marcou como feita a prioridade “{detail}”",
+        "prioridade_desfeita": f"{who} desmarcou a prioridade “{detail}”",
+        "prioridade_removida": f"{who} removeu “{detail}” das prioridades do mês",
+        "prioridades_padrao": f"{who} criou a lista padrão de prioridades de {month_label(detail) if is_month(detail) else detail}",
     }.get(kind, f"{who}: {kind}")

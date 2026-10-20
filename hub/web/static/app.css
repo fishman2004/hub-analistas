@@ -38,10 +38,10 @@ body { margin: 0; background: var(--fundo); color: var(--texto); font: 16px/1.5 
 a { color: var(--azul); }
 :focus-visible { outline: 3px solid var(--azul); outline-offset: 2px; }
 
-.topo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; padding: 12px 24px; background: var(--cartao); border-bottom: 1px solid var(--linha); }
+.topo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 24px; background: var(--cartao); border-bottom: 1px solid var(--linha); }
 .marca { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.1rem; color: var(--texto); text-decoration: none; }
 .topo nav { display: flex; gap: 4px; flex-wrap: wrap; }
-.topo nav a { padding: 6px 12px; border-radius: 999px; color: var(--suave); text-decoration: none; }
+.topo nav a { padding: 6px 10px; border-radius: 999px; color: var(--suave); text-decoration: none; }
 .topo nav a:hover { background: var(--fundo); color: var(--texto); }
 .topo nav a[aria-current="page"] { background: var(--azul); color: var(--cartao); }
 .eu { margin-left: auto; display: flex; align-items: center; gap: 8px; }
@@ -211,3 +211,24 @@ fieldset.escolhas .check input { margin-top: 0; }
 .acoes-linha { white-space: nowrap; }
 .acoes-linha form { display: inline; }
 .acoes-linha .botao, .acoes-linha button { padding: 4px 10px; font-size: .9rem; }
+/* ---------- prioridades do mês ---------- */
+.meses { display: flex; flex-wrap: wrap; gap: 4px; }
+.meses a { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--linha); color: var(--suave); text-decoration: none; font-size: .9rem; }
+.meses a[aria-current="page"] { border-color: var(--azul); color: var(--azul); font-weight: 600; }
+.prio-resumo { margin: 16px 0; max-width: 900px; }
+.prio-resumo p { margin: 0 0 6px; }
+.prio-resumo .atraso { color: var(--atraso); font-weight: 600; }
+.prio-barra { height: 10px; border-radius: 999px; background: var(--linha); overflow: hidden; }
+.prio-barra span { display: block; height: 100%; background: var(--sala); }
+.prioridades { list-style: none; padding: 0; margin: 0 0 24px; display: grid; gap: 8px; max-width: 900px; }
+.prio { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--cartao); border: 1px solid var(--linha); border-left: 5px solid var(--reuniao); border-radius: var(--raio); padding: 10px 12px; }
+.prio.atrasada { border-color: var(--atraso); border-left-color: var(--atraso); }
+.prio.feita { border-left-color: var(--sala); }
+.prio-marca { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--linha); display: grid; place-items: center; font-weight: 800; }
+.prio.feita .prio-marca { background: var(--sala); border-color: var(--sala); color: var(--sobre-cor); }
+.prio-texto { flex: 1; min-width: 200px; display: grid; gap: 2px; }
+.prio-titulo { font-weight: 600; overflow-wrap: anywhere; }
+.prio.feita .prio-titulo { color: var(--suave); text-decoration: line-through; }
+.prio-padrao p, .prio-padrao ul { margin: 0; }
+.prio-padrao ul { padding-left: 20px; }
+.prio-padrao { margin-bottom: 16px; }

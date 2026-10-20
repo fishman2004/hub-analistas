@@ -27,8 +27,9 @@ Uma **TV na sala**, ligada num PC sempre ligado, mostra:
 - **Visão do gestor:** o dia da equipe numa tela só (presença, a fazer, fazendo, concluídas hoje e atrasadas por pessoa) e todas as demandas com filtros.
 - **Banco de horas** (só no app, nunca na TV): o gestor importa o saldo que o RH envia e cada analista lança a entrada e a saída do dia, vendo na hora se está com horas extras ou negativas. Só a própria pessoa e o gestor veem.
 - **Rotinas com horário:** PHD, transferências de pedidos, atualizações de positivações e comparativo de rotas ficam cadastrados na página **Rotinas**. No horário, o cartão aparece sozinho em A fazer do responsável e a TV toca um aviso com uma faixa na tela; depois do prazo ("até HH:MM"), ele fica atrasado. Nas transferências, cada pasta marca a sua e a rotina conclui sozinha quando todas marcarem; a atualização seguinte só libera depois disso.
+- **Prioridades do mês:** a lista do início do mês (lançar a meta, confirmar a meta com o gerente, comissões até o dia 10, campanhas até o dia 15 e o que mais a equipe acrescentar). Fica na TV até tudo estar feito, com quem fez cada item; o que passou do prazo aparece como atrasado.
 
-Cada analista usa o **app** pelo navegador do próprio PC, sem instalar nada. Entra com o próprio nome e um **PIN** de 4 a 6 números, marca a presença, lança demandas e as move entre as colunas. O botão **Tema** no cabeçalho alterna entre automático (segue o Windows), claro e escuro, e cada navegador lembra a sua escolha. Tudo fica no **histórico**, com quem fez e quando.
+Cada analista usa o **app** pelo navegador do próprio PC, sem instalar nada. Entra com o próprio nome e um **PIN** de 4 a 6 números, marca a presença, lança demandas e as move entre as colunas. Em **Prioridades**, cria a lista do mês com um clique ("Criar lista padrão do mês"), acrescenta itens (com pasta e prazo, se quiser) e marca o que já foi feito. O botão **Tema** no cabeçalho alterna entre automático (segue o Windows), claro e escuro, e cada navegador lembra a sua escolha. Tudo fica no **histórico**, com quem fez e quando.
 
 <p align="center">
   <img src="docs/imagens/app.jpg" width="680" alt="App do analista: botões de presença e o quadro com as próprias demandas">
@@ -51,7 +52,7 @@ flowchart LR
 ```
 
 - **Regras do dia calculadas, não agendadas:** "Concluído hoje", "Fora da empresa" depois da meia-noite, "atrasada" e o cartão de cada rotina no horário dela são calculados toda vez. Não há tarefa agendada que possa falhar.
-- **A TV passa de uma tela para a outra sozinha:** o Quadro, a tela **Prazos da semana** (quando há prazos) e os **painéis de metas** (do mês, do dia e produtos foco), que o Hub calcula das planilhas de vendas guardadas na pasta dos painéis e mostra **só em porcentagem** ([paineis.md](docs/paineis.md)). Os tempos ficam em **Configurações**. Se houver demanda atrasada, um aviso fica no topo em todas as telas.
+- **A TV passa de uma tela para a outra sozinha:** o Quadro, a tela **Prazos da semana** (quando há prazos), as **Prioridades do mês** (até tudo estar feito) e os **painéis de metas** (do mês, do dia e produtos foco), que o Hub calcula das planilhas de vendas guardadas na pasta dos painéis e mostra **só em porcentagem** ([paineis.md](docs/paineis.md)). Os tempos ficam em **Configurações**. Se houver demanda atrasada, um aviso fica no topo em todas as telas.
 - **A TV nunca rola:** uma coluna com mais demandas do que cabem passa as páginas sozinha, com um fade. Se o servidor cair, a TV mantém a última tela e avisa "sem atualização desde HH:MM".
 - Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 
@@ -73,7 +74,7 @@ $env:HUB_DADOS = "$env:TEMP\hub-demo"
 .venv\Scripts\python -m hub
 ```
 
-Cria uma equipe, demandas, rotinas e planilhas de vendas **fictícias** numa pasta separada (PIN de todos: `1234`). O script se recusa a escrever sobre uma equipe de verdade.
+Cria uma equipe, demandas, rotinas, prioridades do mês e planilhas de vendas **fictícias** numa pasta separada (PIN de todos: `1234`). O script se recusa a escrever sobre uma equipe de verdade.
 
 ## Documentação
 
@@ -85,7 +86,7 @@ Cria uma equipe, demandas, rotinas e planilhas de vendas **fictícias** numa pas
 | [Segurança e dados](docs/seguranca-e-dados.md) | TI e gestão: o que fica onde e quem vê o quê |
 | [Painéis de dados](docs/paineis.md) | Quem exporta as planilhas: nomes, colunas e como o Hub calcula |
 | [Limitações](docs/limitacoes.md) | Todos |
-| [Roadmap](docs/roadmap.md) | As fases da v2: tema, PIN, gestor, TV em rotação, painéis, banco de horas, rotinas, Pombo |
+| [Roadmap](docs/roadmap.md) | As fases da v2: tema, PIN, gestor, TV em rotação, painéis, banco de horas, rotinas, prioridades do mês, Pombo |
 | [Decisões técnicas](docs/decisoes.md) | Por que cada escolha foi feita |
 
 ## Para desenvolvedores
