@@ -39,7 +39,9 @@ def _prazos(db: Database, now: datetime) -> dict | None:
     today = now.date()
     columns = board(db, now)
     owners = {p.id: p for p in list_people(db, active_only=False)}
-    open_demands = [d for d in columns["todo"] + columns["doing"] if d.due and d.due <= today + timedelta(days=6)]
+    # rotina de hoje não é "prazo" (ela tem horário e está no Quadro): só entra aqui se atrasar
+    open_demands = [d for d in columns["todo"] + columns["doing"] if d.due and d.due <= today + timedelta(days=6)
+                    and (d.routine_id is None or is_overdue(d, today))]
     if not open_demands:
         return None
     groups: dict[str, list[Demand]] = {}

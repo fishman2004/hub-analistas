@@ -10,16 +10,17 @@ Serve para apresentar o Hub e tirar prints sem dados reais:
 import os
 import shutil
 from pathlib import Path
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from hub.access import create_pin, set_access
 from hub.db import Database
-from hub.demands import create_demand, move_demand
+from hub.demands import create_demand, move_demand, routine_ref, toggle_folder
 from hub.horas import save_entry, set_balance
 from hub.paths import data_dir
 from hub.paineis import panel_folder
 from hub.people import add_person, get_person, list_people
 from hub.presence import set_status
+from hub.rotinas import create_suggested, list_routines
 
 TEAM = ["Ana Souza", "Bianca Lima", "Carla Dias", "Diego Rocha", "Elisa Prado"]
 DEMO_PIN = "1234"
@@ -75,6 +76,24 @@ def seed(now: datetime | None = None) -> Database:
             if day.weekday() < 5 and day < today and (n + k) % 6:  # alguns dias ficam sem lançamento
                 save_entry(db, early, get_person(db, person.id), day, f"07:{40 + (n * 7 + k) % 20:02d}",
                            f"18:{(n * 11 + k * 3) % 40:02d}")
+    # rotinas sugeridas, com a Ana como responsável. As que já passaram do horário hoje ficam como a
+    # equipe faria: PHD concluída, a transferência das 14:50 com as três pastas e a das 16:50 pela metade
+    create_suggested(db, early, get_person(db, ana.id))
+    routines = {r.label: r for r in list_routines(db)}
+    steps = (("08:40", "PHD · positivação diária 08:00", ana, None),
+             ("14:52", "Transferência de pedidos 14:50", bianca, "B"),
+             ("14:55", "Transferência de pedidos 14:50", carla, "C"),
+             ("14:57", "Transferência de pedidos 14:50", ana, "F"),
+             ("15:10", "Atualização de positivações no grupo de gestão comercial 15:00", ana, None),
+             ("16:53", "Transferência de pedidos 16:50", bianca, "B"))
+    for hhmm, label, person, folder in steps:
+        when, routine = datetime.combine(today, time.fromisoformat(hhmm)), routines[label]
+        if when > now or not routine.runs_on(today):
+            continue
+        if folder:
+            toggle_folder(db, when, person.id, routine_ref(routine.id, today), folder)
+        else:
+            move_demand(db, when, person.id, routine_ref(routine.id, today), "done")
     # planilhas fictícias dos painéis (tools/exemplos), para as telas de metas aparecerem na TV
     for f in (Path(__file__).parent / "exemplos").iterdir():
         shutil.copy(f, panel_folder(db) / f.name)

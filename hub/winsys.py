@@ -34,13 +34,18 @@ def set_start_with_windows(enabled: bool, project_dir: Path) -> None:
 
 
 def open_tv(url: str) -> None:
-    """Abre a TV no Edge em tela cheia (modo quiosque), sem barras nem abas."""
+    """Abre a TV no Edge em tela cheia (modo quiosque), sem barras nem abas.
+
+    --autoplay-policy: o navegador bloqueia som de página que ninguém clicou, e na TV ninguém clica.
+    Com ele, o aviso sonoro das rotinas toca sozinho (vale para esta janela; não precisa de administrador).
+    """
     if sys.platform != "win32":
         import webbrowser
 
         webbrowser.open(url)
         return
     subprocess.Popen(
-        ["cmd", "/c", "start", "", "msedge", "--kiosk", url, "--edge-kiosk-type=fullscreen", "--no-first-run"],
+        ["cmd", "/c", "start", "", "msedge", "--kiosk", url, "--edge-kiosk-type=fullscreen", "--no-first-run",
+         "--autoplay-policy=no-user-gesture-required"],
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )

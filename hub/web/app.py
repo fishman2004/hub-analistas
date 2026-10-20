@@ -15,13 +15,15 @@ from ..access import (ROLES, change_pin, create_pin, end_session, has_admin, res
                       set_access, start_session, verify_pin)
 from ..db import Database, events, first_event_day
 from ..demands import (COLUMN_LABELS, COLUMNS, FOLDERS, RESERVED_TEXT, all_demands, board, can_see, create_demand,
-                       delete_demand, find_demand, is_overdue, move_demand, tv_card, update_demand)
+                       delete_demand, find_card, is_overdue, move_demand, toggle_folder, tv_card, update_demand)
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..gestor import DUE_FILTERS, can_open, filter_demands, team_summary
 from .. import horas
 from ..paineis import STALE_MAX, STALE_MIN, panel_config, save_panel_config, save_upload, stale_hours, store_for
 from ..presence import STATUSES, presence_board, set_status
+from ..rotinas import (WEEKDAY_LABELS, can_manage, create_suggested, get_routine, list_routines, save_routine,
+                       set_routine_active, tv_alerts, weekdays_label)
 from ..telas import MAX_SECONDS, MIN_SECONDS, PAGE_MAX, PAGE_MIN, rotation, save_screen_config, screen_config
 
 HERE = Path(__file__).parent
@@ -67,6 +69,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             "counts": {c: len(columns[c]) for c in COLUMNS},
             # aviso fixo em todas as telas da rotação
             "overdue": sum(is_overdue(d, now.date()) for d in columns["todo"] + columns["doing"]),
+            # aviso sonoro de cada rotina de hoje: a TV toca uma vez, quando chega o horário
+            "avisos": tv_alerts(db, now),
             **rotation(db, now),
         }
 
@@ -77,7 +81,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         can_see=can_see, RESERVED_TEXT=RESERVED_TEXT,
     )
 
-    templates.env.globals["ROLES"] = ROLES
+    templates.env.globals.update(ROLES=ROLES, WEEKDAY_LABELS=WEEKDAY_LABELS, weekdays_label=weekdays_label,
+                                 can_manage_routines=can_manage)
 
     def me(request: Request) -> Person | None:
         # a sessão é criada ao entrar com o PIN e acaba à meia-noite (ou ao clicar em Sair)
@@ -93,9 +98,15 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         now = clock()
         # a presença vai junto no trecho que se atualiza: um app aberto de ontem não mostra o status velho
         status = next((s for p, s, _ in presence_board(db, now) if p.id == user.id), STATUSES[-1])
+        everything = board(db, now)
+        columns = everything if show_all else {c: [d for d in everything[c] if d.owner_id == user.id] for c in COLUMNS}
+        # rotinas da equipe com pastas: cada um marca a sua, mesmo sem ser o responsável pelo cartão
+        shared = [] if show_all else [d for c in ("todo", "doing") for d in everything[c]
+                                      if d.routine and d.routine.folders and d.owner_id != user.id and can_see(d, user)]
         return {
             "status": status,
-            "columns": board(db, now, owner_id=None if show_all else user.id),
+            "columns": columns,
+            "shared": shared,
             "owners": {p.id: p for p in list_people(db, active_only=False)},
             "today": now.date(),
             "show_all": show_all,
@@ -233,72 +244,193 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             return demand_form(request, user, values, 422, error=str(exc))
         return RedirectResponse("/", status_code=303)
 
-    @app.get("/demandas/{demand_id}", response_class=HTMLResponse)
-    def demanda_editar(request: Request, demand_id: int):
+    # {ref}: o número da demanda, ou "rotina-<número>-<dia>" para o cartão calculado de uma rotina de hoje,
+    # que vira demanda na primeira ação (mover, salvar, excluir ou marcar pasta). Abrir o formulário não cria nada.
+    @app.get("/demandas/{ref}", response_class=HTMLResponse)
+    def demanda_editar(request: Request, ref: str):
         user = me(request)
         if user is None:
             return to_login()
-        d = find_demand(db, demand_id)
+        d = find_card(db, clock(), ref)
         if d is None:
             return RedirectResponse("/", status_code=303)
         if not can_see(d, user):
             return forbidden(request, user, "Esta demanda é reservada. Só o dono, quem criou, o gestor e os administradores podem abrir.")
         return demand_form(request, user, {
-            "id": d.id, "title": d.title, "owner_id": str(d.owner_id), "folder": d.folder or "",
+            "id": d.ref, "title": d.title, "owner_id": str(d.owner_id), "folder": d.folder or "",
             "requested_by": d.requested_by or "", "due": d.due.isoformat() if d.due else "", "reserved": d.reserved,
+            "routine": d.routine_id is not None,
         })
 
-    def hidden_from(user: Person, demand_id: int) -> bool:
-        d = find_demand(db, demand_id)
+    def hidden_from(user: Person, ref: str) -> bool:
+        d = find_card(db, clock(), ref)
         return d is not None and not can_see(d, user)
 
     def reserved_forbidden(request: Request, user: Person) -> HTMLResponse:
         return forbidden(request, user, "Esta demanda é reservada. Só o dono, quem criou, o gestor e os administradores podem mexer nela.")
 
-    @app.post("/demandas/{demand_id}")
-    async def demanda_salvar(request: Request, demand_id: int):
+    @app.post("/demandas/{ref}")
+    async def demanda_salvar(request: Request, ref: str):
         user = me(request)
         if user is None:
             return to_login()
-        if hidden_from(user, demand_id):
+        card = find_card(db, clock(), ref)
+        if card is not None and not can_see(card, user):
             return reserved_forbidden(request, user)
         form = await request.form()
-        values = {"id": demand_id}
+        values = {"id": ref, "routine": card is not None and card.routine_id is not None}
         try:
             parsed, fields = parse_demand(form)
             values.update(parsed)
-            update_demand(db, clock(), user.id, demand_id, **fields)
+            update_demand(db, clock(), user.id, ref, **fields)
         except ValidationError as exc:
             values.update({k: form.get(k, "") for k in ("title", "owner_id", "folder", "requested_by", "due")},
                           reserved="reserved" in form)
             return demand_form(request, user, values, 422, error=str(exc))
         return RedirectResponse("/", status_code=303)
 
-    @app.post("/demandas/{demand_id}/mover")
-    def demanda_mover(request: Request, demand_id: int, column: str = Form(...)):
+    def board_error(request: Request, user: Person, message: str) -> HTMLResponse:
+        # regra de rotina (esperando outra, faltam pastas): mostra o motivo em cima do quadro
+        show_all = "todas=1" in (request.headers.get("referer") or "")
+        return page(request, "quadro.html", user, 422, error=message, **board_context(user, show_all))
+
+    @app.post("/demandas/{ref}/mover")
+    def demanda_mover(request: Request, ref: str, column: str = Form(...)):
         user = me(request)
         if user is None:
             return to_login()
-        if hidden_from(user, demand_id):
+        if hidden_from(user, ref):
             return reserved_forbidden(request, user)
         try:
-            move_demand(db, clock(), user.id, demand_id, column)
-        except ValidationError:
-            pass  # outro PC já excluiu: o quadro atualizado mostra a verdade
+            move_demand(db, clock(), user.id, ref, column)
+        except ValidationError as exc:
+            if str(exc) != "Demanda não encontrada.":
+                return board_error(request, user, str(exc))
+            # outro PC já excluiu: o quadro atualizado mostra a verdade
         return RedirectResponse(request.headers.get("referer") or "/", status_code=303)
 
-    @app.post("/demandas/{demand_id}/excluir")
-    def demanda_excluir(request: Request, demand_id: int):
+    @app.post("/demandas/{ref}/pasta")
+    def demanda_pasta(request: Request, ref: str, folder: str = Form(...)):
         user = me(request)
         if user is None:
             return to_login()
-        if hidden_from(user, demand_id):
+        if hidden_from(user, ref):
             return reserved_forbidden(request, user)
         try:
-            delete_demand(db, clock(), user.id, demand_id)
+            toggle_folder(db, clock(), user.id, ref, folder)
+        except ValidationError as exc:
+            return board_error(request, user, str(exc))
+        return RedirectResponse(request.headers.get("referer") or "/", status_code=303)
+
+    @app.post("/demandas/{ref}/excluir")
+    def demanda_excluir(request: Request, ref: str):
+        user = me(request)
+        if user is None:
+            return to_login()
+        if hidden_from(user, ref):
+            return reserved_forbidden(request, user)
+        try:
+            delete_demand(db, clock(), user.id, ref)
         except ValidationError:
             pass
         return RedirectResponse("/", status_code=303)
+
+    # ---------- rotinas ----------
+
+    def routine_values(r=None, user: Person | None = None) -> dict:
+        if r is None:
+            return {"id": "", "name": "", "weekdays": [0, 1, 2, 3, 4], "starts_at": "", "deadline": "",
+                    "owner_id": str(user.id), "folders": [], "waits_for": []}
+        return {"id": r.id, "name": r.name, "weekdays": list(r.weekdays), "starts_at": r.starts_at,
+                "deadline": r.deadline or "", "owner_id": str(r.owner_id), "folders": list(r.folders),
+                "waits_for": list(r.waits_for)}
+
+    def routines_page(request: Request, user: Person, status_code: int = 200, v: dict | None = None,
+                      **ctx) -> HTMLResponse:
+        people = list_people(db)
+        routines = list_routines(db)
+        v = v or routine_values(user=user)
+        # responsável desativado continua na lista desta rotina, como no formulário de demanda
+        owner = get_person(db, int(v["owner_id"])) if str(v.get("owner_id", "")).isdigit() else None
+        if owner and not owner.active:
+            people = people + [owner]
+        return page(request, "rotinas.html", user, status_code, routines=routines, by_id={r.id: r for r in routines},
+                    people=people, owners={p.id: p for p in list_people(db, active_only=False)}, v=v,
+                    can_manage=can_manage(user), **ctx)
+
+    def manager_only(request: Request) -> tuple[Person | None, Response | None]:
+        user = me(request)
+        if user is None:
+            return None, to_login()
+        if not can_manage(user):
+            return user, forbidden(request, user, "Só o gestor e os administradores mudam as rotinas.")
+        return user, None
+
+    def parse_routine(form) -> dict:
+        def ints(key: str) -> list[int]:
+            return [int(x) for x in form.getlist(key) if str(x).isdigit()]
+        owner = str(form.get("owner_id", ""))
+        return {"name": str(form.get("name", "")), "weekdays": ints("weekdays"),
+                "starts_at": str(form.get("starts_at", "")), "deadline": str(form.get("deadline", "")),
+                "owner_id": int(owner) if owner.isdigit() else 0, "folders": [str(f) for f in form.getlist("folders")],
+                "waits_for": ints("waits_for")}
+
+    @app.get("/rotinas", response_class=HTMLResponse)
+    def rotinas(request: Request):
+        user = me(request)
+        return to_login() if user is None else routines_page(request, user)
+
+    @app.post("/rotinas/sugeridas")
+    def rotinas_sugeridas(request: Request):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        created = create_suggested(db, clock(), user)
+        plural = "s" if created != 1 else ""
+        message = (f"{created} rotina{plural} criada{plural}, com você como responsável. Dá para mudar em Editar."
+                   if created else "As rotinas sugeridas já existem.")
+        return routines_page(request, user, ok=message)
+
+    async def routine_save(request: Request, routine_id: int | None):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        fields = parse_routine(await request.form())
+        try:
+            save_routine(db, clock(), user, routine_id, **fields)
+        except ValidationError as exc:
+            v = {**fields, "id": routine_id or "", "owner_id": str(fields["owner_id"])}
+            return routines_page(request, user, 422, v=v, error=str(exc))
+        return RedirectResponse("/rotinas", status_code=303)
+
+    @app.post("/rotinas")
+    async def rotinas_criar(request: Request):
+        return await routine_save(request, None)
+
+    @app.get("/rotinas/{routine_id}", response_class=HTMLResponse)
+    def rotinas_editar(request: Request, routine_id: int):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        r = get_routine(db, routine_id)
+        if r is None:
+            return RedirectResponse("/rotinas", status_code=303)
+        return routines_page(request, user, v=routine_values(r))
+
+    @app.post("/rotinas/{routine_id}")
+    async def rotinas_salvar(request: Request, routine_id: int):
+        return await routine_save(request, routine_id)
+
+    @app.post("/rotinas/{routine_id}/ativa")
+    def rotinas_ativa(request: Request, routine_id: int, active: str = Form("1")):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        try:
+            set_routine_active(db, clock(), user, routine_id, active == "1")
+        except ValidationError as exc:
+            return routines_page(request, user, 422, error=str(exc))
+        return RedirectResponse("/rotinas", status_code=303)
 
     # ---------- configurações (administrador) ----------
 
@@ -439,7 +571,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             pass  # já não estava lá: a página mostra a verdade
         return RedirectResponse("/horas", status_code=303)
 
-    def manager_only(request: Request) -> tuple[Person | None, Response | None]:
+    def hours_manager_only(request: Request) -> tuple[Person | None, Response | None]:
         user = me(request)
         if user is None:
             return None, to_login()
@@ -454,12 +586,12 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     @app.get("/horas/equipe", response_class=HTMLResponse)
     def horas_equipe(request: Request):
-        user, stop = manager_only(request)
+        user, stop = hours_manager_only(request)
         return stop or team_hours_page(request, user)
 
     @app.get("/horas/equipe/{person_id}", response_class=HTMLResponse)
     def horas_pessoa(request: Request, person_id: int):
-        user, stop = manager_only(request)
+        user, stop = hours_manager_only(request)
         if stop:
             return stop
         person = get_person(db, person_id)
@@ -469,7 +601,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     @app.post("/horas/equipe/importar")
     def horas_importar(request: Request, arquivo: UploadFile = File(...)):
-        user, stop = manager_only(request)
+        user, stop = hours_manager_only(request)
         if stop:
             return stop
         try:
@@ -480,7 +612,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     @app.post("/horas/equipe/saldo")
     def horas_saldo(request: Request, pessoa: str = Form(""), saldo: str = Form(""), data: str = Form("")):
-        user, stop = manager_only(request)
+        user, stop = hours_manager_only(request)
         if stop:
             return stop
         try:
@@ -497,7 +629,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     @app.post("/horas/equipe/jornada")
     def horas_jornada(request: Request, semana: str = Form(""), sabado: str = Form("")):
-        user, stop = manager_only(request)
+        user, stop = hours_manager_only(request)
         if stop:
             return stop
         try:
@@ -508,7 +640,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     @app.get("/horas/exportar")
     def horas_exportar(request: Request, tipo: str = "saldos", formato: str = "xlsx", de: str = "", ate: str = ""):
-        user, stop = manager_only(request)
+        user, stop = hours_manager_only(request)
         if stop:
             return stop
         today = clock().date()
@@ -666,5 +798,12 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         "horas_excluido": f"{who} apagou do banco de horas o dia {detail}",
         "horas_saldo": f"{who} definiu o saldo base do banco de horas de {name_of(ref_id)} ({detail})",
         "horas_jornada": f"{who} mudou a jornada do banco de horas ({detail})",
+        "rotina_criada": f"{who} cadastrou a rotina “{detail}”",
+        "rotina_editada": f"{who} editou a rotina “{detail}”",
+        "rotina_desativada": f"{who} desativou a rotina “{detail}”",
+        "rotina_reativada": f"{who} reativou a rotina “{detail}”",
+        "rotina_demanda": f"{who} mexeu pela primeira vez hoje na rotina “{title}”",
+        "pasta_marcada": f"{who} marcou a pasta {detail} em “{title}”",
+        "pasta_desmarcada": f"{who} desmarcou a pasta {detail} em “{title}”",
         "admin_alterado": f"{who} {'tornou' if detail == 'sim' else 'tirou'} {name} {'administrador' if detail == 'sim' else 'de administrador'}",
     }.get(kind, f"{who}: {kind}")

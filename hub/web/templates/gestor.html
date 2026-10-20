@@ -60,7 +60,7 @@
   {% for d in demands %}
   {% set dono = owners[d.owner_id] %}
   <tr class="{{ 'atrasada' if is_overdue(d, today) else '' }}">
-    <td><a href="/demandas/{{ d.id }}">{{ d.title }}</a>{% if d.reserved %} <span class="etiqueta">Reservada</span>{% endif %}</td>
+    <td><a href="/demandas/{{ d.ref }}">{{ d.title }}</a>{% if d.reserved %} <span class="etiqueta">Reservada</span>{% endif %}{% if d.routine %} <span class="etiqueta">{{ d.routine.label }}</span>{% endif %}</td>
     <td><span class="bolinha" style="--cor: {{ dono.color }}">{{ dono.initials }}</span> {{ dono.name }}</td>
     <td>{{ COLUMN_LABELS[d.column] }}</td>
     <td>{{ d.folder or '' }}</td>

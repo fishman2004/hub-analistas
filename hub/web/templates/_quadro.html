@@ -1,3 +1,17 @@
+{# pastas de uma rotina: cada letra é um botão; qualquer pessoa marca a sua e o histórico guarda quem #}
+{% macro pastas(d) %}
+<div class="pastas-rotina" aria-label="Pastas da rotina">
+  {% for f in d.routine.folders %}{% set ok = f in d.routine.checked %}
+  <form method="post" action="/demandas/{{ d.ref }}/pasta"><input type="hidden" name="folder" value="{{ f }}"><button class="pasta-chip{{ ' marcada' if ok else '' }}" aria-pressed="{{ 'true' if ok else 'false' }}" title="{{ 'Desmarcar' if ok else 'Marcar' }} a pasta {{ f }}">{{ f }}</button></form>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro rotina_etiqueta(d, col) %}
+{% set late = d.routine.late and col != 'done' %}
+<span class="rotina-etiqueta{{ ' atraso' if late else '' }}">{{ ('atrasada · até ' ~ d.routine.deadline) if late else d.routine.label }}</span>
+{% endmacro %}
+
 <section class="presenca" aria-labelledby="h-presenca">
   <h2 id="h-presenca">Onde você está?</h2>
   <div class="status-botoes">
@@ -9,6 +23,22 @@
     {% endfor %}
   </div>
 </section>
+
+{% if shared %}
+<section class="rotinas-equipe" aria-labelledby="h-pastas">
+  <h2 id="h-pastas">Pastas para marcar</h2>
+  <p class="ajuda">Rotinas da equipe com pastas: marque a sua quando terminar. Com todas marcadas, a rotina conclui sozinha.</p>
+  {% for d in shared %}
+  {% set dono = owners[d.owner_id] %}
+  <div class="rotina-linha{{ ' atrasada' if is_overdue(d, today) else '' }}" style="--cor: {{ dono.color }}">
+    <span class="bolinha">{{ dono.initials }}</span>
+    <span class="rotina-nome">{{ d.title }}</span>
+    {{ rotina_etiqueta(d, d.column) }}
+    {{ pastas(d) }}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
 
 <div class="barra">
   <h1>Quadro</h1>
@@ -26,25 +56,33 @@
     {% for d in columns[col] %}
     {% set dono = owners[d.owner_id] %}
     {% if can_see(d, user) %}
+    {% set waiting = d.routine and d.routine.waiting and col != 'done' %}
+    {% set by_folders = d.routine and d.routine.folders %}
+    {% set pending = by_folders and d.routine.folders|reject('in', d.routine.checked)|list %}
     <article class="cartao {% if is_overdue(d, today) %}atrasada{% endif %}" style="--cor: {{ dono.color }}">
       <div class="cartao-topo">
         <span class="bolinha">{{ dono.initials }}</span>
-        <a class="titulo" href="/demandas/{{ d.id }}">{{ d.title }}</a>
+        <a class="titulo" href="/demandas/{{ d.ref }}">{{ d.title }}</a>
       </div>
       <p class="meta">
+        {% if d.routine %}{{ rotina_etiqueta(d, col) }}{% endif %}
         {% if d.reserved %}<span class="reservada">Reservada</span>{% endif %}
         {% if d.folder %}<span>Pasta {{ d.folder }}</span>{% endif %}
         {% if d.requested_by %}<span>Pedido por {{ d.requested_by }}</span>{% endif %}
-        {% if d.due %}<span class="{{ 'atraso' if is_overdue(d, today) else '' }}">{{ 'atrasada · ' if is_overdue(d, today) else '' }}prazo {{ d.due.strftime('%d/%m') }}</span>{% endif %}
+        {# rotina: o prazo de hoje já está na etiqueta; a data só aparece se ficou de outro dia #}
+        {% if d.due and (not d.routine or d.due != today) %}<span class="{{ 'atraso' if is_overdue(d, today) else '' }}">{{ 'atrasada · ' if is_overdue(d, today) else '' }}prazo {{ d.due.strftime('%d/%m') }}</span>{% endif %}
       </p>
+      {% if waiting %}<p class="aguardando">Aguardando: {{ d.routine.waiting|join(', ') }}</p>{% endif %}
+      {% if by_folders %}{{ pastas(d) }}{% endif %}
       <div class="cartao-acoes">
         {% if col == 'todo' %}
-          <form method="post" action="/demandas/{{ d.id }}/mover"><input type="hidden" name="column" value="doing"><button>Começar</button></form>
+          {% if not waiting %}<form method="post" action="/demandas/{{ d.ref }}/mover"><input type="hidden" name="column" value="doing"><button>Começar</button></form>{% endif %}
         {% elif col == 'doing' %}
-          <form method="post" action="/demandas/{{ d.id }}/mover"><input type="hidden" name="column" value="done"><button>Concluir</button></form>
-          <form method="post" action="/demandas/{{ d.id }}/mover"><input type="hidden" name="column" value="todo"><button class="discreto">Voltar</button></form>
+          {# com pastas, a rotina conclui sozinha quando a última é marcada #}
+          {% if not pending and not waiting %}<form method="post" action="/demandas/{{ d.ref }}/mover"><input type="hidden" name="column" value="done"><button>Concluir</button></form>{% endif %}
+          <form method="post" action="/demandas/{{ d.ref }}/mover"><input type="hidden" name="column" value="todo"><button class="discreto">Voltar</button></form>
         {% else %}
-          <form method="post" action="/demandas/{{ d.id }}/mover"><input type="hidden" name="column" value="doing"><button class="discreto">Reabrir</button></form>
+          <form method="post" action="/demandas/{{ d.ref }}/mover"><input type="hidden" name="column" value="doing"><button class="discreto">Reabrir</button></form>
         {% endif %}
       </div>
     </article>
