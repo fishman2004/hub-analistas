@@ -47,9 +47,14 @@ def generate(out: Path = OUT) -> None:
     out.mkdir(parents=True, exist_ok=True)
     name = lambda key, ext: out / (FILES_BY_KEY[key].base + ext)
 
-    sellers = [(str(10 + i), f"VENDEDOR {i:02d}", f"SUPERVISOR {'XYZ'[i % 3]}") for i in range(1, 11)]
-    # Televendas: aparece na 8081 como "P-TLV- ..." com o supervisor "P-TELEVENDAS (...)"
-    sellers += [(str(60 + i), f"P-TLV- VENDEDOR {60 + i}", "P-TELEVENDAS (SUPERVISOR T)") for i in range(1, 3)]
+    # vendedores como aparecem na 8081: a pasta é a letra do começo do nome ("A-XX-01- ...")
+    sellers = []  # (id, nome, supervisor, pasta da equipe)
+    for k, pasta in enumerate(PASTAS):
+        for n in range(1, 3):
+            sellers.append((str(10 + 2 * k + n), f"{pasta}-XX-{n:02d}- VENDEDOR {pasta}{n}",
+                            f"{pasta}-XX (SUPERVISOR {pasta})", pasta))
+    # Televendas: aparece como "P-TLV- ..." com o supervisor "P-TELEVENDAS (...)"
+    sellers += [(str(60 + i), f"P-TLV- VENDEDOR {60 + i}", "P-TELEVENDAS (SUPERVISOR T)", "TLV") for i in range(1, 3)]
     suppliers = []  # (id, nome, grupo, pasta)
     next_id = 1001
     for pasta in PASTAS:
@@ -78,7 +83,7 @@ def generate(out: Path = OUT) -> None:
           [[int(s[0]), s[1], round(META_PASTA[s[3]] / len(by_pasta[s[3]]), -3)] for s in suppliers])
 
     kpis = []
-    for sid, sname, sup in sellers:
+    for sid, sname, sup, _ in sellers:
         for i, foco in enumerate(focos):
             meta = rnd.randint(20, 36) + 12 * i
             # META = positivação (clientes); META II = financeiro (só em alguns focos, como na planilha real)
@@ -90,26 +95,30 @@ def generate(out: Path = OUT) -> None:
     # vendas: pedidos sorteados e depois escalados para cada pasta chegar no ritmo de PACE
     clients = [(str(200000 + i), f"CLIENTE {i:04d}") for i in range(1, 2501)]
     days = [MONTH_START + timedelta(n) for n in range((LAST_DAY - MONTH_START).days + 1)]
+    own_products = {p: [x for x in products if x[2][3] == p] for p in PASTAS}
     lines = []
     order = 31000000
     for d in days:
         if d.weekday() == 6:
             continue
-        for sid, sname, sup in sellers:
+        for sid, sname, sup, team in sellers:
+            # a equipe vende mais os fornecedores da pasta dela, mas pode vender de qualquer um
+            own = own_products.get(team, products)
             for _ in range(rnd.randint(2, 5) if d.weekday() == 5 else rnd.randint(6, 12)):
                 order += 1
                 client = rnd.choice(clients)
                 status = rnd.choice("FFFFFFLMB")  # cancelado não vem na extração
-                for product in rnd.sample(products, rnd.randint(2, 6)):
+                for product in rnd.sample(own if rnd.random() < .85 else products, rnd.randint(2, 6)):
                     qty = rnd.randint(1, 24)
-                    lines.append([sid, sname, sup, order, status, d, client, product, qty, rnd.uniform(5, 40) * qty])
-    group_of = lambda line: "TLV" if "TLV" in line[1] else line[7][2][3]  # a venda do Televendas é da TLV
+                    lines.append([sid, sname, sup, team, order, status, d, client, product, qty,
+                                  rnd.uniform(5, 40) * qty])
+    group_of = lambda line: line[3]  # a pasta conta o que a equipe dela vendeu
     sold = {p: 0.0 for p in [*PASTAS, "TLV"]}
     reached = {p: set() for p in [*PASTAS, "TLV", "PLB"]}
     for line in lines:
-        sold[group_of(line)] += line[9]
-        reached[group_of(line)].add(line[6][0])
-        reached["PLB"].add(line[6][0])
+        sold[group_of(line)] += line[10]
+        reached[group_of(line)].add(line[7][0])
+        reached["PLB"].add(line[7][0])
     factor = {p: META_PASTA[p] * PACE[p] / sold[p] for p in sold}
     carteira = {p: round(len(reached[p]) / POS_PACE[p]) for p in reached}
     _xlsx(name("totais", ".xlsx"), ["PASTA", "META", "CARTEIRA"],
@@ -119,8 +128,8 @@ def generate(out: Path = OUT) -> None:
         w.writerow(["ID RCA", "NOME RCA", "NOME SUPERVISOR", "NUMERO PEDIDO", "POSICAO PED", "DATA PEDIDO",
                     "ID CLIENTE", "CLIENTE", "ID PRODUTO", "NOME PRODUTO", "ID FORNECEDOR", "NOME FORNECEDOR",
                     "QTDE CX", "QTDE UND", "VALOR", "QTDE CX VENDIDA"])
-        for sid, sname, sup, order, status, d, client, product, qty, value in lines:
-            value *= factor["TLV" if "TLV" in sname else product[2][3]]
+        for sid, sname, sup, team, order, status, d, client, product, qty, value in lines:
+            value *= factor[team]
             br = lambda x: f"{x:.2f}".replace(".", ",")
             w.writerow([sid, sname, sup, order, status, d.strftime("%d/%m/%Y"), client[0], client[1], product[0],
                         product[1], product[2][0], product[2][1], 12, qty, br(value), br(qty / 12)])

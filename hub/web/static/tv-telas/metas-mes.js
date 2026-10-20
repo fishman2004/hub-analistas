@@ -1,4 +1,4 @@
-// Tela "Metas do mês": evolução do financeiro total no mês e um cartão por pasta (A a G e o total)
+// Tela "Metas do mês": evolução do financeiro total (cada dia e o acumulado do mês) e um cartão por pasta (A a G e o total)
 // para financeiro e positivações. Só porcentagens: a cor diz se o ritmo está bom.
 (function () {
   "use strict";
@@ -6,39 +6,52 @@
   const { svg, textoPct, cabecalho, barra, letraPasta } = HubPainel;
   let ultimo = null;
 
-  function evolucao(caixa, dias) {
+  // barras: quanto cada dia fez da meta do dia; linha: o acumulado do mês contra o que já devia ter
+  // sido feito. As duas usam a mesma régua: 100% é estar na meta.
+  function evolucao(caixa, dias, acumulado) {
     caixa.replaceChildren();
     const w = caixa.clientWidth, h = caixa.clientHeight;
     if (!w || !h) return;
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-    const esq = 3.6 * rem, baixo = 2.2 * rem, topo = 1.8 * rem;
-    const reais = dias.filter((d) => d.real !== null).map((d) => d.real);
-    const maximo = Math.max(100, ...reais) * 1.08;
+    const esq = 3.6 * rem, baixo = 2.2 * rem, topo = 2.4 * rem;
+    const valores = dias.flatMap((d) => [d.real, d.ritmo]).filter((v) => v !== null);
+    const maximo = Math.max(100, ...valores) * 1.08;
     const y = (v) => topo + (h - topo - baixo) * (1 - v / maximo);
     const passo = (w - esq) / dias.length;
     const g = svg("svg", { width: w, height: h, viewBox: `0 0 ${w} ${h}`, role: "img",
-      "aria-label": "Evolução do financeiro no mês, em porcentagem da meta" });
+      "aria-label": "Financeiro de cada dia contra a meta do dia e acumulado do mês contra o esperado, em porcentagem" });
     for (const v of [25, 50, 75, 100]) {
       g.append(svg("line", { x1: esq, x2: w, y1: y(v), y2: y(v), class: v === 100 ? "grade grade-100" : "grade" }));
       g.append(svg("text", { x: esq - .6 * rem, y: y(v), class: "eixo", "text-anchor": "end", "dominant-baseline": "middle" }, v + "%"));
     }
     const largura = Math.max(2, passo * .62);
-    let ultimo = null;
+    const x = (i) => esq + passo * (i + .5);
+    let barra = null, ponto = null;
     dias.forEach((d, i) => {
-      const cx = esq + passo * (i + .5);
       if (d.real !== null) {
         const topoBarra = y(d.real), alt = Math.max(0, y(0) - topoBarra);
-        g.append(svg("rect", { x: cx - largura / 2, y: topoBarra, width: largura, height: alt, rx: Math.min(4, largura / 3),
-          class: "dia faixa-" + d.tier + (d.util ? "" : " fim-de-semana") }));
-        ultimo = { cx, topoBarra, d };
+        g.append(svg("rect", { x: x(i) - largura / 2, y: topoBarra, width: largura, height: alt, rx: Math.min(4, largura / 3),
+          class: "dia faixa-" + d.tier }));
+        barra = { cx: x(i), topoBarra, d };
       }
-      g.append(svg("text", { x: cx, y: h - .7 * rem, class: "eixo" + (d.util ? "" : " eixo-fds"), "text-anchor": "middle" }, String(d.dia)));
+      if (d.ritmo !== null) ponto = { cx: x(i), cy: y(d.ritmo) };
+      g.append(svg("text", { x: x(i), y: h - .7 * rem, class: "eixo" + (d.util ? "" : " eixo-fds"), "text-anchor": "middle" }, String(d.dia)));
     });
-    // a linha do esperado: onde o acumulado deveria estar em cada dia para fechar o mês em 100%
-    const pontos = dias.map((d, i) => `${esq + passo * (i + .5)},${y(d.meta)}`).join(" ");
-    g.append(svg("polyline", { points: pontos, class: "linha-esperado" }));
-    if (ultimo) {
-      g.append(svg("text", { x: ultimo.cx, y: ultimo.topoBarra - .5 * rem, class: "rotulo", "text-anchor": "middle" }, textoPct(ultimo.d.real)));
+    const pontos = dias.map((d, i) => (d.ritmo === null ? null : `${x(i)},${y(d.ritmo)}`)).filter(Boolean).join(" ");
+    if (pontos) {
+      g.append(svg("polyline", { points: pontos, class: "linha-mes-fundo" }));  // contorno: a linha aparece por cima das barras
+      g.append(svg("polyline", { points: pontos, class: "linha-mes" }));
+    }
+    if (barra) {
+      // o rótulo do dia vai acima da barra e do ponto da linha, para um não cobrir o outro
+      const alto = Math.min(barra.topoBarra, ponto && ponto.cx === barra.cx ? ponto.cy - .4 * rem : Infinity);
+      g.append(svg("text", { x: barra.cx, y: alto - .6 * rem, class: "rotulo", "text-anchor": "middle" }, textoPct(barra.d.real)));
+    }
+    if (ponto) {
+      g.append(svg("circle", { cx: ponto.cx, cy: ponto.cy, r: .45 * rem, class: "ponto-mes" }));
+      // à direita do último ponto (onde ainda não há barras): quanto do mês já foi feito
+      g.append(svg("text", { x: ponto.cx + 1.2 * rem, y: ponto.cy, class: "rotulo rotulo-mes", "text-anchor": "start",
+        "dominant-baseline": "middle" }, "mês " + textoPct(acumulado)));
     }
     caixa.append(g);
   }
@@ -61,10 +74,10 @@
       cartoes(sec.querySelector('[data-serie="financeiro"]'), dados.financeiro, dados.esperado);
       cartoes(sec.querySelector('[data-serie="positivacao"]'), dados.positivacao, dados.esperado);
       // o gráfico por último: ele mede o espaço que sobrou depois dos cartões
-      evolucao(sec.querySelector(".grafico"), dados.evolucao);
+      evolucao(sec.querySelector(".grafico"), dados.evolucao, dados.acumulado);
     },
     aoMostrar(sec) {
-      if (ultimo) evolucao(sec.querySelector(".grafico"), ultimo.evolucao);
+      if (ultimo) evolucao(sec.querySelector(".grafico"), ultimo.evolucao, ultimo.acumulado);
     },
   });
 })();

@@ -14,7 +14,8 @@ from openpyxl import Workbook
 from conftest import at
 from hub import paineis
 from hub.access import create_pin
-from hub.paineis import FILES_BY_KEY, Venda, compute_focos, compute_metas, panel_folder, store_for, workdays
+from hub.paineis import (FILES_BY_KEY, Venda, compute_focos, compute_metas, panel_folder, seller_pasta, store_for,
+                         workdays)
 from hub.people import ValidationError, add_person, get_person
 from hub.planilhas import PlanilhaError, code, normalize, number, read_rows
 from hub.telas import rotation
@@ -91,8 +92,10 @@ def test_xlsx_header_can_start_below_blank_rows(tmp_path):
 FORN = {"1": ("GRUPO X", "A"), "2": ("GRUPO Z", "A"), "3": ("GRUPO Y", "B")}
 
 
-def v(cliente, forn, dia, valor, produto="p"):
-    return Venda(cliente, produto, forn, date(2026, 9, dia), valor)
+def v(cliente, forn, dia, valor, produto="p", equipe=None):
+    # sem equipe dita, o vendedor é da pasta do fornecedor (o caso mais comum)
+    equipe = FORN.get(forn, ("", ""))[1] if equipe is None else equipe
+    return Venda(cliente, produto, forn, date(2026, 9, dia), valor, equipe)
 
 
 def test_month_goals_by_folder_and_total():
@@ -106,7 +109,7 @@ def test_month_goals_by_folder_and_total():
         v("c4", "1", 17, 60),
         v("c1", "3", 10, 100),                        # o mesmo cliente na pasta B conta para B
         v("c2", "3", 17, 500), v("c3", "3", 17, 500),
-        v("c9", "77", 17, 999),                       # fornecedor fora da planilha: conta só no total
+        v("c9", "77", 17, 999),                       # sem pasta pelo vendedor nem pelo fornecedor: só no total
         Venda("c1", "p", "1", date(2026, 8, 31), 5000),  # mês anterior: não conta
     ]
     m = compute_metas(FORN, totais, vendas)
@@ -126,23 +129,48 @@ def test_month_goals_by_folder_and_total():
     # positivação do dia = clientes positivados pela primeira vez no mês naquele dia
     pos_dia = {c["pasta"]: c["pct"] for c in m["positivacao"]["dia"]}
     assert pos_dia == {"T": 867, "A": 325, "B": 2600, "TLV": 0}
-    assert len(m["warnings"]) == 1  # venda de fornecedor fora da planilha
+    assert m["warnings"] == ["1 linha(s) de venda sem pasta pelo vendedor nem pelo fornecedor: contam só no total."]
+    # evolução: a barra é o dia contra a meta do dia (5000 / 26); a linha é o mês acumulado contra o esperado
     evo = {e["dia"]: e for e in m["evolucao"]}
-    assert len(evo) == 30 and evo[17]["real"] == 55 and evo[17]["meta"] == 58 and evo[18]["real"] is None
-    assert evo[1]["real"] == 6 and evo[5]["util"] is True  # sábado é dia de venda
-    assert evo[6]["util"] is False and evo[6]["meta"] == evo[5]["meta"]  # domingo não
-    assert evo[30]["meta"] == 100 and evo[18]["tier"] == "futuro"
+    assert len(evo) == 30 and m["acumulado"] == 55
+    assert evo[17]["real"] == 1071 and evo[17]["acumulado"] == 55 and evo[17]["esperado"] == 58
+    assert evo[17]["ritmo"] == 95 and evo[18]["real"] is None and evo[18]["ritmo"] is None
+    assert evo[1]["real"] == 156 and evo[1]["acumulado"] == 6 and evo[5]["util"] is True  # sábado é dia de venda
+    assert evo[4]["real"] == 0 and evo[4]["tier"] == "critico"  # dia de venda sem venda nenhuma
+    assert evo[6]["util"] is False and evo[6]["real"] is None and evo[6]["esperado"] == evo[5]["esperado"]  # domingo
+    assert evo[30]["esperado"] == 100 and evo[18]["tier"] == "futuro"
+
+
+def test_folder_counts_its_own_sellers_and_total_counts_everything():
+    # a pasta conta o que os vendedores dela venderam, de qualquer fornecedor; o total conta tudo
+    vendas = [
+        v("c1", "3", 17, 400, equipe="A"),  # vendedor da A vendendo fornecedor da B: conta na A
+        v("c2", "3", 17, 100),              # vendedor da B: conta na B
+        v("c3", "1", 17, 50, equipe=""),   # vendedor sem pasta no nome: vale a pasta do fornecedor (A), com aviso
+    ]
+    m = compute_metas(FORN, {"A": (1000, 4), "B": (1000, 4), "T": (2000, 8)}, vendas)
+    assert {c["pasta"]: c["pct"] for c in m["financeiro"]["mes"]} == {"A": 45, "B": 10, "T": 28}
+    assert {c["pasta"]: c["pct"] for c in m["positivacao"]["mes"]} == {"A": 50, "B": 25, "T": 38}
+    assert m["warnings"] == ["1 linha(s) de venda com vendedor sem pasta no nome: contam na pasta do fornecedor."]
+
+
+def test_seller_folder_comes_from_the_name():
+    assert seller_pasta("A-XX-07- PESSOA FICTICIA", "A-XX (OUTRA PESSOA)") == "A"
+    assert seller_pasta("PESSOA FICTICIA", "C-YY (OUTRA PESSOA)") == "C"  # sem pasta no vendedor: a do supervisor
+    assert seller_pasta("P-TLV- PESSOA FICTICIA", "P-TELEVENDAS (OUTRA)") == "TLV"
+    assert seller_pasta("OUTRO NOME", "P-TELEVENDAS (OUTRA)") == "TLV"
+    assert seller_pasta("PESSOA FICTICIA", None) == ""
 
 
 def test_televendas_is_its_own_folder(tmp_path):
-    # o Televendas vende de todos os fornecedores; a venda dele vai para a TLV, não para a pasta do fornecedor
+    # o Televendas vende de todos os fornecedores; a venda dele conta na TLV, não na pasta do fornecedor
     f = tmp_path / "v.csv"
     f.write_text("ID RCA;NOME RCA;NOME SUPERVISOR;DATA PEDIDO;ID CLIENTE;ID PRODUTO;ID FORNECEDOR;VALOR\n"
                  "61;P-TLV- PESSOA FICTICIA;P-TELEVENDAS (SUPERVISORA FICTICIA);17/09/2026;c1;p;1;300,00\n"
                  "62;OUTRO NOME;P-TELEVENDAS (SUPERVISORA FICTICIA);17/09/2026;c2;p;3;100,00\n"
                  "11;A-BJ-01- PESSOA FICTICIA;A-BJ (SUPERVISOR FICTICIO);17/09/2026;c1;p;1;200,00\n", encoding="cp1252")
     vendas = paineis._parse("vendas", f)
-    assert [x.tlv for x in vendas] == [True, True, False]
+    assert [x.equipe for x in vendas] == ["TLV", "TLV", "A"]  # o nome em si não fica guardado
     m = compute_metas(FORN, {"A": (1000, 2), "B": (1000, 2), "TLV": (800, 4), "T": (2800, 8)}, vendas)
     fin = {c["pasta"]: c["pct"] for c in m["financeiro"]["mes"]}
     assert fin == {"A": 20, "B": 0, "TLV": 50, "T": 21}  # A: 200, TLV: 400, T: 600/2800
@@ -203,7 +231,7 @@ def test_examples_reach_the_tv_with_percentages_only(db):
     assert mes["atualizado"] == "09:00" and mes["velho"] is False and mes["esperado"] == 58
     assert [c["pasta"] for c in mes["financeiro"]] == list("ABCDEFG") + ["TLV", "T"]
     # nenhum valor em reais, quantidade ou nome de vendedor/cliente: só %, letras das pastas e textos fixos
-    allowed_numbers = {"pct", "esperado", "meta", "real", "dia", "pos", "fin"}
+    allowed_numbers = {"pct", "esperado", "meta", "real", "dia", "pos", "fin", "acumulado", "ritmo"}
     for sid in ("metas-mes", "metas-dia", "produtos-foco"):
         for path, value in walk(data[sid]["data"]):
             key = path.rsplit(".", 1)[-1].removesuffix("[]")

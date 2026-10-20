@@ -172,8 +172,13 @@ body {
 .grafico .eixo-fds { opacity: .5; }
 .grafico .dia.faixa-bom { fill: var(--bom); } .grafico .dia.faixa-atencao { fill: var(--atencao); }
 .grafico .dia.faixa-alerta { fill: var(--alerta); } .grafico .dia.faixa-critico { fill: var(--critico); }
-.grafico .dia.fim-de-semana { opacity: .55; }
-.grafico .linha-esperado { fill: none; stroke: var(--esperado); stroke-width: 2; stroke-dasharray: 3 7; stroke-linecap: round; }
+.grafico .linha-mes { fill: none; stroke: var(--esperado); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.grafico .ponto-mes { fill: var(--esperado); stroke: var(--painel); stroke-width: 2; }
+.grafico .linha-mes-fundo { fill: none; stroke: var(--painel); stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; }
+.grafico .rotulo-mes { fill: var(--esperado); }
+.evolucao-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.legenda-item i.faixa-bom { background: var(--bom); }
+.legenda-item i.traco-mes { height: .25rem; width: 1.6rem; border-radius: .15rem; background: var(--esperado); }
 .grafico .rotulo { fill: var(--texto); font-size: 1.5rem; font-weight: 700; }
 
 .cartoes-pasta { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: .8rem; }
