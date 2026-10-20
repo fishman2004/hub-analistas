@@ -24,3 +24,12 @@ def paineis_sem_segundo_plano(monkeypatch):
 
     monkeypatch.setattr(paineis, "BACKGROUND", False)
     monkeypatch.setattr(paineis, "_stores", {})
+
+
+@pytest.fixture(autouse=True)
+def envios_sem_segundo_plano(monkeypatch):
+    """Nos testes, a leitura do histórico do Pombo também acontece na hora."""
+    from hub import envios
+
+    monkeypatch.setattr(envios, "BACKGROUND", False)
+    monkeypatch.setattr(envios, "_stores", {})

@@ -19,7 +19,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import BinaryIO
 
-from .db import Database, log_event
+from .db import Database, get_setting, log_event, put_setting
 from .people import Person, ValidationError
 from .planilhas import EXTENSIONS, PlanilhaError, code, day, normalize, number, read_rows
 
@@ -70,19 +70,13 @@ TOTAL_NAMES = {"PLB", "PB", "T", "TOTAL", "POLYBALAS"}  # como a linha do total 
 
 # ---------- pasta e configurações ----------
 
-def _setting(db: Database, key: str) -> str | None:
-    with db.connect() as conn:
-        row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
-    return row["value"] if row else None
-
-
 def default_folder(db: Database) -> Path:
     return db.path.parent / DEFAULT_FOLDER_NAME
 
 
 def panel_folder(db: Database) -> Path:
     """A pasta escolhida em Configurações ou, sem escolha, "Painéis" ao lado do banco do Hub."""
-    custom = _setting(db, SETTING_FOLDER)
+    custom = get_setting(db, SETTING_FOLDER)
     if custom:
         return Path(custom)
     folder = default_folder(db)
@@ -91,12 +85,12 @@ def panel_folder(db: Database) -> Path:
 
 
 def stale_hours(db: Database) -> int:
-    raw = _setting(db, SETTING_STALE)
+    raw = get_setting(db, SETTING_STALE)
     return int(raw) if raw and raw.isdigit() else STALE_DEFAULT
 
 
 def panel_config(db: Database) -> dict:
-    return {"folder": _setting(db, SETTING_FOLDER) or "", "default_folder": str(default_folder(db)),
+    return {"folder": get_setting(db, SETTING_FOLDER) or "", "default_folder": str(default_folder(db)),
             "stale_hours": stale_hours(db)}
 
 
@@ -109,13 +103,8 @@ def save_panel_config(db: Database, now: datetime, actor: Person, folder: str, h
     if not hours.isdigit() or not STALE_MIN <= int(hours) <= STALE_MAX:
         raise ValidationError(f"Aviso de dados velhos: use de {STALE_MIN} a {STALE_MAX} horas.")
     with db.connect() as conn:
-        if folder:
-            conn.execute("INSERT INTO settings(key, value) VALUES (?, ?) "
-                         "ON CONFLICT(key) DO UPDATE SET value = excluded.value", (SETTING_FOLDER, folder))
-        else:
-            conn.execute("DELETE FROM settings WHERE key = ?", (SETTING_FOLDER,))
-        conn.execute("INSERT INTO settings(key, value) VALUES (?, ?) "
-                     "ON CONFLICT(key) DO UPDATE SET value = excluded.value", (SETTING_STALE, str(int(hours))))
+        put_setting(conn, SETTING_FOLDER, folder or None)
+        put_setting(conn, SETTING_STALE, str(int(hours)))
         log_event(conn, now, actor.id, "config_paineis", "config:paineis", "")
 
 

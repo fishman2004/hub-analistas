@@ -18,6 +18,9 @@ from ..demands import (COLUMN_LABELS, COLUMNS, FOLDERS, RESERVED_TEXT, all_deman
                        delete_demand, find_card, is_overdue, move_demand, toggle_folder, tv_card, update_demand)
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
+from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
+                      status_text, target_text, who_is_who)
+from ..envios import store_for as envios_store
 from ..gestor import DUE_FILTERS, can_open, filter_demands, team_summary
 from .. import horas
 from ..paineis import STALE_MAX, STALE_MIN, panel_config, save_panel_config, save_upload, stale_hours, store_for
@@ -498,7 +501,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     def config_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
         return page(request, "configuracoes.html", user, status_code, config=screen_config(db),
-                    paineis=panel_config(db), stale_limits={"min": STALE_MIN, "max": STALE_MAX},
+                    paineis=panel_config(db), pombo=pombo_config(db),
+                    stale_limits={"min": STALE_MIN, "max": STALE_MAX},
                     limits={"min": MIN_SECONDS, "max": MAX_SECONDS, "page_min": PAGE_MIN, "page_max": PAGE_MAX}, **ctx)
 
     @app.get("/configuracoes", response_class=HTMLResponse)
@@ -531,6 +535,17 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             return config_page(request, user, 422, error_paineis=str(exc))
         return config_page(request, user, ok_paineis=True)
 
+    @app.post("/configuracoes/pombo")
+    def configuracoes_pombo(request: Request, pasta: str = Form("")):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            save_pombo_config(db, clock(), user, pasta)
+        except ValidationError as exc:
+            return config_page(request, user, 422, error_pombo=str(exc))
+        return config_page(request, user, ok_pombo=True)
+
     # ---------- painéis de dados ----------
 
     def panels_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
@@ -557,6 +572,21 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except OSError:
             return panels_page(request, user, 422, error="Não consegui gravar na pasta dos painéis. Confira se ela existe e se o PC da sala pode escrever nela.")
         return RedirectResponse("/paineis?enviado=1", status_code=303)
+
+    # ---------- envios do Pombo ----------
+
+    @app.get("/envios", response_class=HTMLResponse)
+    def envios_do_dia(request: Request):
+        user = me(request)
+        if user is None:
+            return to_login()
+        now = clock()
+        snap = envios_store(db).get(now, wait=True)
+        runs = runs_of_day(snap.rows, now.date(), now) if snap else []
+        return page(request, "envios.html", user, folder=history_folder(db), snap=snap, runs=runs, now=now,
+                    who=who_is_who(db, snap) if snap else {}, status_text=status_text, count_text=count_text,
+                    channel_text=channel_text, target_text=target_text,
+                    groups={g: sum(r.group == g for r in runs) for g in ("ok", "falha", "andamento")})
 
     # ---------- visão do gestor ----------
 
@@ -854,6 +884,7 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         "papel_alterado": f"{who} mudou o papel de {name} para {detail}",
         "config_tv": f"{who} mudou as configurações da TV",
         "config_paineis": f"{who} mudou as configurações dos painéis",
+        "config_pombo": f"{who} mudou a pasta do histórico do Pombo",
         "painel_arquivo": f"{who} enviou a planilha “{detail}” dos painéis",
         "horas_lancado": f"{who} lançou o banco de horas de {detail}",
         "horas_corrigido": f"{who} corrigiu o banco de horas de {detail}",

@@ -28,6 +28,7 @@ Uma **TV na sala**, ligada num PC sempre ligado, mostra:
 - **Banco de horas** (só no app, nunca na TV): o gestor importa o saldo que o RH envia e cada analista lança a entrada e a saída do dia, vendo na hora se está com horas extras ou negativas. Só a própria pessoa e o gestor veem.
 - **Rotinas com horário:** PHD, transferências de pedidos, atualizações de positivações e comparativo de rotas ficam cadastrados na página **Rotinas**. No horário, o cartão aparece sozinho em A fazer do responsável e a TV toca um aviso com uma faixa na tela; depois do prazo ("até HH:MM"), ele fica atrasado. Nas transferências, cada pasta marca a sua e a rotina conclui sozinha quando todas marcarem; a atualização seguinte só libera depois disso.
 - **Prioridades do mês:** a lista do início do mês (lançar a meta, confirmar a meta com o gerente, comissões até o dia 10, campanhas até o dia 15 e o que mais a equipe acrescentar). Fica na TV até tudo estar feito, com quem fez cada item; o que passou do prazo aparece como atrasado.
+- **Envios do dia:** os relatórios que o [Pombo](https://github.com/fishman2004/pombo) de cada analista mandou hoje, lidos do histórico dele na pasta de rede: horário, envio, quem, canal e se saiu tudo (✓), se teve falha (⚠) ou se ainda está em andamento (⏳).
 
 Cada analista usa o **app** pelo navegador do próprio PC, sem instalar nada. Entra com o próprio nome e um **PIN** de 4 a 6 números, marca a presença, lança demandas e as move entre as colunas. Em **Prioridades**, cria a lista do mês com um clique ("Criar lista padrão do mês"), acrescenta itens (com pasta e prazo, se quiser) e marca o que já foi feito. O botão **Tema** no cabeçalho alterna entre automático (segue o Windows), claro e escuro, e cada navegador lembra a sua escolha. Tudo fica no **histórico**, com quem fez e quando.
 
@@ -52,7 +53,7 @@ flowchart LR
 ```
 
 - **Regras do dia calculadas, não agendadas:** "Concluído hoje", "Fora da empresa" depois da meia-noite, "atrasada" e o cartão de cada rotina no horário dela são calculados toda vez. Não há tarefa agendada que possa falhar.
-- **A TV passa de uma tela para a outra sozinha:** o Quadro, a tela **Prazos da semana** (quando há prazos), as **Prioridades do mês** (até tudo estar feito) e os **painéis de metas** (do mês, do dia e produtos foco), que o Hub calcula das planilhas de vendas guardadas na pasta dos painéis e mostra **só em porcentagem** ([paineis.md](docs/paineis.md)). Os tempos ficam em **Configurações**. Se houver demanda atrasada, um aviso fica no topo em todas as telas.
+- **A TV passa de uma tela para a outra sozinha:** o Quadro, a tela **Prazos da semana** (quando há prazos), as **Prioridades do mês** (até tudo estar feito) e os **painéis de metas** (do mês, do dia e produtos foco), que o Hub calcula das planilhas de vendas guardadas na pasta dos painéis e mostra **só em porcentagem** ([paineis.md](docs/paineis.md)), e os **Envios do dia** do Pombo. Os tempos ficam em **Configurações**. Se houver demanda atrasada, um aviso fica no topo em todas as telas.
 - **A TV nunca rola:** uma coluna com mais demandas do que cabem passa as páginas sozinha, com um fade. Se o servidor cair, a TV mantém a última tela e avisa "sem atualização desde HH:MM".
 - Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 
@@ -63,6 +64,7 @@ flowchart LR
 3. Dois cliques em **`instalar.bat`**. Ele também faz o Hub abrir junto com o Windows.
 4. Dois cliques em **`iniciar.bat`**. A TV abre em tela cheia. Se ela não tocar o aviso das rotinas, [libere o som no Edge](docs/roteiros/fase-7-rotinas.md#som-na-tv).
 5. Em outro PC, abra `http://NOME-DO-PC-RESERVA:8800` e cadastre a equipe em **Pessoas**. Quem criar o primeiro PIN vira administrador.
+6. Usa o Pombo? Em **Configurações → Pombo**, informe a pasta do histórico (a mesma escolhida no Pombo de cada analista, em Configurações › Pasta do histórico). Os envios de hoje aparecem na página **Envios** e na TV.
 
 Primeira vez na empresa? Comece pelo [teste de rede](docs/primeiro-uso.md).
 
@@ -74,7 +76,7 @@ $env:HUB_DADOS = "$env:TEMP\hub-demo"
 .venv\Scripts\python -m hub
 ```
 
-Cria uma equipe, demandas, rotinas, prioridades do mês e planilhas de vendas **fictícias** numa pasta separada (PIN de todos: `1234`). O script se recusa a escrever sobre uma equipe de verdade.
+Cria uma equipe, demandas, rotinas, prioridades do mês, planilhas de vendas e um histórico do Pombo **fictícios** numa pasta separada (PIN de todos: `1234`). O script se recusa a escrever sobre uma equipe de verdade.
 
 ## Documentação
 
@@ -98,7 +100,7 @@ Cria uma equipe, demandas, rotinas, prioridades do mês e planilhas de vendas **
 
 Python 3.12+ · FastAPI · Jinja2 · SQLite (WAL) · JavaScript puro na TV · pytest. O design e o plano de construção estão em [docs/superpowers](docs/superpowers).
 
-Projeto irmão: [Pombo](https://github.com/fishman2004/pombo), que envia os relatórios por e-mail e WhatsApp.
+Projeto irmão: [Pombo](https://github.com/fishman2004/pombo), que envia os relatórios por e-mail e WhatsApp. O Hub lê o histórico dele para a tela Envios do dia ([como](docs/arquitetura.md#envios-do-pombo-fase-9)).
 
 ---
 

@@ -15,6 +15,8 @@ flowchart TB
         W --> PR[hub/prioridades.py<br>prioridades do mês]
         D --> DB[(SQLite · hub/db.py<br>pessoas, demandas, presença, prioridades, histórico)]
         R --> DB
+        W --> EN[hub/envios.py<br>envios do Pombo]
+        EN -. só lê .-> PH[(pasta do histórico<br>do Pombo, na rede)]
         P --> DB
         PE --> DB
         PR --> DB
@@ -48,7 +50,40 @@ flowchart TB
 - **Painéis de dados** (fase 5, `hub/paineis.py` e `hub/planilhas.py`): o Hub lê as planilhas da pasta dos painéis (CSV ou XLSX), calcula meta x realizado por pasta e entrega à TV **só porcentagens**. Cada arquivo é relido apenas quando muda (data e tamanho), numa linha separada, para a TV nunca esperar a leitura da 8081. Arquivo ausente ou quebrado tira da rotação só as telas que dependem dele. Contratos e regras em [paineis.md](paineis.md).
 - **Banco de horas** (fase 6, `hub/horas.py`): tabelas `hours_balance` (saldo base de cada pessoa, até uma data) e `hours_entries` (entrada e saída de cada dia, um dia por pessoa). O saldo é calculado, não guardado: saldo base + (horas do dia − jornada) de cada dia lançado depois da data do saldo base. Só a própria pessoa e o gestor veem (`horas.can_see`); as linhas do histórico sobre horas seguem a mesma regra. A TV não importa o módulo, e um teste confere que o `/api/tv` não executa nenhum comando nessas tabelas.
 - **Prioridades do mês** (fase 8, `hub/prioridades.py`, tabela `priorities` da migração 6): cada item guarda o mês (`AAAA-MM`), o título, a pasta e o prazo (dia do mês) opcionais, quem criou, quem fez e quando. O mês vem da data, sem tarefa agendada: no dia 1º a lista nova começa vazia, e a dos meses anteriores só abre para consulta (o servidor recusa mudar). "Atrasada" também é calculada (`is_late`): em aberto e já passou do dia do prazo. A lista padrão (`DEFAULT_LIST`) só entra num mês sem nenhum item, travando a escrita antes de conferir, então dois cliques não criam duas listas. Remover só marca `deleted = 1`. A tela `prioridades` da TV (`tv_prioridades`) devolve `None` sem lista ou com tudo feito, e manda só o título, a pasta, o prazo, se está atrasada e as iniciais e a cor de quem fez (sem nomes nem horários). No navegador, `tv-telas/prioridades.js` usa uma coluna quando tudo cabe, duas quando não, e passa páginas com fade se ainda não couber.
+- **Envios do Pombo** (fase 9, `hub/envios.py`): o Hub lê o histórico CSV que o Pombo de cada analista grava na pasta de rede e mostra os envios de hoje na tela **Envios do dia** e na página **Envios**. Só lê, nunca escreve. Detalhes logo abaixo.
 - Formulários vindos de outro site são recusados (mesma origem).
+
+## Envios do Pombo (fase 9)
+
+O [Pombo](https://github.com/fishman2004/pombo) grava cada envio em `<pasta do histórico>/<analista>/<AAAA-MM>.csv` (um arquivo por analista por mês, UTF-8 com BOM, separado por vírgula), com as colunas `data_hora, analista, envio, horario_agendado, canal, destinatario, arquivos, status, detalhe, envio_id, destinatario_id`. Um administrador informa essa pasta em **Configurações → Pombo** (em branco, a integração fica desligada; a configuração fica na tabela `settings`, sem migração).
+
+**A leitura segue a do Pombo** (`pombo/history.py`): pula o cabeçalho, ignora linha estragada (data que não é `AAAA-MM-DD HH:MM:SS` ou menos de 10 colunas, como uma linha salva pelo Excel ou cortada numa queda de energia), aceita arquivo antigo sem a última coluna e ignora colunas novas no fim. O Hub conta as linhas ignoradas e mostra na página Envios.
+
+**Rodada** é um envio num horário: as linhas com o mesmo `envio_id` e o mesmo `horario_agendado`, de um analista (a pasta dele separa, porque dois Pombos podem ter o mesmo `envio_id`). Entram as rodadas com horário de hoje (`AAAA-MM-DD HH:MM`, ou `manual AAAA-MM-DD HH:MM:SS` para um "Enviar agora"), em ordem de horário. Cada destinatário é reconhecido como no Pombo (`engine._matches`): pelo canal e pelo `destinatario_id` ou, nas linhas antigas sem ele, pelo nome.
+
+| Destinatário | Quando |
+|---|---|
+| enviado | alguma linha `enviado` ou `demonstracao` (uma falha seguida de sucesso é sucesso) |
+| tentando de novo | falhou menos de 4 vezes e a última falha tem menos de 10 min (o Pombo tenta a cada 5 min, até 4 vezes) |
+| falhou | falhou 4 vezes, ou a última falha passou de 10 min sem nova tentativa |
+| esperando | só linhas `esperando`: o canal (WhatsApp) está fora do ar e o Pombo envia quando voltar |
+
+| Situação da rodada | Grupo | Na TV | Quando |
+|---|---|---|---|
+| enviado | ok | ✓ tudo enviado | todos os destinatários enviados |
+| manual | ok | ✓ enviado às HH:MM (manual) | rodada sem envio, cumprida por um "Enviar agora" depois do horário (como no Pombo) |
+| parcial / falhou | com falha | ⚠ N falhas | algum destinatário falhou de vez |
+| tentando | em andamento | ↻ tentando de novo | sem falha definitiva e algum destinatário com nova tentativa a caminho |
+| conexão | em andamento | ⏳ esperando conexão | algum destinatário esperando o canal |
+| esperando | em andamento | ⏳ esperando atualização | só a linha da rodada inteira `esperando`: o arquivo ainda não foi atualizado hoje |
+| desistiu | com falha | ⚠ não atualizado | o Pombo esperou 1 h pelo arquivo e não enviou |
+| perdido | com falha | ⚠ perdido | o Pombo estava fechado no horário |
+
+Como na tela Hoje do Pombo, o que já foi enviado ou tentado vale mais que as linhas da rodada inteira (esperando, desistiu, perdido).
+
+**Leitura em segundo plano, com cache:** a pasta fica na rede e pode estar lenta ou fora do ar. Por isso tudo, até listar a pasta, roda numa linha separada (`EnviosStore`), no máximo a cada 5 s; a TV recebe a última leitura pronta e nunca espera. Cada arquivo só é relido quando muda (data e tamanho). Arquivo que não abre (aberto no Excel) ou pasta fora do ar: o Hub segue com a última leitura boa, avisa na TV e na página, e registra no `hub.log` uma vez (não a cada 5 s). A página Envios espera até 8 s por uma leitura nova.
+
+**O que vai para a TV** (`tv_envios`): horário, nome do envio, analista (nome, iniciais e cor do cadastro do Hub, quando o nome ou a pasta batem; senão o nome que o Pombo gravou), canal, situação e a contagem "N de M enviados". Destinatários, detalhes dos erros e nomes de arquivo ficam só na página Envios. Sem pasta configurada ou sem envio hoje, a tela sai da rotação.
 
 ## Onde está cada coisa
 
@@ -63,6 +98,7 @@ flowchart TB
 | `hub/horas.py` | Banco de horas: saldo base, lançamentos, saldo calculado, importação da planilha do RH e exportação |
 | `hub/planilhas.py` | Leitura de CSV e XLSX (cabeçalho sem acento, número e data em formato brasileiro) |
 | `hub/prioridades.py` | Prioridades do mês: a lista, quem fez, prazo e atrasadas, a lista padrão e o que vai para a TV |
+| `hub/envios.py` | Envios do Pombo: pasta do histórico, leitura igual à do Pombo, situação de cada rodada, cache em segundo plano e o que vai para a TV |
 | `hub/people.py` | Equipe: nome, iniciais, cor |
 | `hub/demands.py` | Demandas, quadro, ordem, atrasadas, cartão da TV, e o cartão de cada rotina (calculado, vira demanda na primeira ação, pastas e espera) |
 | `hub/rotinas.py` | Cadastro das rotinas, quando cada uma vale, as rotinas sugeridas e os avisos da TV |
@@ -70,5 +106,5 @@ flowchart TB
 | `hub/backup.py` | Cópia de segurança diária (14 dias) |
 | `hub/winsys.py` | Abrir com o Windows, não dormir, TV em tela cheia |
 | `hub/web/` | Rotas, páginas, o JavaScript da TV (`static/tv.js` e uma tela por arquivo em `static/tv-telas/`) e o do tema do app (`static/tema.js`) |
-| `tools/` | Teste de rede, dados de demonstração, as planilhas de exemplo dos painéis (`tools/exemplos/`, geradas por `tools/gerar_exemplos.py`) e o gerador do som do aviso (`tools/gerar_som.py`, que grava `hub/web/static/aviso.wav`) |
+| `tools/` | Teste de rede, dados de demonstração (inclusive um histórico fictício do Pombo), as planilhas de exemplo dos painéis (`tools/exemplos/`, geradas por `tools/gerar_exemplos.py`) e o gerador do som do aviso (`tools/gerar_som.py`, que grava `hub/web/static/aviso.wav`) |
 | `tests/` | Testes automáticos (pytest) |
