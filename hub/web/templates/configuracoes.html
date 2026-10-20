@@ -45,4 +45,16 @@
   </div>
   <div><button>Salvar</button></div>
 </form>
+
+<form class="ficha cartao-form" method="post" action="/configuracoes/pombo" id="pombo">
+  <h2>Pombo</h2>
+  {% if error_pombo %}<div class="erro" role="alert">{{ error_pombo }}</div>{% endif %}
+  {% if ok_pombo %}<div class="sucesso" role="status">Salvo. A situação dos arquivos aparece em <a href="/envios">Envios</a>.</div>{% endif %}
+  <div>
+    <label for="pombo-pasta">Pasta do histórico do Pombo</label>
+    <input type="text" id="pombo-pasta" name="pasta" value="{{ pombo.folder }}" placeholder="Em branco: integração desligada">
+    <p class="ajuda">A mesma pasta que cada analista escolheu no Pombo, em <strong>Configurações › Pasta do histórico</strong> (por exemplo <code>Y:\Pombo\historico</code>), com uma pasta para cada analista dentro. O Hub só lê os arquivos. Em branco, a integração fica desligada e a tela <strong>Envios do dia</strong> não entra na TV.</p>
+  </div>
+  <div><button>Salvar</button></div>
+</form>
 {% endblock %}

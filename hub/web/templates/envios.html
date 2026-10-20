@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% set active = 'envios' %}
+{% block title %}Envios · Hub dos Analistas{% endblock %}
+{% block main %}
+<h1>Envios do Pombo</h1>
+{% if not folder %}
+<section class="ficha cartao-form largo">
+  <p><strong>A integração com o Pombo está desligada.</strong></p>
+  <p class="ajuda">Para ligar, um administrador informa a pasta do histórico em {% if user.is_admin %}<a href="/configuracoes#pombo">Configurações → Pombo</a>{% else %}Configurações → Pombo{% endif %}: a mesma pasta que cada analista escolheu no Pombo, em Configurações › Pasta do histórico. Aí os envios de hoje aparecem aqui e na TV, na tela <strong>Envios do dia</strong>.</p>
+</section>
+{% else %}
+<p class="ajuda">Os envios de hoje, lidos do histórico que o Pombo de cada analista grava na pasta. A TV mostra só o horário, o envio, o analista, o canal e a situação: <strong>os destinatários e o motivo das falhas ficam só aqui</strong>.</p>
+{% if snap is none %}<div class="aviso" role="status">A pasta do Pombo está demorando para responder. Recarregue a página daqui a pouco.</div>{% endif %}
+
+{% if runs %}
+<div class="resumo largo">
+  <div class="indicador"><span class="numero">{{ runs|length }}</span> envios hoje</div>
+  <div class="indicador"><span class="numero">{{ groups.ok }}</span> ✓ enviados</div>
+  <div class="indicador {% if groups.falha %}alerta{% endif %}"><span class="numero">{{ groups.falha }}</span> ⚠ com falha</div>
+  <div class="indicador"><span class="numero">{{ groups.andamento }}</span> ⏳ em andamento</div>
+</div>
+{% endif %}
+
+<section class="ficha cartao-form largo">
+  <h2>Hoje, {{ now.strftime('%d/%m') }}</h2>
+  {% if runs %}
+  <div class="tabela-rolagem"><table class="tabela tabela-envios">
+    <thead><tr><th>Horário</th><th>Envio</th><th>Analista</th><th>Canal</th><th>Situação</th><th>Destinatários</th></tr></thead>
+    <tbody>
+    {% for r in runs %}
+    {% set w = who.get(r.folder) or (r.analyst or r.folder, '', '') %}
+    <tr class="envio-{{ r.group }}">
+      <td class="hora">{{ r.hour }}{% if r.manual %} <span class="etiqueta">manual</span>{% endif %}</td>
+      <td><strong>{{ r.dispatch_name }}</strong></td>
+      <td class="analista">{% if w[1] %}<span class="bolinha" {% if w[2] %}style="--cor: {{ w[2] }}"{% endif %}>{{ w[1] }}</span> {% endif %}{{ w[0] }}</td>
+      <td>{{ channel_text(r) }}</td>
+      <td class="situacao situacao-{{ r.group }}">{{ status_text(r) }}</td>
+      <td>{{ count_text(r) or '—' }}</td>
+    </tr>
+    {% if r.group != 'ok' %}
+    <tr class="envio-detalhe envio-{{ r.group }}"><td></td><td colspan="5">
+      {% if r.targets %}
+      <ul class="detalhes">
+        {% for t in r.targets|sort(attribute='order') %}
+        <li><strong>{{ {'email': 'E-mail', 'whatsapp': 'WhatsApp'}.get(t.channel, t.channel) }} · {{ t.label }}</strong>: {{ target_text(t) }}{% if t.detail and t.state != 'enviado' %} <span class="ajuda">— {{ t.detail }}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <span class="ajuda">{{ r.detail or 'Sem detalhe no histórico.' }}</span>
+      {% endif %}
+    </td></tr>
+    {% endif %}
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="ajuda">O Hub só vê o que o Pombo já registrou: um envio que ainda não chegou na hora não aparece. Para tentar de novo, use o Pombo no PC de quem cadastrou o envio.</p>
+  {% elif snap %}
+  <p class="vazio">Nenhum envio registrado hoje até agora. A tela Envios do dia entra na TV no primeiro envio do dia.</p>
+  {% endif %}
+</section>
+
+<section class="ficha cartao-form largo">
+  <h2>Pasta do histórico</h2>
+  <p><code class="caminho">{{ folder }}</code></p>
+  {% if snap %}
+  {% if snap.error %}
+  <div class="erro" role="alert">{{ snap.error }}{% if snap.checked %} Mostrando a leitura das {{ snap.checked.strftime('%H:%M') }}.{% endif %}</div>
+  {% else %}
+  <p class="ajuda">Lida às {{ snap.checked.strftime('%H:%M:%S') }}. O Hub olha a pasta a cada poucos segundos e relê só o arquivo que mudou.{% if user.is_admin %} A pasta muda em <a href="/configuracoes#pombo">Configurações</a>.{% endif %}</p>
+  {% endif %}
+  {% if snap.hint %}<div class="aviso" role="status">{{ snap.hint }}</div>{% endif %}
+  {% if snap.files %}
+  <table class="tabela">
+    <thead><tr><th>Analista</th><th>Arquivo do mês</th><th>Situação</th><th>Atualizado</th></tr></thead>
+    <tbody>
+    {% for f in snap.files %}
+    <tr>
+      <td><strong>{{ who[f.folder][0] }}</strong><br><span class="ajuda">pasta {{ f.folder }}</span></td>
+      <td>{{ f.path.name }}</td>
+      <td>
+        {% if f.error %}<span class="falha">{{ f.error }}</span>
+        {% elif not f.exists %}<span class="ajuda">Nenhum envio neste mês ainda.</span>
+        {% else %}<span class="ok">Lido ({{ f.lines }} linhas no mês)</span>{% endif %}
+        {% if f.skipped %}<br><span class="ajuda">{{ f.skipped }} linha(s) estragada(s) ignorada(s), como o Pombo faz.</span>{% endif %}
+      </td>
+      <td>{{ f.modified.strftime('%d/%m %H:%M') if f.modified else '—' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% elif not snap.error and not snap.hint %}
+  <p class="ajuda">Nenhum analista nesta pasta ainda. Confira se é a mesma pasta escolhida no Pombo (Configurações › Pasta do histórico): dentro dela, o Pombo cria uma pasta para cada analista.</p>
+  {% endif %}
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

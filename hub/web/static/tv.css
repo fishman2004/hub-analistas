@@ -106,12 +106,12 @@ body {
 .tela > .quadro { flex: 1; }
 .tela-titulo { margin: 0; font-size: 2rem; }
 
-.rotacao { flex: 1; display: flex; justify-content: center; gap: 1.2rem; min-width: 0; }
+.rotacao { flex: 1; display: flex; justify-content: center; gap: .9rem; min-width: 0; }
 .rot-item { display: grid; grid-template-columns: minmax(0, 1fr); gap: .35rem; min-width: 4rem; flex: 0 1 auto;
-  white-space: nowrap; color: var(--suave); font-size: 1.2rem; text-align: center; }
-/* muitas telas: os nomes das outras encurtam com "…" (sem se sobrepor); o da tela no ar fica inteiro */
-.rot-nome { overflow: hidden; text-overflow: ellipsis; }
+  white-space: nowrap; color: var(--suave); font-size: 1.1rem; text-align: center; }
 .rot-item.ativa { color: var(--texto); font-weight: 600; flex-shrink: 0; }
+/* com muitas telas, os nomes das outras encurtam ("Prazos da se…"); o da tela atual aparece inteiro */
+.rot-nome { overflow: hidden; text-overflow: ellipsis; }
 .rot-barra { height: .3rem; border-radius: 999px; background: var(--linha); overflow: hidden; }
 .rot-progresso { display: block; height: 100%; width: 0; background: var(--suave); }
 .rot-item.ativa .rot-progresso { background: var(--pausa); }
@@ -290,3 +290,29 @@ body {
 .prio-item.feita .prio-marca { background: var(--sala); border-color: var(--sala); color: #0e141a; }
 .prio-item.feita .prio-titulo { font-size: 1.75rem; color: var(--suave); text-decoration: line-through; text-decoration-thickness: .1rem; }
 .prio-item.feita .letra { opacity: .6; }
+
+/* ---------- envios do Pombo (fase 9): uma linha por rodada ---------- */
+.envios-bloco { flex: 1; }
+.envios-colunas, .linha-envio { display: grid; grid-template-columns: 7rem minmax(0, 1fr) minmax(0, 17rem) 15rem 24rem; align-items: center; gap: 1.5rem; }
+.envios-colunas { padding: 0 1.2rem 0 1.6rem; }
+.envios { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: .6rem; transition: opacity .45s ease; }
+.envios.trocando { opacity: 0; }
+.linha-envio { flex: none; min-height: 4.8rem; background: var(--cartao); border-radius: .75rem; padding: .55rem 1.2rem; border-left: .4rem solid var(--grupo); }
+.grupo-ok { --grupo: var(--sala); }
+.grupo-falha { --grupo: var(--atraso); }
+.grupo-andamento { --grupo: var(--reuniao); }
+.linha-envio.grupo-falha { box-shadow: inset 0 0 0 .15rem var(--atraso); }
+.envio-hora { display: flex; flex-direction: column; font-size: 1.9rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.envio-manual { font-size: 1rem; font-weight: 600; color: var(--suave); text-transform: uppercase; letter-spacing: .08em; }
+.envio-nome { font-size: 1.75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.envio-analista { display: flex; align-items: center; gap: .7rem; min-width: 0; font-size: 1.45rem; }
+.envio-analista .ini { flex: none; min-width: 2.6rem; height: 2.6rem; padding: 0 .4rem; border-radius: .6rem; display: grid; place-items: center;
+  background: var(--cor); color: #0e141a; font-weight: 800; font-size: 1.1rem; }
+.envio-analista .ini.sem-cor { background: var(--linha); color: var(--texto); }
+.envio-pessoa, .envio-canal { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.envio-canal { font-size: 1.4rem; color: var(--suave); }
+.envio-situacao { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.envio-situacao .selo { font-size: 1.6rem; font-weight: 700; color: var(--grupo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.envio-contagem { font-size: 1.2rem; color: var(--suave); white-space: nowrap; }
+.envios-resumo { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .6rem; }
+.resumo-item { font-size: 1.35rem; font-weight: 700; color: var(--grupo); border: .15rem solid var(--grupo); border-radius: 999px; padding: .15rem 1rem; white-space: nowrap; }

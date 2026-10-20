@@ -150,3 +150,21 @@ Escolhas padrão desta fase, fáceis de mudar se ele preferir outra coisa:
 3. **Quem pode remover:** quem acrescentou o item ou um administrador. Criar a lista padrão e acrescentar itens: qualquer pessoa.
 4. **Prazo em dia corrido:** "até dia 10" não muda se o dia 10 cair num sábado, domingo ou feriado.
 5. **Tempo da tela na TV:** 15 segundos, como as outras telas extras.
+
+## Envios do Pombo: o Hub lê o histórico como o próprio Pombo (fase 9)
+
+O Pombo já grava tudo o que envia num CSV por analista, numa pasta que pode ser da rede. O Hub só lê essa pasta: não precisa de servidor, banco ou mudança no Pombo, e não escreve nada lá (o histórico é o "estado" do Pombo, e mexer nele poderia causar reenvio). A pasta é uma configuração de administrador (**Configurações → Pombo**), guardada na tabela `settings`: sem migração. Em branco, a integração fica desligada.
+
+**Mesma interpretação do Pombo.** A leitura das linhas, o que é linha estragada, como reconhecer cada destinatário e a ordem das situações copiam `pombo/history.py` e `pombo/engine.py`, para a TV nunca dizer uma coisa e a tela Hoje do Pombo outra. O Hub não usa a leitura de planilhas da fase 5 aqui: ela acha as colunas pelo nome e aceitaria uma linha que o Pombo ignora (por exemplo, um arquivo salvo pelo Excel com `;`). Da fase 5 vêm o jeito de configurar a pasta, o cache por data e tamanho do arquivo, a leitura em segundo plano e a página com a situação de cada arquivo.
+
+**O que o Hub não sabe.** O Pombo conhece a agenda e a lista de destinatários de cada envio; o Hub só vê o histórico. Por isso um envio que ainda não chegou na hora não aparece, e "N de M enviados" conta os destinatários que já aparecem no histórico daquela rodada.
+
+**"Em andamento" além do que o Pombo mostra.** Na tela Hoje do Pombo, uma falha aparece na hora, mesmo que ele vá tentar de novo em 5 minutos. Na TV isso assustaria à toa, então o Hub mostra "↻ tentando de novo" enquanto o Pombo ainda tem tentativas (menos de 4) e a última falha tem menos de 10 minutos. Depois disso, sem nova tentativa, vira falha: o Pombo daquele PC provavelmente está fechado. Também ficam "em andamento" a espera pelo arquivo e a espera pelo canal (WhatsApp desconectado). "Não atualizado" (o Pombo desistiu depois de 1 hora) e "perdido" (o Pombo estava fechado no horário) contam como falha, porque o relatório não saiu.
+
+**Só rodadas com horário de hoje.** Uma rodada é do dia pelo horário dela (`horario_agendado`), não pela hora da linha: uma nova tentativa depois da meia-noite de uma rodada de ontem não aparece hoje.
+
+**A TV nunca espera a pasta da rede.** Na fase 5, a TV ainda confere data e tamanho dos arquivos na hora da busca. Para a pasta do Pombo, que fica sempre na rede, até listar a pasta acontece na linha separada: a TV recebe a última leitura pronta. Se um arquivo não abrir (aberto no Excel) ou a pasta cair, a TV continua com a última leitura boa e mostra o aviso, em vez de sumir com a tela num soluço da rede.
+
+**Na TV, só o necessário.** Horário, nome do envio, analista, canal e situação, com a contagem de destinatários (a regra "sem números" é só para vendas). Destinatários, motivo das falhas e nomes de arquivo ficam na página Envios, que pede login: o motivo de uma falha pode trazer um endereço de e-mail ou o nome de um grupo. O analista aparece com o nome, as iniciais e a cor do cadastro do Hub quando o nome que o Pombo grava (ou a pasta que ele cria com esse nome) bate com alguém da equipe.
+
+**Indicador da rotação com mais telas.** Com a sétima tela, os nomes no topo da TV se sobrepunham. Agora o indicador ficou um pouco mais compacto e, se ainda faltar espaço (as fases 6 a 8 trazem telas novas), os nomes das outras telas encurtam com "…"; o da tela atual sempre aparece inteiro.

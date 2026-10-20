@@ -40,7 +40,8 @@ a { color: var(--azul); }
 
 .topo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 24px; background: var(--cartao); border-bottom: 1px solid var(--linha); }
 .marca { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.1rem; color: var(--texto); text-decoration: none; }
-.topo nav { display: flex; gap: 4px; flex-wrap: wrap; }
+/* o menu fica numa linha só dele, embaixo da marca e de quem entrou: com 11 links ele não cabe ao lado */
+.topo nav { display: flex; gap: 4px; flex-wrap: wrap; order: 3; flex-basis: 100%; margin: 0 -10px; }
 .topo nav a { padding: 6px 10px; border-radius: 999px; color: var(--suave); text-decoration: none; }
 .topo nav a:hover { background: var(--fundo); color: var(--texto); }
 .topo nav a[aria-current="page"] { background: var(--azul); color: var(--cartao); }
@@ -232,3 +233,17 @@ fieldset.escolhas .check input { margin-top: 0; }
 .prio-padrao p, .prio-padrao ul { margin: 0; }
 .prio-padrao ul { padding-left: 20px; }
 .prio-padrao { margin-bottom: 16px; }
+/* ---------- envios do Pombo ---------- */
+.resumo.largo { max-width: 1100px; }
+.tabela-envios td.hora { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tabela-envios td.analista { white-space: nowrap; }
+.tabela-envios .bolinha:not([style]) { background: var(--linha); color: var(--texto); }
+.situacao { font-weight: 600; white-space: nowrap; }
+.situacao-ok { color: var(--sala); }
+.situacao-falha { color: var(--atraso); }
+.situacao-andamento { color: var(--reuniao); }
+.tabela-envios tr.envio-falha td:first-child { box-shadow: inset 4px 0 0 var(--atraso); }
+.tabela-envios tr.envio-andamento td:first-child { box-shadow: inset 4px 0 0 var(--reuniao); }
+.tabela-envios tr:has(+ .envio-detalhe) td { border-bottom: none; }
+.envio-detalhe td { padding-top: 0; }
+.detalhes { margin: 0; padding-left: 18px; display: grid; gap: 2px; font-size: .92rem; }
