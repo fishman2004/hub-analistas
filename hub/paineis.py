@@ -64,7 +64,7 @@ MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "a
          "novembro", "dezembro"]
 DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 TOTAL = "T"
-TLV = "TLV"  # o Televendas é uma "pasta" de vendedores, não de fornecedores
+TLV = "TLV"  # o Televendas: uma pasta de vendedores que vendem todos os fornecedores
 TOTAL_NAMES = {"PLB", "PB", "T", "TOTAL", "POLYBALAS"}  # como a linha do total pode vir na planilha Totais
 
 
@@ -188,10 +188,9 @@ def _parse(key: str, path: Path):
     for r in rows:
         if r["data"] in (None, ""):
             continue  # linha de total sem data no fim da exportação
-        # dos nomes só sai se a venda é do Televendas; o nome em si não fica guardado
-        tlv = "-TLV-" in normalize(r["rca"]).replace(" ", "") or "TELEVENDAS" in normalize(r["supervisor"])
+        # dos nomes só sai a pasta do vendedor; o nome em si não fica guardado
         out.append(Venda(code(r["cliente"]), code(r["produto"]), code(r["fornecedor"]),
-                         day(r["data"]), number(r["valor"]), tlv))
+                         day(r["data"]), number(r["valor"]), seller_pasta(r["rca"], r["supervisor"])))
     if not out:
         raise PlanilhaError("Nenhuma venda no arquivo.")
     return out
@@ -204,7 +203,22 @@ class Venda:
     fornecedor: str
     dia: date
     valor: float
-    tlv: bool = False  # vendedor do Televendas ("P-TLV-..."), que vende de todos os fornecedores
+    equipe: str = ""  # pasta do vendedor, tirada do começo do nome ("A-..." = A; "P-TLV-..." = Televendas)
+
+
+def seller_pasta(rca: object, supervisor: object) -> str:
+    """A pasta do vendedor pelo nome na 8081: "A-XX-07-NOME" é da pasta A, com supervisor "A-XX (NOME)".
+
+    O Televendas aparece como "P-TLV- NOME" com supervisor "P-TELEVENDAS (NOME)". Sem pasta no nome
+    do vendedor, vale a do supervisor; sem nenhuma, volta "" (o cálculo decide o que fazer).
+    """
+    for name in (rca, supervisor):
+        parts = [p.strip() for p in normalize(name).split("-")]
+        if TLV in parts or "TELEVENDAS" in normalize(name):
+            return TLV
+        if len(parts) > 1 and parts[0].isalpha() and len(parts[0]) <= 3:
+            return parts[0]
+    return ""
 
 
 # ---------- cálculo ----------
@@ -248,8 +262,9 @@ def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict
     """Meta x realizado por pasta e no total, no mês da venda mais recente do arquivo.
 
     As metas vêm da planilha Totais: META (financeiro) e CARTEIRA (positivação) de cada pasta, e a
-    linha PLB para o total. A pasta de cada venda sai da planilha de fornecedores; o total conta
-    todas as vendas do arquivo.
+    linha PLB para o total. A pasta conta só o que os vendedores dela venderam (de qualquer
+    fornecedor), pela pasta no nome do vendedor; o Televendas é a pasta TLV. O total conta todas as
+    vendas do arquivo. Vendedor sem pasta no nome conta pela pasta do fornecedor, com aviso.
 
     Positivação é a contagem distinta de clientes, como a empresa conta: o cliente que comprou de
     2 fornecedores da pasta é 1 positivação para a pasta e 1 para o total, sem acumular. No dia, contam
@@ -258,10 +273,7 @@ def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict
     last, month, days, expected = _month(vendas)
     sales_day = is_sales_day(last)
 
-    known_pastas = {pasta for _, pasta in fornecedores.values()} | {TLV}
-    pastas = sorted(p for p in totais if p != TOTAL and p in known_pastas)
-    # pasta com meta mas sem fornecedor na planilha de fornecedores (ex.: um canal de venda): não dá para calcular
-    skipped = sorted(p for p in totais if p != TOTAL and p not in known_pastas)
+    pastas = sorted(p for p in totais if p != TOTAL)
     meta_fin = {p: totais[p][0] for p in pastas}
     meta_pos = {p: totais[p][1] for p in pastas}
     meta_fin[TOTAL] = totais[TOTAL][0] if TOTAL in totais else sum(meta_fin.values())
@@ -270,21 +282,22 @@ def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict
     real_fin: dict[str, float] = {}
     day_fin: dict[str, float] = {}
     first_buy: dict[tuple, date] = {}  # (pasta ou T, cliente) -> primeiro dia de compra no mês
-    unknown = set()
+    by_supplier = 0  # linhas de venda sem pasta no nome do vendedor
+    lost = 0  # linhas que não deu para pôr em pasta nenhuma
     daily_total = [0.0] * (calendar.monthrange(last.year, last.month)[1] + 1)
     for v in month:
-        info = fornecedores.get(v.fornecedor)
-        if info is None and not v.tlv:
-            unknown.add(v.fornecedor)
-        # venda do Televendas vai para a TLV (e não para a pasta do fornecedor): as pastas somam o total
-        pasta = TLV if v.tlv else info[1] if info else None
+        pasta = v.equipe if v.equipe in pastas else None
+        if pasta is None:
+            info = fornecedores.get(v.fornecedor)
+            pasta = info[1] if info and info[1] in pastas else None
+            by_supplier += pasta is not None
+            lost += pasta is None
         levels = (pasta, TOTAL) if pasta else (TOTAL,)  # o total conta todas as vendas
         daily_total[v.dia.day] += v.valor
         for level in levels:
             real_fin[level] = real_fin.get(level, 0) + v.valor
             if v.dia == last:
                 day_fin[level] = day_fin.get(level, 0) + v.valor
-        for level in levels:
             key = (level, v.cliente)
             if key not in first_buy or v.dia < first_buy[key]:
                 first_buy[key] = v.dia
@@ -310,30 +323,34 @@ def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict
             bars.append({"pasta": p, "pct": value, "tier": tier(value)})
         return bars
 
+    # evolução do financeiro total: a barra é quanto cada dia fez da meta do dia; a linha é o
+    # acumulado do mês comparado ao que já devia ter sido feito (100% = no ritmo de fechar a meta)
     evolution = []
     accumulated = 0.0
     passed = 0
+    daily_meta = meta_fin[TOTAL] * share
     for n in range(1, len(daily_total)):
         d = date(last.year, last.month, n)
         passed += is_sales_day(d)
         accumulated += daily_total[n]
         target = round(passed / len(days) * 100)
-        real = pct(accumulated, meta_fin[TOTAL]) if d <= last else None
-        evolution.append({"dia": n, "util": is_sales_day(d), "meta": target, "real": real,
-                          "tier": _pace_tier(real, target) if real is not None else "futuro"})
+        done = d <= last
+        day_pct = pct(daily_total[n], daily_meta) if done and is_sales_day(d) else None
+        month_pct = pct(accumulated, meta_fin[TOTAL]) if done else None
+        pace = round(month_pct / target * 100) if month_pct is not None and target else None
+        evolution.append({"dia": n, "util": is_sales_day(d), "real": day_pct, "tier": tier(day_pct) if done else "futuro",
+                          "acumulado": month_pct, "esperado": target, "ritmo": pace})
 
     warnings = []
-    if skipped:
-        warnings.append(f"Pasta(s) {', '.join(skipped)} da planilha Totais sem fornecedor na planilha de fornecedores: "
-                        "ficam fora das telas (as vendas delas contam no total).")
-    if unknown:
-        warnings.append(f"{len(unknown)} fornecedor(es) com venda que não estão na planilha de fornecedores "
-                        "(contam só no total).")
+    if by_supplier:
+        warnings.append(f"{by_supplier} linha(s) de venda com vendedor sem pasta no nome: contam na pasta do fornecedor.")
+    if lost:
+        warnings.append(f"{lost} linha(s) de venda sem pasta pelo vendedor nem pelo fornecedor: contam só no total.")
     return {
         "year": last.year, "month": last.month, "last_day": last, "expected": expected, "is_workday": sales_day,
         "financeiro": {"mes": month_cards(real_fin, meta_fin), "dia": day_bars(day_fin, meta_fin)},
         "positivacao": {"mes": month_cards(real_pos, meta_pos), "dia": day_bars(day_pos, meta_pos)},
-        "evolucao": evolution, "warnings": warnings,
+        "evolucao": evolution, "acumulado": pct(real_fin.get(TOTAL, 0), meta_fin[TOTAL]), "warnings": warnings,
     }
 
 
@@ -537,6 +554,7 @@ def tv_metas_mes(db: Database, now: datetime) -> dict | None:
         return None
     m = snap.metas
     return {**_header(db, snap, m, METAS_NEEDS, now), "evolucao": m["evolucao"],
+            "acumulado": m["acumulado"],
             "financeiro": m["financeiro"]["mes"], "positivacao": m["positivacao"]["mes"]}
 
 

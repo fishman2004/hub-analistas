@@ -14,7 +14,7 @@ Leva uns 20 minutos, com o app aberto num PC e olhando para a TV.
 
 ## TV
 5. Em até uns 10 segundos, entram na rotação **Metas do mês**, **Metas do dia** (se o último dia com venda não for domingo) e **Produtos foco**.
-6. **Metas do mês:** o topo diz o mês, "vendas até" o último dia com venda e "atualizado às" a hora do arquivo. O gráfico mostra uma barra por dia (realizado acumulado) e a linha pontilhada de onde precisava estar. Abaixo, um cartão por pasta (A a G e T) para financeiro e positivações, com a marca branca do esperado.
+6. **Metas do mês:** o topo diz o mês, "vendas até" o último dia com venda e "atualizado às" a hora do arquivo. O gráfico mostra uma barra por dia (quanto o dia fez da meta do dia; a linha tracejada é 100%) e uma linha branca com o mês acumulado comparado ao esperado, terminando em "mês X%". Abaixo, um cartão por pasta (A a G e T) para financeiro e positivações, com a marca branca do esperado.
 7. Confira 2 ou 3 porcentagens com o painel do Excel. Se alguma não bater, anote qual (pasta, financeiro ou positivação) para ajustar a regra em [paineis.md](../paineis.md#como-o-hub-calcula).
 8. **Metas do dia:** barras de financeiro e positivações do último dia, com a linha dos 100%.
 9. **Produtos foco:** para cada produto foco, uma barra de positivação (META) e uma de financeiro (META II), do melhor para o pior. Foco sem META II mostra "—" no financeiro. Com muitos focos, a tela passa as páginas sozinha (o número da página aparece no título).
