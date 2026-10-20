@@ -126,3 +126,20 @@ input.curto { max-width: 90px; }
 .historico li { padding: 8px 14px; border-bottom: 1px solid var(--linha); }
 .historico li:last-child { border-bottom: none; }
 .historico time { font-variant-numeric: tabular-nums; color: var(--suave); margin-right: 8px; }
+
+/* entrar com PIN e acesso */
+a.pessoa-botao { font-weight: 600; }
+.entrar-pin { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.entrar-pin h1 { margin: 0; }
+.ficha-pin { max-width: 520px; }
+input[type=password] { width: 100%; font: inherit; font-size: 1.3rem; letter-spacing: .3em; color: var(--texto); padding: 9px 11px; border-radius: 8px; border: 1px solid var(--linha); background: var(--cartao); }
+.aviso { border: 1px solid var(--reuniao); color: var(--texto); border-radius: var(--raio); padding: 10px 14px; margin: 0; }
+.sucesso { border: 1px solid var(--sala); color: var(--sala); border-radius: var(--raio); padding: 10px 14px; margin-bottom: 16px; }
+.eu-nome { color: var(--texto); text-decoration: none; }
+.eu-nome:hover { text-decoration: underline; }
+.acesso-linha { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 0 0 40px; border-top: 1px dashed var(--linha); }
+.acesso { flex: 0 1 auto; }
+.acesso select { width: auto; }
+.acesso .check { margin: 0; align-items: center; }
+.acesso .check input { margin-top: 0; }
+.sem-pin { color: var(--suave); font-size: .9rem; }

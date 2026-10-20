@@ -3,6 +3,7 @@
 {% block title %}Pessoas · Hub dos Analistas{% endblock %}
 {% block main %}
 <h1>Pessoas</h1>
+<p class="ajuda">Só administradores veem esta página. <strong>Gestor</strong> terá a visão da equipe; <strong>Administrador</strong> pode gerenciar pessoas, papéis e PINs. Ninguém vê o PIN de ninguém: "Redefinir PIN" apaga o atual e a pessoa cria outro no próximo acesso.</p>
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
 
 {% if people %}
@@ -21,6 +22,24 @@
     <form method="post" action="/pessoas/{{ p.id }}/desativar" data-nome="{{ p.name }}" onsubmit="return confirm('Tirar ' + this.dataset.nome + ' do Hub? As demandas e o histórico continuam guardados.')">
       <button class="perigo">Desativar</button>
     </form>
+    {% if user %}
+    <div class="acesso-linha">
+      <form class="ficha-inline acesso" method="post" action="/pessoas/{{ p.id }}/acesso">
+        <select name="role" aria-label="Papel de {{ p.name }}">
+          {% for key, label in ROLES.items() %}<option value="{{ key }}" {% if p.role == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <label class="check"><input type="checkbox" name="admin" {% if p.is_admin %}checked{% endif %}> Administrador</label>
+        <button class="discreto">Salvar acesso</button>
+      </form>
+      {% if p.has_pin %}
+      <form method="post" action="/pessoas/{{ p.id }}/pin" data-nome="{{ p.name }}" onsubmit="return confirm('Apagar o PIN de ' + this.dataset.nome + '? No próximo acesso a pessoa cria um novo.')">
+        <button class="discreto">Redefinir PIN</button>
+      </form>
+      {% else %}
+      <span class="sem-pin">Ainda sem PIN</span>
+      {% endif %}
+    </div>
+    {% endif %}
   </li>
   {% endfor %}
 </ul>

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Entrar · Hub dos Analistas{% endblock %}
+{% block main %}
+<p><a href="/entrar">← Não sou {{ person.name }}</a></p>
+<div class="entrar-pin">
+  <span class="bolinha grande" style="--cor: {{ person.color }}">{{ person.initials }}</span>
+  <h1>{{ person.name }}</h1>
+</div>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+<form class="ficha cartao-form ficha-pin" method="post" action="/entrar/{{ person.id }}">
+  {% if person.has_pin %}
+  <div>
+    <label for="pin">PIN</label>
+    <input type="password" id="pin" name="pin" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="current-password" required autofocus>
+  </div>
+  <p class="ajuda">Esqueceu? Peça a um administrador para redefinir o seu PIN.</p>
+  <div><button>Entrar</button></div>
+  {% else %}
+  <h2>Primeiro acesso: crie o seu PIN</h2>
+  <p class="ajuda">De 4 a 6 números. Só você vai saber: ninguém consegue ver o PIN, nem os administradores.</p>
+  {% if first_admin %}<p class="aviso">O Hub ainda não tem administrador. Quem criar o primeiro PIN vira administrador.</p>{% endif %}
+  <div class="linha">
+    <div>
+      <label for="pin">Novo PIN</label>
+      <input type="password" id="pin" name="pin" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required autofocus>
+    </div>
+    <div>
+      <label for="confirmar">Repita o PIN</label>
+      <input type="password" id="confirmar" name="confirmar" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required>
+    </div>
+  </div>
+  <div><button>Criar PIN e entrar</button></div>
+  {% endif %}
+</form>
+{% endblock %}
