@@ -8,6 +8,7 @@
 | Demandas normais (título, pasta, quem pediu, prazo) | Sim | Sim |
 | Demanda **reservada** | Só "Demanda reservada", a cor e as iniciais do dono e o prazo | Tudo para o dono, quem criou, o gestor e os administradores. Os demais veem como na TV e não abrem, movem nem excluem |
 | Visão do gestor (resumo do dia e todas as demandas) | Não | Só o gestor e os administradores |
+| Prazos da semana (tela da TV) | Sim, com a reservada mascarada como no Quadro | Não se aplica |
 | Histórico | Não | Sim |
 | PIN | Não | Ninguém (só um resumo fica guardado) |
 
