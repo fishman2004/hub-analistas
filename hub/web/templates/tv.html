@@ -30,9 +30,30 @@
       <h1 class="tela-titulo">Prazos da semana</h1>
       <div class="prazos"></div>
     </section>
+    <section class="tela painel" data-tela="metas-mes" aria-label="Metas do mês">
+      <header class="painel-topo"></header>
+      <div class="bloco evolucao"><h2>Evolução do financeiro · total do mês</h2><div class="grafico"></div></div>
+      <div class="bloco"><h2>Financeiro</h2><div class="cartoes-pasta" data-serie="financeiro"></div></div>
+      <div class="bloco"><h2>Positivações</h2><div class="cartoes-pasta" data-serie="positivacao"></div></div>
+    </section>
+    <section class="tela painel" data-tela="metas-dia" aria-label="Metas do dia">
+      <header class="painel-topo"></header>
+      <div class="dia-lados">
+        <div class="bloco"><h2>Financeiro do dia</h2><div class="barras-pasta" data-serie="financeiro"></div></div>
+        <div class="bloco"><h2>Positivações do dia</h2><div class="barras-pasta" data-serie="positivacao"></div></div>
+      </div>
+    </section>
+    <section class="tela painel" data-tela="produtos-foco" aria-label="Produtos foco">
+      <header class="painel-topo"></header>
+      <div class="bloco focos-bloco"><h2>Clientes positivados em % da meta <span class="pagina"></span></h2><div class="focos"></div></div>
+    </section>
   </main>
   <script src="/static/tv.js?v={{ version }}"></script>
   <script src="/static/tv-telas/quadro.js?v={{ version }}"></script>
   <script src="/static/tv-telas/prazos.js?v={{ version }}"></script>
+  <script src="/static/tv-paineis.js?v={{ version }}"></script>
+  <script src="/static/tv-telas/metas-mes.js?v={{ version }}"></script>
+  <script src="/static/tv-telas/metas-dia.js?v={{ version }}"></script>
+  <script src="/static/tv-telas/produtos-foco.js?v={{ version }}"></script>
 </body>
 </html>

@@ -49,7 +49,7 @@ flowchart LR
 ```
 
 - **Regras do dia calculadas, não agendadas:** "Concluído hoje", "Fora da empresa" depois da meia-noite e "atrasada" são calculados das datas toda vez. Não há tarefa de meia-noite que possa falhar.
-- **A TV passa de uma tela para a outra sozinha:** o Quadro e, quando há prazos na semana, a tela **Prazos da semana**. Os tempos ficam em **Configurações**. Se houver demanda atrasada, um aviso fica no topo em todas as telas.
+- **A TV passa de uma tela para a outra sozinha:** o Quadro, a tela **Prazos da semana** (quando há prazos) e os **painéis de metas** (do mês, do dia e produtos foco), que o Hub calcula das planilhas de vendas guardadas na pasta dos painéis e mostra **só em porcentagem** ([paineis.md](docs/paineis.md)). Os tempos ficam em **Configurações**. Se houver demanda atrasada, um aviso fica no topo em todas as telas.
 - **A TV nunca rola:** uma coluna com mais demandas do que cabem passa as páginas sozinha, com um fade. Se o servidor cair, a TV mantém a última tela e avisa "sem atualização desde HH:MM".
 - Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 
@@ -71,7 +71,7 @@ $env:HUB_DADOS = "$env:TEMP\hub-demo"
 .venv\Scripts\python -m hub
 ```
 
-Cria uma equipe e demandas **fictícias** numa pasta separada (PIN de todos: `1234`). O script se recusa a escrever sobre uma equipe de verdade.
+Cria uma equipe, demandas e planilhas de vendas **fictícias** numa pasta separada (PIN de todos: `1234`). O script se recusa a escrever sobre uma equipe de verdade.
 
 ## Documentação
 
@@ -81,6 +81,7 @@ Cria uma equipe e demandas **fictícias** numa pasta separada (PIN de todos: `12
 | [Primeiro uso](docs/primeiro-uso.md) | O roteiro na empresa, começando pelo teste de rede |
 | [Arquitetura](docs/arquitetura.md) | Quem vai manter o código |
 | [Segurança e dados](docs/seguranca-e-dados.md) | TI e gestão: o que fica onde e quem vê o quê |
+| [Painéis de dados](docs/paineis.md) | Quem exporta as planilhas: nomes, colunas e como o Hub calcula |
 | [Limitações](docs/limitacoes.md) | Todos |
 | [Roadmap](docs/roadmap.md) | As fases da v2: tema, PIN, gestor, TV em rotação, painéis, banco de horas, rotinas, Pombo |
 | [Decisões técnicas](docs/decisoes.md) | Por que cada escolha foi feita |
