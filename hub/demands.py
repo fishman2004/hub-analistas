@@ -27,6 +27,7 @@ class Demand:
     created_at: datetime
     updated_at: datetime
     done_at: datetime | None
+    created_by: int | None = None
 
 
 def _row(r) -> Demand:
@@ -35,6 +36,7 @@ def _row(r) -> Demand:
         date.fromisoformat(r["due"]) if r["due"] else None, bool(r["reserved"]), r["column_"],
         datetime.fromisoformat(r["created_at"]), datetime.fromisoformat(r["updated_at"]),
         datetime.fromisoformat(r["done_at"]) if r["done_at"] else None,
+        r["created_by"],
     )
 
 
@@ -75,9 +77,10 @@ def create_demand(db: Database, now: datetime, actor_id: int | None, *, title: s
     with db.connect() as conn:
         title, folder, requested_by = _clean(conn, title, owner_id, folder, requested_by)
         cur = conn.execute(
-            "INSERT INTO demands(title, owner_id, folder, requested_by, due, reserved, column_, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, 'todo', ?, ?)",
-            (title, owner_id, folder, requested_by, due.isoformat() if due else None, int(reserved), _iso(now), _iso(now)),
+            "INSERT INTO demands(title, owner_id, folder, requested_by, due, reserved, column_, created_at, updated_at, "
+            "created_by) VALUES (?, ?, ?, ?, ?, ?, 'todo', ?, ?, ?)",
+            (title, owner_id, folder, requested_by, due.isoformat() if due else None, int(reserved), _iso(now), _iso(now),
+             actor_id),
         )
         log_event(conn, now, actor_id, "demanda_criada", f"demanda:{cur.lastrowid}", title)
         return _row(_get(conn, cur.lastrowid))
@@ -122,10 +125,16 @@ def find_demand(db: Database, demand_id: int) -> Demand | None:
     return _row(r) if r else None
 
 
-def demand_titles(db: Database) -> dict[int, str]:
-    """Título atual de cada demanda, inclusive excluídas (para o histórico do app)."""
+def all_demands(db: Database) -> dict[int, Demand]:
+    """Cada demanda, inclusive as excluídas (para o histórico do app)."""
     with db.connect() as conn:
-        return {r["id"]: r["title"] for r in conn.execute("SELECT id, title FROM demands")}
+        return {r["id"]: _row(r) for r in conn.execute("SELECT * FROM demands")}
+
+
+def can_see(d: Demand, person: Person) -> bool:
+    """Título de demanda reservada: só o gestor, administradores, o dono e quem criou."""
+    return (not d.reserved or person.is_manager or person.is_admin
+            or person.id in (d.owner_id, d.created_by))
 
 
 def is_overdue(d: Demand, today: date) -> bool:

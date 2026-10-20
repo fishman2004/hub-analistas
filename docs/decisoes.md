@@ -39,3 +39,13 @@ Para gestor e banco de horas, escolher o nome não basta. Um PIN curto é rápid
 ## Migração do banco versionada (fase 2)
 
 O `PRAGMA user_version` guarda qual foi a última mudança aplicada. Ao iniciar, o Hub faz uma cópia do banco e aplica só o que falta, cada mudança dentro de uma transação. Assim a atualização continua sendo extrair o ZIP e rodar `instalar.bat`, sem passo manual e sem perder dados.
+
+## Quem vê o título de uma demanda reservada (fase 3)
+
+Decisão do Kayo: veem o título **o gestor, os administradores, o dono da demanda e quem a criou** (inclusive quando alguém cria uma demanda reservada para outra pessoa). Para todos os outros, o app mostra a demanda como a TV mostra: "Demanda reservada", a cor e as iniciais do dono e o prazo, sem link e sem botões. Abrir, mover ou excluir pelo endereço direto também é recusado. Na v1, qualquer analista via tudo no app.
+
+Para saber quem criou, a migração 2 acrescenta `created_by` às demandas e preenche as antigas a partir do histórico (o evento "demanda_criada" já guardava quem fez).
+
+## A visão do gestor também abre para administradores (fase 3)
+
+O plano dizia "só para gestor". Os administradores já gerenciam pessoas, papéis e PINs e veem as reservadas, então também abrem a visão do gestor. Analistas não abrem.

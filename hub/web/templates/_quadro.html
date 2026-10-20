@@ -25,6 +25,7 @@
     <h2>{{ label }} <span class="contagem">{{ columns[col]|length }}</span></h2>
     {% for d in columns[col] %}
     {% set dono = owners[d.owner_id] %}
+    {% if can_see(d, user) %}
     <article class="cartao {% if is_overdue(d, today) %}atrasada{% endif %}" style="--cor: {{ dono.color }}">
       <div class="cartao-topo">
         <span class="bolinha">{{ dono.initials }}</span>
@@ -47,6 +48,16 @@
         {% endif %}
       </div>
     </article>
+    {% else %}
+    {# reservada de outra pessoa: igual à TV, sem título, pasta, quem pediu nem botões #}
+    <article class="cartao oculta {% if is_overdue(d, today) %}atrasada{% endif %}" style="--cor: {{ dono.color }}">
+      <div class="cartao-topo">
+        <span class="bolinha">{{ dono.initials }}</span>
+        <span class="titulo">{{ RESERVED_TEXT }}</span>
+      </div>
+      {% if d.due %}<p class="meta"><span class="{{ 'atraso' if is_overdue(d, today) else '' }}">{{ 'atrasada · ' if is_overdue(d, today) else '' }}prazo {{ d.due.strftime('%d/%m') }}</span></p>{% endif %}
+    </article>
+    {% endif %}
     {% else %}
     <p class="vazio">Nada aqui.</p>
     {% endfor %}
