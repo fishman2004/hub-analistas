@@ -20,7 +20,7 @@ Cada arquivo pode ser `.xlsx`, `.xlsm` ou `.csv`. O Hub usa a **primeira aba** e
 | Nome do arquivo (sem a extensão) | Colunas que o Hub usa |
 |---|---|
 | `(BASE) - Metas Polybalas - Totais` | `PASTA`, `META` (financeiro do mês), `CARTEIRA` (meta de positivação). Uma linha por pasta e a linha `PLB` com o total |
-| `(BASE) - Metas Polybalas - Fornecedores` | `ID FORN`, `META FINANCEIRA`. **Opcional:** é a referência por fornecedor; nenhuma tela usa ainda |
+| `(BASE) - Metas Polybalas - Fornecedores` | `ID FORN`, `META FINANCEIRA`: meta financeira do mês de cada fornecedor (a pasta dele vem da planilha de fornecedores) |
 | `(BASE) - Produtos Focos KPI's` | `ID PRODUTO`, `PRODUTO FOCO` |
 | `(BASE) - Fornecedores Polybalas` | `ID FORNECEDOR`, `FORNECEDOR`, `FORNECEDOR II`, `PASTA` |
 | `(BASE) - Metas Polybalas - KPI's e Produtos Focos` | `ID` (do vendedor), `PRODUTO FOCO`, `CLASSIFICACAO`, `META`, `META II` |
@@ -45,6 +45,7 @@ Cada arquivo pode ser `.xlsx`, `.xlsm` ou `.csv`. O Hub usa a **primeira aba** e
 - **Positivação do dia:** clientes positivados pela primeira vez no mês naquele dia (na pasta ou no total).
 - **Dias de venda:** segunda a sábado (sábado é dia de venda até meio-dia); domingo não tem meta e feriados não são descontados. A meta do dia é a meta do mês dividida pelos dias de venda do mês.
 - **Esperado até hoje:** a parte do mês já passada em dias de venda, até o último dia com venda. Ex.: 15 de 26 dias = 58%.
+- **Fornecedores das pastas:** tudo o que saiu dos fornecedores de cada pasta, vendido por **qualquer** equipe (outras pastas e Televendas incluídos), dividido pela soma das metas desses fornecedores. O total dessa tela soma os fornecedores com meta. Só financeiro: a meta de positivação por fornecedor ainda não existe. Fornecedor sem pasta ou sem meta fica fora dessa tela.
 - **Total (T):** é a Polybalas inteira (a linha `PLB`, o "PB" do painel do Excel).
 - **Produtos foco:** `META` é a meta de positivação (clientes distintos que compraram algum produto do foco, `ID PRODUTO` → `PRODUTO FOCO`) e `META II` é a meta financeira (soma de `VALOR` dos produtos do foco). Foco sem `META II` mostra só a positivação.
 
@@ -66,6 +67,7 @@ Cada arquivo pode ser `.xlsx`, `.xlsm` ou `.csv`. O Hub usa a **primeira aba** e
 |---|---|---|
 | **Metas do mês** | Evolução do financeiro total: cada barra é quanto aquele dia fez da meta do dia, e a linha é o mês acumulado comparado ao esperado até o dia (100% = no ritmo de fechar a meta), com o "mês X%" já feito na ponta. Depois, um cartão por pasta, de financeiro e de positivações, com a marca do esperado. | Totais, fornecedores e vendas lidas |
 | **Metas do dia** | Barras de financeiro e positivações do último dia com venda, por pasta, com a linha dos 100%. | as mesmas, e o último dia com venda não é domingo |
+| **Fornecedores** ("Fornecedores das pastas") | Uma barra por pasta e o total, com tudo o que saiu dos fornecedores da pasta (de qualquer equipe): à esquerda o financeiro do mês (cor = ritmo, com a marca do esperado), à direita o do dia. | fornecedores, metas por fornecedor e vendas lidas |
 | **Produtos foco** | Para cada produto foco, uma barra de positivação (META) e uma de financeiro (META II), do melhor para o pior, com o esperado. Se não couber, passa as páginas com fade. | produtos foco, metas dos produtos foco e vendas lidas |
 
 Todas mostram "atualizado às HH:MM" (pela data do arquivo) e o aviso **Dados desatualizados** quando a planilha não muda há mais horas do que o limite de Configurações (padrão 24).
@@ -86,8 +88,8 @@ O Hub só relê um arquivo quando a data de modificação ou o tamanho mudam. A 
 - Positivação é cliente único na pasta e no total, sem acumular ("positivação é diferente de atendimento").
 - Cor de cada pasta é o padrão da empresa: A vermelho, B rosa (#FE017E), C roxo, D azul claro, E verde escuro, F azul escuro; G (Canal Farma) sem cor própria.
 
-- As metas da pasta e do total vêm da planilha Totais (`META` e `CARTEIRA`); a planilha antiga de metas por vendedor saiu. A meta por fornecedor fica de referência.
+- As metas da pasta e do total vêm da planilha Totais (`META` e `CARTEIRA`); a planilha antiga de metas por vendedor saiu. A meta por fornecedor é usada na tela Fornecedores das pastas.
 
 - TLV é o Televendas: vendedores "P-TLV-" do supervisor Televendas, que vendem de todos os fornecedores.
-- A pasta conta só o que os colaboradores dela vendem; o total dos fornecedores conta tudo, venha de onde vier. Para o gerente de pasta conta tudo (essa visão ainda não está nas telas).
+- A pasta conta só o que os colaboradores dela vendem; o total dos fornecedores conta tudo, venha de onde vier. Para o gerente de pasta conta tudo (é a tela **Fornecedores das pastas**, nome escolhido para não falar em "visão do gerente").
 - O gráfico de evolução mostra o dia a dia e também como está o total do mês.

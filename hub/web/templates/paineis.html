@@ -49,6 +49,11 @@
   {% else %}
   <p class="ajuda">Produtos foco fica fora da TV até as planilhas de vendas, produtos foco e metas dos produtos foco estarem lidas.</p>
   {% endif %}
+  {% if snap.fornecedores and snap.fornecedores.pastas %}
+  <p>Tela <strong>Fornecedores das pastas</strong>: tudo o que saiu dos fornecedores de cada pasta, vendido por qualquer equipe.</p>
+  {% else %}
+  <p class="ajuda">Fornecedores das pastas fica fora da TV até as planilhas de vendas, fornecedores e metas por fornecedor estarem lidas.</p>
+  {% endif %}
   <p><a href="/tv" target="_blank" rel="noopener">Ver a TV</a> · as regras do cálculo estão em <code>docs/paineis.md</code>.</p>
 </section>
 {% endblock %}

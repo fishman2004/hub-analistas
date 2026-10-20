@@ -31,7 +31,7 @@ def login(app, person):
     return c
 
 
-PANELS = {"metas-mes": "20", "metas-dia": "15", "produtos-foco": "15"}  # telas da fase 5
+PANELS = {"metas-mes": "20", "metas-dia": "15", "produtos-foco": "15", "fornecedores": "15"}  # telas da fase 5
 
 
 def ids(db, now=at(12)):

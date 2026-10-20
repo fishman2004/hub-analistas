@@ -129,7 +129,7 @@ def test_month_goals_by_folder_and_total():
     # positivação do dia = clientes positivados pela primeira vez no mês naquele dia
     pos_dia = {c["pasta"]: c["pct"] for c in m["positivacao"]["dia"]}
     assert pos_dia == {"T": 867, "A": 325, "B": 2600, "TLV": 0}
-    assert m["warnings"] == ["1 linha(s) de venda sem pasta pelo vendedor nem pelo fornecedor: contam só no total."]
+    assert m["warnings"] == ["1 linha(s) de venda sem pasta pela equipe nem pelo fornecedor: contam só no total."]
     # evolução: a barra é o dia contra a meta do dia (5000 / 26); a linha é o mês acumulado contra o esperado
     evo = {e["dia"]: e for e in m["evolucao"]}
     assert len(evo) == 30 and m["acumulado"] == 55
@@ -151,7 +151,7 @@ def test_folder_counts_its_own_sellers_and_total_counts_everything():
     m = compute_metas(FORN, {"A": (1000, 4), "B": (1000, 4), "T": (2000, 8)}, vendas)
     assert {c["pasta"]: c["pct"] for c in m["financeiro"]["mes"]} == {"A": 45, "B": 10, "T": 28}
     assert {c["pasta"]: c["pct"] for c in m["positivacao"]["mes"]} == {"A": 50, "B": 25, "T": 38}
-    assert m["warnings"] == ["1 linha(s) de venda com vendedor sem pasta no nome: contam na pasta do fornecedor."]
+    assert m["warnings"] == ["1 linha(s) de venda sem a letra da pasta no supervisor nem no vendedor: contam na pasta do fornecedor."]
 
 
 def test_seller_folder_comes_from_the_name():
@@ -195,6 +195,20 @@ def test_saturday_has_daily_goal_sunday_does_not():
     assert all(c["pct"] is None and c["tier"] == "sem-meta" for c in m["financeiro"]["dia"])
 
 
+def test_supplier_folders_count_every_team():
+    # tudo o que saiu dos fornecedores da pasta, vendido por qualquer equipe, contra a soma das metas deles
+    metas = {"1": 600, "2": 400, "3": 1000, "99": 500}  # 99: fornecedor fora da planilha de fornecedores
+    vendas = [v("c1", "1", 17, 300, equipe="TLV"), v("c2", "2", 17, 200, equipe="B"), v("c3", "3", 10, 100),
+              v("c4", "77", 17, 999)]  # fornecedor sem pasta: fora desta tela
+    f = paineis.compute_fornecedores(FORN, metas, vendas)
+    rows = {r["pasta"]: r for r in f["pastas"]}
+    assert [r["pasta"] for r in f["pastas"]] == ["T", "A", "B"]
+    assert rows["A"]["pct"] == 50 and rows["B"]["pct"] == 10 and rows["T"]["pct"] == 30  # 500/1000, 100/1000, 600/2000
+    assert rows["A"]["dia"] == 1300 and rows["B"]["dia"] == 0  # meta do dia = 1000 / 26
+    assert rows["A"]["tier"] == "atencao" and rows["A"]["dia_tier"] == "bom"  # ritmo: 50% com 58% esperado = 86%
+    assert paineis.compute_fornecedores(FORN, {}, vendas)["pastas"] == []
+
+
 def test_focus_products_positivation_and_financial_goal():
     focos = {"p1": "PILHAS", "p2": "PILHAS", "p3": "HIGIENE"}
     # META = positivação (clientes); META II = financeiro
@@ -225,17 +239,19 @@ def walk(value, path=""):
 
 
 def test_examples_reach_the_tv_with_percentages_only(db):
-    assert not {"metas-mes", "metas-dia", "produtos-foco"} & set(screens(db))  # pasta vazia: fora da rotação
+    assert not {"metas-mes", "metas-dia", "produtos-foco", "fornecedores"} & set(screens(db))  # pasta vazia: fora da rotação
     put_examples(db)
     data = screens(db)
-    assert {"metas-mes", "metas-dia", "produtos-foco"} <= set(data)
+    assert {"metas-mes", "metas-dia", "produtos-foco", "fornecedores"} <= set(data)
     mes = data["metas-mes"]["data"]
     assert mes["mes"] == "Setembro de 2026" and mes["ate"] == "17/09" and mes["dia_semana"] == "quinta"
     assert mes["atualizado"] == "09:00" and mes["velho"] is False and mes["esperado"] == 58
     assert [c["pasta"] for c in mes["financeiro"]] == list("ABCDEFG") + ["TLV", "T"]
     # nenhum valor em reais, quantidade ou nome de vendedor/cliente: só %, letras das pastas e textos fixos
+    forn = data["fornecedores"]["data"]["pastas"]
+    assert [r["pasta"] for r in forn] == ["T"] + list("ABCDEFG")  # TLV não tem fornecedor próprio
     allowed_numbers = {"pct", "esperado", "meta", "real", "dia", "pos", "fin", "acumulado", "ritmo"}
-    for sid in ("metas-mes", "metas-dia", "produtos-foco"):
+    for sid in ("metas-mes", "metas-dia", "produtos-foco", "fornecedores"):
         for path, value in walk(data[sid]["data"]):
             key = path.rsplit(".", 1)[-1].removesuffix("[]")
             if isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -249,7 +265,7 @@ def test_tv_endpoint_carries_panels(db):
     put_examples(db)
     app = create_app(db, clock=lambda: NOW)
     data = TestClient(app, base_url=BASE).get("/api/tv").json()
-    assert {"metas-mes", "metas-dia", "produtos-foco"} <= {s["id"] for s in data["screens"]}
+    assert {"metas-mes", "metas-dia", "produtos-foco", "fornecedores"} <= {s["id"] for s in data["screens"]}
     html = TestClient(app, base_url=BASE).get("/tv").text
     assert "/static/tv-paineis.js" in html
 
@@ -276,7 +292,8 @@ def test_missing_file_and_stale_warning(db):
     folder = put_examples(db)
     assert screens(db, datetime(2026, 9, 19, 10, 0))["metas-mes"]["data"]["velho"] is True  # mais de 24 h
     (folder / (FILES_BY_KEY["metas_forn"].base + ".xlsx")).unlink()
-    assert {"metas-mes", "produtos-foco"} <= set(screens(db))  # opcional: nenhuma tela depende dela
+    data = screens(db)
+    assert "fornecedores" not in data and {"metas-mes", "produtos-foco"} <= set(data)  # só a tela dela sai
     (folder / (FILES_BY_KEY["totais"].base + ".xlsx")).unlink()
     data = screens(db)
     assert "metas-mes" not in data and "metas-dia" not in data and "produtos-foco" in data

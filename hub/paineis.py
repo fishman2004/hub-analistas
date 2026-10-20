@@ -38,8 +38,8 @@ class Arquivo:
 FILES = (
     Arquivo("totais", "(BASE) - Metas Polybalas - Totais", "Metas por pasta (financeiro e carteira)",
             {"pasta": "PASTA", "meta": "META", "carteira": "CARTEIRA"}),
-    Arquivo("metas_forn", "(BASE) - Metas Polybalas - Fornecedores", "Metas por fornecedor (referência)",
-            {"fornecedor": "ID FORN", "meta": "META FINANCEIRA"}, optional=True),
+    Arquivo("metas_forn", "(BASE) - Metas Polybalas - Fornecedores", "Metas por fornecedor",
+            {"fornecedor": "ID FORN", "meta": "META FINANCEIRA"}),
     Arquivo("focos", "(BASE) - Produtos Focos KPI's", "Produtos foco",
             {"produto": "ID PRODUTO", "foco": "PRODUTO FOCO"}),
     Arquivo("fornecedores", "(BASE) - Fornecedores Polybalas", "Fornecedores e pastas",
@@ -344,15 +344,48 @@ def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict
 
     warnings = []
     if by_supplier:
-        warnings.append(f"{by_supplier} linha(s) de venda com vendedor sem pasta no nome: contam na pasta do fornecedor.")
+        warnings.append(f"{by_supplier} linha(s) de venda sem a letra da pasta no supervisor nem no vendedor: contam na pasta do fornecedor.")
     if lost:
-        warnings.append(f"{lost} linha(s) de venda sem pasta pelo vendedor nem pelo fornecedor: contam só no total.")
+        warnings.append(f"{lost} linha(s) de venda sem pasta pela equipe nem pelo fornecedor: contam só no total.")
     return {
         "year": last.year, "month": last.month, "last_day": last, "expected": expected, "is_workday": sales_day,
         "financeiro": {"mes": month_cards(real_fin, meta_fin), "dia": day_bars(day_fin, meta_fin)},
         "positivacao": {"mes": month_cards(real_pos, meta_pos), "dia": day_bars(day_pos, meta_pos)},
         "evolucao": evolution, "acumulado": pct(real_fin.get(TOTAL, 0), meta_fin[TOTAL]), "warnings": warnings,
     }
+
+
+def compute_fornecedores(fornecedores: dict, metas_forn: dict, vendas: list[Venda]) -> dict:
+    """Tudo o que saiu dos fornecedores de cada pasta, vendido por qualquer equipe (Televendas e
+    outras pastas incluídas), contra a soma das metas desses fornecedores. Só financeiro: a meta de
+    positivação por fornecedor ainda não existe na planilha."""
+    last, month, days, expected = _month(vendas)
+    sales_day = is_sales_day(last)
+    meta: dict[str, float] = {}
+    for supplier, value in metas_forn.items():
+        info = fornecedores.get(supplier)
+        if info:
+            meta[info[1]] = meta.get(info[1], 0) + value
+    pastas = sorted(p for p, value in meta.items() if value > 0)
+    meta[TOTAL] = sum(meta[p] for p in pastas)
+    real: dict[str, float] = {}
+    today: dict[str, float] = {}
+    for v in month:
+        info = fornecedores.get(v.fornecedor)
+        if not info or info[1] not in pastas:
+            continue  # fornecedor sem pasta ou sem meta: fica fora desta tela (e do total dela)
+        for level in (info[1], TOTAL):
+            real[level] = real.get(level, 0) + v.valor
+            if v.dia == last:
+                today[level] = today.get(level, 0) + v.valor
+    rows = []
+    for p in [TOTAL] + pastas:
+        month_pct = pct(real.get(p, 0), meta[p])
+        day_pct = pct(today.get(p, 0), meta[p] / len(days)) if sales_day else None
+        rows.append({"pasta": p, "pct": month_pct, "tier": _pace_tier(month_pct, expected),
+                     "dia": day_pct, "dia_tier": tier(day_pct)})
+    return {"year": last.year, "month": last.month, "last_day": last, "expected": expected,
+            "is_workday": sales_day, "pastas": rows if pastas else []}
 
 
 def compute_focos(focos: dict, metas_kpi: list, vendas: list[Venda]) -> dict:
@@ -412,6 +445,7 @@ class Snapshot:
     files: list[FileStatus]
     metas: dict | None = None
     focos: dict | None = None
+    fornecedores: dict | None = None
     errors: list[str] = field(default_factory=list)
 
     def status(self, key: str) -> FileStatus:
@@ -424,6 +458,7 @@ class Snapshot:
 
 METAS_NEEDS = ("fornecedores", "totais", "vendas")
 FOCOS_NEEDS = ("focos", "metas_kpi", "vendas")
+FORN_NEEDS = ("fornecedores", "metas_forn", "vendas")
 BACKGROUND = True  # no Hub de verdade, a leitura roda numa linha separada; os testes desligam
 
 
@@ -508,6 +543,9 @@ class PanelStore:
             snap.metas = self._safe(compute_metas, data["fornecedores"], data["totais"], data["vendas"], snap)
         if all(data.get(k) is not None for k in FOCOS_NEEDS):
             snap.focos = self._safe(compute_focos, data["focos"], data["metas_kpi"], data["vendas"], snap)
+        if all(data.get(k) is not None for k in FORN_NEEDS):
+            snap.fornecedores = self._safe(compute_fornecedores, data["fornecedores"], data["metas_forn"],
+                                           data["vendas"], snap)
         return snap
 
     @staticmethod
@@ -574,3 +612,11 @@ def tv_focos(db: Database, now: datetime) -> dict | None:
         return None
     f = snap.focos
     return {**_header(db, snap, f, FOCOS_NEEDS, now), "focos": f["focos"]}
+
+
+def tv_fornecedores(db: Database, now: datetime) -> dict | None:
+    snap = store_for(db).get()
+    if snap is None or snap.fornecedores is None or not snap.fornecedores["pastas"]:
+        return None
+    f = snap.fornecedores
+    return {**_header(db, snap, f, FORN_NEEDS, now), "pastas": f["pastas"]}
