@@ -1,7 +1,10 @@
 import socket
 import sqlite3
+import sys
 from datetime import date, timedelta
 from pathlib import Path
+
+import pytest
 
 import hub.__main__ as entry
 from conftest import at
@@ -65,6 +68,8 @@ def test_second_instance_only_opens_tv(monkeypatch, tmp_path):
     assert opened == [f"http://127.0.0.1:{port}/tv"] and dbs == []
 
 
+# o atalho é gravado na codificação do Prompt ("oem"), que só existe no Windows
+@pytest.mark.skipif(sys.platform != "win32", reason="só no Windows")
 def test_start_with_windows(tmp_path, monkeypatch):
     monkeypatch.setenv("APPDATA", str(tmp_path))
     winsys.set_start_with_windows(True, Path(r"C:\Users\usuario\Área de Trabalho\hub-analistas"))
