@@ -64,7 +64,7 @@ Com muitas demandas, "+ N demandas" escondia justamente o que a sala precisava v
 
 ## Painéis de dados: o Hub calcula, a TV só recebe porcentagens (fase 5)
 
-O plano dizia "o Hub não calcula, só exibe". Na hora de fazer, o Kayo pediu o contrário: guardar as 5 planilhas que o time já usa (metas, fornecedores, produtos foco e a 8081 de vendas) numa pasta própria e deixar o Hub montar o painel que hoje é feito no Excel. Assim ninguém precisa preparar um arquivo extra só para a TV. As regras do cálculo estão em [paineis.md](paineis.md), num arquivo só do código (`hub/paineis.py`).
+O plano dizia "o Hub não calcula, só exibe". Na hora de fazer, o Kayo pediu o contrário: guardar as planilhas que o time já usa (metas por pasta e por fornecedor, fornecedores, produtos foco e a 8081 de vendas) numa pasta própria e deixar o Hub montar o painel que hoje é feito no Excel. Assim ninguém precisa preparar um arquivo extra só para a TV. As regras do cálculo estão em [paineis.md](paineis.md), num arquivo só do código (`hub/paineis.py`).
 
 **Cores das pastas** seguem o padrão da empresa (a cor da marca mais forte de cada pasta) e aparecem só na letra da pasta. As barras continuam com as cores de faixa (verde a vermelho), para a cor da pasta nunca ser confundida com o resultado.
 

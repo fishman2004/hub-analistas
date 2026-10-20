@@ -38,7 +38,7 @@ flowchart TB
 - **Entrar com nome + PIN** (`hub/access.py`, fase 2): o PIN é guardado só como resumo PBKDF2 com sal próprio. Ao acertar, o servidor cria uma sessão (tabela `sessions`, com o resumo do token) que acaba à meia-noite; o cookie `hub_sessao` só carrega o token. Cinco PINs errados seguidos bloqueiam aquele nome por 5 minutos. A TV e o `/api/tv` continuam sem login e não leem nada disso.
 - **Papéis:** cada pessoa é `analista` ou `gestor` (coluna `role`) e pode ter a marcação `is_admin`. Só administrador abre Pessoas, muda papéis e redefine PIN. Sempre sobra pelo menos um administrador; sem nenhum (instalação nova ou logo depois de atualizar da v1), quem cria o primeiro PIN vira administrador.
 - **Migrações automáticas** (`db.MIGRATIONS`): cada mudança no banco depois da v1 tem um número, guardado no `PRAGMA user_version`. Ao iniciar, o Hub copia o banco para `copias/antes-da-vN-....db` e aplica as que faltam, cada uma inteira ou nada. Elas só acrescentam colunas e tabelas.
-- **Painéis de dados** (fase 5, `hub/paineis.py` e `hub/planilhas.py`): o Hub lê as 5 planilhas da pasta dos painéis (CSV ou XLSX), calcula meta x realizado por pasta e entrega à TV **só porcentagens**. Cada arquivo é relido apenas quando muda (data e tamanho), numa linha separada, para a TV nunca esperar a leitura da 8081. Arquivo ausente ou quebrado tira da rotação só as telas que dependem dele. Contratos e regras em [paineis.md](paineis.md).
+- **Painéis de dados** (fase 5, `hub/paineis.py` e `hub/planilhas.py`): o Hub lê as planilhas da pasta dos painéis (CSV ou XLSX), calcula meta x realizado por pasta e entrega à TV **só porcentagens**. Cada arquivo é relido apenas quando muda (data e tamanho), numa linha separada, para a TV nunca esperar a leitura da 8081. Arquivo ausente ou quebrado tira da rotação só as telas que dependem dele. Contratos e regras em [paineis.md](paineis.md).
 - Formulários vindos de outro site são recusados (mesma origem).
 
 ## Onde está cada coisa
@@ -50,7 +50,7 @@ flowchart TB
 | `hub/access.py` | PIN, bloqueio, sessões do dia, papéis e administradores |
 | `hub/gestor.py` | Visão do gestor: resumo do dia por pessoa e filtros das demandas |
 | `hub/telas.py` | Telas da TV, rotação e as configurações (tempos) |
-| `hub/paineis.py` | Painéis de dados: pasta, os 5 arquivos, cálculo das metas, cache e o que vai para a TV |
+| `hub/paineis.py` | Painéis de dados: pasta, os arquivos, cálculo das metas, cache e o que vai para a TV |
 | `hub/planilhas.py` | Leitura de CSV e XLSX (cabeçalho sem acento, número e data em formato brasileiro) |
 | `hub/people.py` | Equipe: nome, iniciais, cor |
 | `hub/demands.py` | Demandas, quadro, ordem, atrasadas, cartão da TV |

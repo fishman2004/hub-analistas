@@ -1,4 +1,4 @@
-"""Gera as 5 planilhas de exemplo dos painéis em tools/exemplos/, com dados 100% FICTÍCIOS.
+"""Gera as 6 planilhas de exemplo dos painéis em tools/exemplos/, com dados 100% FICTÍCIOS.
 
 Mesmas colunas e formatos das planilhas de verdade (docs/paineis.md), para testar o Hub e
 apresentar os painéis sem expor números da empresa:
@@ -24,7 +24,10 @@ LAST_DAY = date(2026, 9, 17)  # uma quinta-feira: o mês "em andamento"
 PASTAS = "ABCDEFG"
 # quanto cada pasta já fez da meta do mês até o último dia (fictício, para os gráficos variarem)
 PACE = {"A": .68, "B": .52, "C": .61, "D": .40, "E": .57, "F": .33, "G": .63}
-POS_SCALE = {"A": 1.1, "B": 1.5, "C": .9, "D": 1.8, "E": 1.2, "F": 1.4, "G": .8}
+# quanto da carteira (meta de positivação) cada pasta já positivou
+POS_PACE = {"A": .62, "B": .48, "C": .71, "D": .39, "E": .55, "F": .45, "G": .66, "PLB": .58}
+# meta financeira do mês por pasta (fictícia); TLV é um canal sem fornecedor próprio, como na planilha real
+META_PASTA = {"A": 535000, "B": 618000, "C": 900000, "D": 615000, "E": 430000, "F": 417000, "G": 55000, "TLV": 30000}
 
 
 def _xlsx(path: Path, header: list[str], rows: list[list]) -> None:
@@ -67,14 +70,10 @@ def generate(out: Path = OUT) -> None:
     _xlsx(name("focos", ".xlsx"), ["ID PRODUTO", "PRODUTO", "PRODUTO FOCO"],
           [[int(p[0]), p[1], foco_of[p[0]]] for p in products[:60]])
 
-    goal_suppliers = [s for s in suppliers if not s[1].endswith("DIV 2")]  # a meta vem num ID só do grupo
-    goals = []
-    for sid, sname, sup in sellers:
-        for s in goal_suppliers:
-            goals.append([int(sid), sname, sup, int(s[0]), s[1], round(rnd.uniform(2500, 9000), 4),
-                          round(rnd.randint(16, 30) * POS_SCALE[s[3]])])
-    _xlsx(name("metas", ".xlsx"), ["ID VENDEDOR", "NOME DO VENDEDOR", "SUPERVISOR", "ID FORN", "NOME FORNECEDOR",
-                                   "META FINANCEIRA", "META POSITIVAÇÃO"], goals)
+    # meta financeira por fornecedor: a meta da pasta dividida entre os fornecedores dela
+    by_pasta = {p: [s for s in suppliers if s[3] == p] for p in PASTAS}
+    _xlsx(name("metas_forn", ".xlsx"), ["ID FORN", "NOME FORNECEDOR", "META FINANCEIRA"],
+          [[int(s[0]), s[1], round(META_PASTA[s[3]] / len(by_pasta[s[3]]), -3)] for s in suppliers])
 
     kpis = []
     for sid, sname, sup in sellers:
@@ -102,14 +101,16 @@ def generate(out: Path = OUT) -> None:
                 for product in rnd.sample(products, rnd.randint(2, 6)):
                     qty = rnd.randint(1, 24)
                     lines.append([sid, sname, sup, order, status, d, client, product, qty, rnd.uniform(5, 40) * qty])
-    meta_by_pasta = {p: 0.0 for p in PASTAS}
-    pasta_of = {s[0]: s[3] for s in suppliers}
-    for g in goals:
-        meta_by_pasta[pasta_of[str(g[3])]] += g[5]
     sold = {p: 0.0 for p in PASTAS}
+    reached = {p: set() for p in [*PASTAS, "PLB"]}
     for line in lines:
         sold[line[7][2][3]] += line[9]
-    factor = {p: meta_by_pasta[p] * PACE[p] / sold[p] for p in PASTAS}
+        reached[line[7][2][3]].add(line[6][0])
+        reached["PLB"].add(line[6][0])
+    factor = {p: META_PASTA[p] * PACE[p] / sold[p] for p in PASTAS}
+    carteira = {p: round(len(reached[p]) / POS_PACE[p]) for p in reached}
+    _xlsx(name("totais", ".xlsx"), ["PASTA", "META", "CARTEIRA"],
+          [[p, META_PASTA[p], carteira.get(p, 120)] for p in META_PASTA] + [["PLB", sum(META_PASTA.values()), carteira["PLB"]]])
     with open(name("vendas", ".csv"), "w", newline="", encoding="cp1252") as f:
         w = csv.writer(f, delimiter=";")
         w.writerow(["ID RCA", "NOME RCA", "NOME SUPERVISOR", "NUMERO PEDIDO", "POSICAO PED", "DATA PEDIDO",

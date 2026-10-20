@@ -101,7 +101,7 @@ def number(value: object) -> float:
         return 0.0
     if isinstance(value, (int, float)):
         return float(value)
-    text = str(value).strip().replace("R$", "").replace(" ", "")
+    text = str(value).strip().replace("R$", "").replace(" ", "").replace("\xa0", "")  # "R$ 650.000,00"
     if not text:
         return 0.0
     if "," in text:

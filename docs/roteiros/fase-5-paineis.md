@@ -4,13 +4,13 @@ Leva uns 20 minutos, com o app aberto num PC e olhando para a TV.
 
 ## Antes de começar
 - Depois de extrair o ZIP por cima, rode `instalar.bat` de novo: esta fase traz uma peça nova (o leitor de `.xlsx`).
-- Tenha à mão as 5 planilhas do mês, com os nomes exatos (veja [paineis.md](../paineis.md#os-5-arquivos)).
+- Tenha à mão as 6 planilhas do mês, com os nomes exatos (veja [paineis.md](../paineis.md#os-6-arquivos)).
 
 ## Pasta dos painéis
-1. Entre no app como administrador e abra **Painéis** no menu. A página mostra a pasta (padrão: `%LOCALAPPDATA%\Hub\Painéis`) e as 5 planilhas como "Arquivo não encontrado na pasta".
+1. Entre no app como administrador e abra **Painéis** no menu. A página mostra a pasta (padrão: `%LOCALAPPDATA%\Hub\Painéis`) e as 6 planilhas como "Arquivo não encontrado na pasta" (a de metas por fornecedor é opcional).
 2. Na TV, nada mudou: sem planilhas, as telas de metas não entram na rotação.
 3. Envie a planilha **Fornecedores e pastas** pelo botão **Enviar** da página (pode ser com outro nome, como `Fornecedor_pasta.xlsx`). A linha fica verde, "Lida (N linhas)". Confira na pasta: o arquivo foi salvo como `(BASE) - Fornecedores Polybalas.xlsx`.
-4. Copie as outras 4 planilhas direto para a pasta, com os nomes certos (a 8081 pode continuar em `.csv`). Recarregue a página: todas "Lida".
+4. Copie as outras planilhas direto para a pasta, com os nomes certos (a 8081 pode continuar em `.csv`). Recarregue a página: todas "Lida".
 
 ## TV
 5. Em até uns 10 segundos, entram na rotação **Metas do mês**, **Metas do dia** (se o último dia com venda não for domingo) e **Produtos foco**.

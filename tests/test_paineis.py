@@ -45,6 +45,7 @@ def test_csv_like_excel_saves_in_portuguese(tmp_path):
     f.write_bytes("Código;Positivação;Valor;Data\n 7 ;Sim;1.234,56;05/09/2026\n\n8;Não;;\n".encode("cp1252"))
     rows = read_rows(f, {"id": "CODIGO", "pos": "positivacao", "valor": "VALOR"})
     assert rows == [{"id": " 7 ", "pos": "Sim", "valor": "1.234,56"}, {"id": "8", "pos": "Não", "valor": ""}]
+    assert number("R$\xa0650.000,00") == 650000 and number("R$ 5.350.000,00") == 5350000
     assert number("1.234,56") == 1234.56 and number("") == 0 and number(12) == 12 and number("27.45") == 27.45
     assert code(" 7 ") == "7" and code(19143.0) == "19143" and code("45.0") == "45"
     assert normalize("  Meta   POSITIVAÇÃO ") == "META POSITIVACAO"
@@ -97,45 +98,51 @@ def v(cliente, forn, dia, valor, produto="p"):
 def test_month_goals_by_folder_and_total():
     # setembro/2026 tem 26 dias de venda (segunda a sábado); até quinta 17/09 passaram 15 (58%)
     assert len(workdays(2026, 9)) == 26
-    metas = [("10", "1", 1000, 4), ("11", "1", 1000, 4), ("10", "3", 2000, 2), ("10", "99", 500, 1)]
+    # planilha Totais: META (financeiro) e CARTEIRA (positivação) por pasta; TLV não tem fornecedor; T = linha PLB
+    totais = {"A": (2000, 8), "B": (2000, 2), "TLV": (500, 1), "T": (5000, 12)}
     vendas = [
         v("c1", "1", 1, 300), v("c1", "2", 2, 200),  # mesmo cliente em 2 fornecedores da pasta A: positiva 1 vez
         v("c1", "1", 3, 100),                         # voltou no cliente: não positiva de novo
         v("c4", "1", 17, 60),
         v("c1", "3", 10, 100),                        # o mesmo cliente na pasta B conta para B
         v("c2", "3", 17, 500), v("c3", "3", 17, 500),
-        v("c9", "77", 17, 999),                       # fornecedor fora da planilha: não conta
+        v("c9", "77", 17, 999),                       # fornecedor fora da planilha: conta só no total
         Venda("c1", "p", "1", date(2026, 8, 31), 5000),  # mês anterior: não conta
     ]
-    m = compute_metas(FORN, metas, vendas)
+    m = compute_metas(FORN, totais, vendas)
     assert m["last_day"] == date(2026, 9, 17) and m["expected"] == 58 and m["is_workday"]
     fin = {c["pasta"]: c["pct"] for c in m["financeiro"]["mes"]}
-    assert fin == {"A": 33, "B": 55, "T": 44}  # A: 660/2000, B: 1100/2000, T: 1760/4000
-    pos = {c["pasta"]: c["pct"] for c in m["positivacao"]["mes"]}
+    assert fin == {"A": 33, "B": 55, "T": 55}  # A: 660/2000, B: 1100/2000, T: 2759/5000 (todas as vendas)
     # cliente único: c1 comprou nas pastas A e B, conta 1 em cada pasta e 1 só no total
-    assert pos == {"A": 25, "B": 150, "T": 40}  # A: 2 clientes / 8, B: 3 / 2, T: 4 / 10
-    # cor do mês = ritmo: B fez 55% com 58% esperado (95% do ritmo); A fez 33% (57%); T 44% (76%)
+    pos = {c["pasta"]: c["pct"] for c in m["positivacao"]["mes"]}
+    assert pos == {"A": 25, "B": 150, "T": 42}  # A: 2 / 8, B: 3 / 2, T: 5 / 12
+    # cor do mês = ritmo: A fez 33% com 58% esperado (57% do ritmo); B e T 55% (95%)
     tiers = {c["pasta"]: c["tier"] for c in m["financeiro"]["mes"]}
-    assert tiers == {"A": "critico", "B": "atencao", "T": "alerta"}
+    assert tiers == {"A": "critico", "B": "atencao", "T": "atencao"}
     # meta do dia = meta do mês / 26 dias de venda
     dia = {c["pasta"]: c["pct"] for c in m["financeiro"]["dia"]}
-    assert dia == {"T": 689, "A": 78, "B": 1300}
+    assert dia == {"T": 1071, "A": 78, "B": 1300}
     assert [c["pasta"] for c in m["financeiro"]["dia"]] == ["T", "A", "B"]
     # positivação do dia = clientes positivados pela primeira vez no mês naquele dia
     pos_dia = {c["pasta"]: c["pct"] for c in m["positivacao"]["dia"]}
-    assert pos_dia == {"T": 780, "A": 325, "B": 2600}  # A: c4 (1 de 8/26), B: c2 e c3 (2 de 2/26)
-    assert len(m["warnings"]) == 2  # meta e venda de fornecedores fora da planilha
+    assert pos_dia == {"T": 867, "A": 325, "B": 2600}
+    assert len(m["warnings"]) == 2 and "TLV" in m["warnings"][0]
     evo = {e["dia"]: e for e in m["evolucao"]}
-    assert len(evo) == 30 and evo[17]["real"] == 44 and evo[17]["meta"] == 58 and evo[18]["real"] is None
-    assert evo[1]["real"] == 8 and evo[5]["util"] is True  # sábado é dia de venda
+    assert len(evo) == 30 and evo[17]["real"] == 55 and evo[17]["meta"] == 58 and evo[18]["real"] is None
+    assert evo[1]["real"] == 6 and evo[5]["util"] is True  # sábado é dia de venda
     assert evo[6]["util"] is False and evo[6]["meta"] == evo[5]["meta"]  # domingo não
     assert evo[30]["meta"] == 100 and evo[18]["tier"] == "futuro"
 
 
+def test_total_without_plb_row_is_the_sum_of_folders():
+    m = compute_metas(FORN, {"A": (1000, 4), "B": (1000, 4)}, [v("c1", "1", 17, 500)])
+    assert {c["pasta"]: c["pct"] for c in m["financeiro"]["mes"]} == {"A": 50, "B": 0, "T": 25}
+
+
 def test_saturday_has_daily_goal_sunday_does_not():
-    m = compute_metas(FORN, [("10", "1", 2600, 4)], [v("c1", "1", 19, 50)])  # 19/09 é sábado
+    m = compute_metas(FORN, {"A": (2600, 4)}, [v("c1", "1", 19, 50)])  # 19/09 é sábado
     assert m["is_workday"] and m["financeiro"]["dia"][0]["pct"] == 50
-    m = compute_metas(FORN, [("10", "1", 1000, 4)], [v("c1", "1", 20, 100)])  # 20/09 é domingo
+    m = compute_metas(FORN, {"A": (1000, 4)}, [v("c1", "1", 20, 100)])  # 20/09 é domingo
     assert not m["is_workday"]
     assert all(c["pct"] is None and c["tier"] == "sem-meta" for c in m["financeiro"]["dia"])
 
@@ -220,10 +227,12 @@ def test_changed_file_is_reread_and_broken_file_only_drops_its_screens(db, caplo
 def test_missing_file_and_stale_warning(db):
     folder = put_examples(db)
     assert screens(db, datetime(2026, 9, 19, 10, 0))["metas-mes"]["data"]["velho"] is True  # mais de 24 h
-    (folder / (FILES_BY_KEY["metas"].base + ".xlsx")).unlink()
+    (folder / (FILES_BY_KEY["metas_forn"].base + ".xlsx")).unlink()
+    assert {"metas-mes", "produtos-foco"} <= set(screens(db))  # opcional: nenhuma tela depende dela
+    (folder / (FILES_BY_KEY["totais"].base + ".xlsx")).unlink()
     data = screens(db)
     assert "metas-mes" not in data and "metas-dia" not in data and "produtos-foco" in data
-    assert store_for(db).get().status("metas").error == "Arquivo não encontrado na pasta."
+    assert store_for(db).get().status("totais").error == "Arquivo não encontrado na pasta."
 
 
 def test_total_row_without_date_and_unreachable_folder(db, tmp_path):
