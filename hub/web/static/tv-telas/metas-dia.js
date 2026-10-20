@@ -1,4 +1,4 @@
-// Tela "Metas do dia": quanto cada pasta fez da meta do dia (meta do mês dividida pelos dias úteis),
+// Tela "Metas do dia": quanto cada pasta fez da meta do dia (meta do mês dividida pelos dias de venda, segunda a sábado),
 // em financeiro e em positivações. Só porcentagens.
 (function () {
   "use strict";

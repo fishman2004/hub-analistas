@@ -9,5 +9,5 @@
 - **Atualização a cada 5 s na TV e 10 s no app**, não instantânea.
 - **Mover cartões é por botões** (Começar, Concluir, Voltar). Arrastar e soltar fica para quando a equipe pedir.
 - **Uma TV só.** Funciona em mais de uma (basta abrir `/tv`), mas foi pensada para a sala.
-- **Painéis:** os dias úteis são de segunda a sexta, sem descontar feriados (a meta do dia e o "esperado" ficam um pouco abaixo do real num mês com feriado). Uma planilha de vendas em `.xlsx` muito grande demora mais para ler que em `.csv`; a TV continua com os dados anteriores enquanto isso. As regras do cálculo ainda serão conferidas com o time (ver [paineis.md](paineis.md#a-confirmar-com-o-kayo)).
+- **Painéis:** os dias de venda são de segunda a sábado, sem descontar feriados (a meta do dia e o "esperado" ficam um pouco abaixo do real num mês com feriado), e o sábado conta como um dia inteiro. Uma planilha de vendas em `.xlsx` muito grande demora mais para ler que em `.csv`; a TV continua com os dados anteriores enquanto isso.
 - **Ainda não tem:** banco de horas, avisos sonoros e rotinas com horário, prioridades do mês e integração com o Pombo. Tudo está no [roadmap](roadmap.md).

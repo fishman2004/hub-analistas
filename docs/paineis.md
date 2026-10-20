@@ -23,7 +23,7 @@ Cada arquivo pode ser `.xlsx`, `.xlsm` ou `.csv`. O Hub usa a **primeira aba** e
 | `(BASE) - Produtos Focos (KPI's)` | `ID PRODUTO`, `PRODUTO FOCO` |
 | `(BASE) - Fornecedores Polybalas` | `ID FORNECEDOR`, `FORNECEDOR`, `FORNECEDOR II`, `PASTA` |
 | `(BASE) - Metas Polybalas - KPI's e Produtos Focos` | `ID` (do vendedor), `PRODUTO FOCO`, `CLASSIFICACAO`, `META`, `META II` |
-| `(DADOS) - 8081 - Vendas` | `ID RCA`, `POSICAO PED`, `DATA PEDIDO`, `ID CLIENTE`, `ID PRODUTO`, `ID FORNECEDOR`, `VALOR` |
+| `(DADOS) - 8081 - Vendas` | `DATA PEDIDO`, `ID CLIENTE`, `ID PRODUTO`, `ID FORNECEDOR`, `VALOR` |
 
 **Formatos aceitos:**
 - CSV separado por `;` (o padrão do Excel em português), `,` ou tabulação; em UTF-8 ou no padrão do Windows.
@@ -33,13 +33,15 @@ Cada arquivo pode ser `.xlsx`, `.xlsm` ou `.csv`. O Hub usa a **primeira aba** e
 ## Como o Hub calcula
 
 - **Mês:** o mês da venda mais recente do arquivo 8081. Vendas de outros meses que estiverem no arquivo não contam.
-- **Pedido cancelado** (`POSICAO PED` = `C`) não conta. As outras posições contam.
+- **Todas as posições de pedido contam** (L liberado, B bloqueado, M montado, F faturado). O pedido cancelado já não vem na extração do sistema.
 - **Pasta:** cada venda e cada meta vai para a pasta do seu fornecedor, pela planilha de fornecedores (`ID FORNECEDOR` → `PASTA`). Fornecedor que não está nessa planilha fica de fora, e a página Painéis avisa quantos são.
 - **Financeiro:** soma de `VALOR` dividida pela soma de `META FINANCEIRA`, por pasta e no total (T).
-- **Positivação:** cada cliente que comprou de um fornecedor conta **uma vez por vendedor e por fornecedor** no mês. Divisões unificadas (mesmo `FORNECEDOR II`) contam como um fornecedor só. Dividido pela soma de `META POSITIVAÇÃO`.
-- **Dias úteis:** segunda a sexta (feriados não são descontados). A meta do dia é a meta do mês dividida pelos dias úteis do mês.
-- **Esperado até hoje:** a parte do mês já passada em dias úteis, até o último dia com venda. Ex.: 13 de 22 dias úteis = 59%.
-- **Produtos foco:** clientes que compraram algum produto do foco (`ID PRODUTO` → `PRODUTO FOCO`), um por vendedor, divididos pela soma de `META` daquele foco. `META II` aparece como uma marca na mesma barra.
+- **Positivação** é o atendimento único do mês, a mesma contagem distinta de `ID CLIENTE` do Excel: o cliente conta **uma vez no mês para cada fornecedor**, na primeira compra, não importa quantos pedidos nem quantos vendedores. Divisões unificadas (mesmo `FORNECEDOR II`) contam como um fornecedor só. A pasta e o total somam os fornecedores, do mesmo jeito que a meta (que vem por fornecedor), e são divididos pela soma de `META POSITIVAÇÃO`.
+- **Positivação do dia:** clientes positivados pela primeira vez no mês naquele dia.
+- **Dias de venda:** segunda a sábado (sábado é dia de venda até meio-dia); domingo não tem meta e feriados não são descontados. A meta do dia é a meta do mês dividida pelos dias de venda do mês.
+- **Esperado até hoje:** a parte do mês já passada em dias de venda, até o último dia com venda. Ex.: 15 de 26 dias = 58%.
+- **Total (T):** é a Polybalas inteira (o "PB" do painel do Excel).
+- **Produtos foco:** `META` é a meta de positivação (clientes distintos que compraram algum produto do foco, `ID PRODUTO` → `PRODUTO FOCO`) e `META II` é a meta financeira (soma de `VALOR` dos produtos do foco). Foco sem `META II` mostra só a positivação.
 
 ### As cores (sempre junto da porcentagem escrita)
 
@@ -58,8 +60,8 @@ Cada arquivo pode ser `.xlsx`, `.xlsm` ou `.csv`. O Hub usa a **primeira aba** e
 | Tela | O que mostra | Entra na rotação quando |
 |---|---|---|
 | **Metas do mês** | Evolução do financeiro total dia a dia (barras = realizado acumulado; linha pontilhada = onde precisava estar para fechar em 100%) e um cartão por pasta, de financeiro e de positivações, com a marca do esperado. | metas, fornecedores e vendas lidas |
-| **Metas do dia** | Barras de financeiro e positivações do último dia com venda, por pasta, com a linha dos 100%. | as mesmas, e o último dia com venda é dia útil |
-| **Produtos foco** | Uma barra por produto foco, do melhor para o pior, com o esperado e a META II. Se não couber, passa as páginas com fade. | produtos foco, metas dos produtos foco e vendas lidas |
+| **Metas do dia** | Barras de financeiro e positivações do último dia com venda, por pasta, com a linha dos 100%. | as mesmas, e o último dia com venda não é domingo |
+| **Produtos foco** | Para cada produto foco, uma barra de positivação (META) e uma de financeiro (META II), do melhor para o pior, com o esperado. Se não couber, passa as páginas com fade. | produtos foco, metas dos produtos foco e vendas lidas |
 
 Todas mostram "atualizado às HH:MM" (pela data do arquivo) e o aviso **Dados desatualizados** quando a planilha não muda há mais horas do que o limite de Configurações (padrão 24).
 
@@ -69,12 +71,10 @@ Todas mostram "atualizado às HH:MM" (pela data do arquivo) e o aviso **Dados de
 
 O Hub só relê um arquivo quando a data de modificação ou o tamanho mudam. A leitura roda em segundo plano: enquanto um arquivo grande é lido, a TV continua com os dados anteriores.
 
-## A confirmar com o Kayo
+## Respostas do Kayo (20/10/2026)
 
-As regras acima são o ponto de partida desta fase. Se alguma estiver diferente do que o time usa, muda num lugar só (`hub/paineis.py`):
-
-1. Positivação conta cliente por vendedor e por fornecedor (como acima), ou cliente único na pasta?
-2. Quais posições de pedido contam? Hoje só o cancelado (`C`) fica de fora.
-3. Dias úteis: segunda a sexta, ou sábado também tem meta?
-4. Meta dos produtos foco é em clientes positivados (como acima) ou em caixas vendidas? E a `META II`?
-5. A linha **PB** do painel do Excel (Financeiro - Dia) é o quê?
+- Positivação é o atendimento único do mês, contado com contagem distinta de cliente.
+- Todas as posições de pedido contam; cancelado não vem na extração.
+- Sábado é dia de venda (até meio-dia).
+- `META` dos produtos foco é positivação e `META II` é financeiro.
+- "PB" é a Polybalas, ou seja, o total.

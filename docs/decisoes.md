@@ -68,7 +68,7 @@ O plano dizia "o Hub não calcula, só exibe". Na hora de fazer, o Kayo pediu o 
 
 **Só porcentagens na TV**, por decisão do gestor (gerentes, vendedores e executivos passam pela sala). Isso é garantido no servidor: o `/api/tv` só recebe percentuais, as letras das pastas e textos fixos, e um teste confere que nenhum valor, quantidade ou nome das planilhas aparece na resposta.
 
-**Cor pelo ritmo no mês.** Comparar o realizado do mês com a meta cheia deixaria tudo vermelho até o fim do mês. A cor do mês compara com o esperado até o último dia com venda (dias úteis já passados); a cor do dia compara com a meta do dia.
+**Cor pelo ritmo no mês.** Comparar o realizado do mês com a meta cheia deixaria tudo vermelho até o fim do mês. A cor do mês compara com o esperado até o último dia com venda (dias de venda já passados, de segunda a sábado); a cor do dia compara com a meta do dia.
 
 **O mês é o da venda mais recente do arquivo**, não o do relógio: assim a TV continua certa no dia 1º, antes da primeira exportação do mês novo, e com arquivos de teste.
 

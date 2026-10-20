@@ -72,7 +72,7 @@ def generate(out: Path = OUT) -> None:
     for sid, sname, sup in sellers:
         for s in goal_suppliers:
             goals.append([int(sid), sname, sup, int(s[0]), s[1], round(rnd.uniform(2500, 9000), 4),
-                          round(rnd.randint(12, 45) * POS_SCALE[s[3]])])
+                          round(rnd.randint(16, 30) * POS_SCALE[s[3]])])
     _xlsx(name("metas", ".xlsx"), ["ID VENDEDOR", "NOME DO VENDEDOR", "SUPERVISOR", "ID FORN", "NOME FORNECEDOR",
                                    "META FINANCEIRA", "META POSITIVAÇÃO"], goals)
 
@@ -80,8 +80,9 @@ def generate(out: Path = OUT) -> None:
     for sid, sname, sup in sellers:
         for i, foco in enumerate(focos):
             meta = rnd.randint(20, 36) + 12 * i
+            # META = positivação (clientes); META II = financeiro (só em alguns focos, como na planilha real)
             kpis.append([int(sid), sname, sup, foco, "VAREJO" if i < 4 else "FARMA", meta,
-                         round(meta * 1.5) if i % 2 == 0 else None])
+                         round(rnd.uniform(3000, 7000) * (1 + i / 2), 2) if i % 2 == 0 else None])
     _xlsx(name("metas_kpi", ".xlsx"), ["ID", "VENDEDOR", "SUPERVISOR", "PRODUTO FOCO", "CLASSIFICACAO", "META",
                                        "META II"], kpis)
 
@@ -97,7 +98,7 @@ def generate(out: Path = OUT) -> None:
             for _ in range(rnd.randint(2, 5) if d.weekday() == 5 else rnd.randint(6, 12)):
                 order += 1
                 client = rnd.choice(clients)
-                status = "C" if rnd.random() < .03 else "F"
+                status = rnd.choice("FFFFFFLMB")  # cancelado não vem na extração
                 for product in rnd.sample(products, rnd.randint(2, 6)):
                     qty = rnd.randint(1, 24)
                     lines.append([sid, sname, sup, order, status, d, client, product, qty, rnd.uniform(5, 40) * qty])
@@ -107,8 +108,7 @@ def generate(out: Path = OUT) -> None:
         meta_by_pasta[pasta_of[str(g[3])]] += g[5]
     sold = {p: 0.0 for p in PASTAS}
     for line in lines:
-        if line[4] != "C":
-            sold[line[7][2][3]] += line[9]
+        sold[line[7][2][3]] += line[9]
     factor = {p: meta_by_pasta[p] * PACE[p] / sold[p] for p in PASTAS}
     with open(name("vendas", ".csv"), "w", newline="", encoding="cp1252") as f:
         w = csv.writer(f, delimiter=";")
