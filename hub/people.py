@@ -21,10 +21,18 @@ class Person:
     initials: str
     color: str
     active: bool
+    role: str = "analista"
+    is_admin: bool = False
+    has_pin: bool = False
+
+    @property
+    def is_manager(self) -> bool:
+        return self.role == "gestor"
 
 
 def _row(r) -> Person:
-    return Person(r["id"], r["name"], r["initials"], r["color"], bool(r["active"]))
+    return Person(r["id"], r["name"], r["initials"], r["color"], bool(r["active"]),
+                  r["role"], bool(r["is_admin"]), r["pin_hash"] is not None)
 
 
 def _default_initials(name: str) -> str:
@@ -80,7 +88,11 @@ def update_person(db: Database, now: datetime, actor_id: int | None, person_id: 
 
 def deactivate_person(db: Database, now: datetime, actor_id: int | None, person_id: int) -> None:
     with db.connect() as conn:
+        admins = [r[0] for r in conn.execute("SELECT id FROM people WHERE is_admin = 1 AND active = 1")]
+        if admins == [person_id]:
+            raise ValidationError("Essa é a única pessoa administradora. Marque outra antes de desativar.")
         conn.execute("UPDATE people SET active = 0 WHERE id = ?", (person_id,))
+        conn.execute("DELETE FROM sessions WHERE person_id = ?", (person_id,))
         log_event(conn, now, actor_id, "pessoa_desativada", f"pessoa:{person_id}", "")
 
 
