@@ -1,4 +1,6 @@
 /* App do analista: claro, direto, botões grandes. Cores de status iguais às da TV. */
+/* Tema: claro por padrão; escuro quando a pessoa escolhe (data-tema="escuro") ou quando
+   está no automático e o Windows usa o modo escuro. A escolha é feita em tema.js. */
 :root {
   --fundo: #f4f6f8;
   --cartao: #ffffff;
@@ -11,13 +13,22 @@
   --pausa: #1f5f99;
   --fora: #6a737d;
   --atraso: #b42318;
+  --sobre-cor: #ffffff;   /* texto sobre um botão de presença marcado */
   --raio: 10px;
   color-scheme: light;
 }
+/* as duas regras abaixo têm as mesmas cores: uma vale pela escolha, a outra pelo automático */
+:root[data-tema="escuro"] {
+  --fundo: #0e141a; --cartao: #18212b; --texto: #e9edf1; --suave: #9aa6b2; --linha: #2a3642;
+  --azul: #7fb2e5; --sala: #4cc06d; --reuniao: #f0b24a; --pausa: #7fb2e5; --fora: #8a939c; --atraso: #f2867a;
+  --sobre-cor: #0e141a;
+  color-scheme: dark;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-tema]) {
     --fundo: #0e141a; --cartao: #18212b; --texto: #e9edf1; --suave: #9aa6b2; --linha: #2a3642;
     --azul: #7fb2e5; --sala: #4cc06d; --reuniao: #f0b24a; --pausa: #7fb2e5; --fora: #8a939c; --atraso: #f2867a;
+    --sobre-cor: #0e141a;
     color-scheme: dark;
   }
 }
@@ -34,6 +45,10 @@ a { color: var(--azul); }
 .topo nav a:hover { background: var(--fundo); color: var(--texto); }
 .topo nav a[aria-current="page"] { background: var(--azul); color: var(--cartao); }
 .eu { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.tema { padding: 6px 12px; font-weight: 400; background: transparent; color: var(--suave); border-color: var(--linha); white-space: nowrap; }
+.tema:hover { color: var(--texto); }
+.marca + .tema { margin-left: auto; }  /* tela de entrar: sem menu, o botão vai para a direita */
+.tema[hidden] { display: none; }
 
 main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
 h1 { margin: 0 0 16px; font-size: 1.8rem; }
@@ -54,7 +69,7 @@ button.link { background: none; border: none; color: var(--azul); padding: 0; fo
 .presenca { background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio); padding: 16px; margin-bottom: 24px; }
 .status-botoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
 .status-botao { width: 100%; padding: 14px; font-size: 1.05rem; background: var(--cartao); color: var(--texto); border: 2px solid var(--linha); }
-.status-botao[aria-pressed="true"] { color: #fff; border-color: transparent; }
+.status-botao[aria-pressed="true"] { color: var(--sobre-cor); border-color: transparent; }
 .status-botao.st-1[aria-pressed="true"] { background: var(--sala); }
 .status-botao.st-2[aria-pressed="true"] { background: var(--reuniao); }
 .status-botao.st-3[aria-pressed="true"] { background: var(--pausa); }

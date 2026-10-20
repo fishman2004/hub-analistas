@@ -31,6 +31,7 @@ flowchart TB
 - **Histórico de tudo** (`db.log_event`): cada mudança grava quem, quando e o quê. Ele alimenta a tela de histórico e as próximas versões (banco de horas, visão do gerente).
 - **SQLite em modo WAL**, uma conexão por operação, com espera de até 5 s: dois PCs mexendo no mesmo cartão ao mesmo tempo não dão erro, e vale a última mudança (as duas ficam no histórico).
 - **A TV nunca rola:** `tv.js` acrescenta cartões enquanto cabem e troca o que sobra por "+ N demandas". O tamanho das letras acompanha a largura da tela (`html { font-size: 100vw / 120 }`), então funciona em qualquer TV.
+- **Tema do app no navegador, não no servidor** (`static/tema.js`): cada pessoa escolhe automático, claro ou escuro, e a escolha fica no `localStorage` daquele navegador. As cores são variáveis CSS em `app.css`; `data-tema` no `<html>` força claro ou escuro, e sem ele vale o modo do Windows. O script carrega no `<head>` para a página já nascer no tema certo. A TV usa `tv.css` e não carrega esse script, então não muda com a escolha de ninguém.
 - **Sem senha na versão 1:** cada pessoa escolhe o próprio nome uma vez (cookie no navegador). Formulários vindos de outro site são recusados (mesma origem).
 
 ## Onde está cada coisa
@@ -44,6 +45,6 @@ flowchart TB
 | `hub/presence.py` | Presença e a virada do dia |
 | `hub/backup.py` | Cópia de segurança diária (14 dias) |
 | `hub/winsys.py` | Abrir com o Windows, não dormir, TV em tela cheia |
-| `hub/web/` | Rotas, páginas e o JavaScript da TV |
+| `hub/web/` | Rotas, páginas, o JavaScript da TV e o do tema do app (`static/tema.js`) |
 | `tools/` | Teste de rede e dados de demonstração |
 | `tests/` | Testes automáticos (pytest) |

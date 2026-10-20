@@ -6,6 +6,7 @@
   <title>{% block title %}Hub dos Analistas{% endblock %}</title>
   <link rel="icon" href="/static/hub.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css?v={{ version }}">
+  <script src="/static/tema.js?v={{ version }}"></script>
 </head>
 <body>
   <header class="topo">
@@ -23,6 +24,7 @@
       <button class="link">Trocar</button>
     </form>
     {% endif %}
+    <button type="button" id="tema" class="tema" hidden>Tema</button>
   </header>
   <main>{% block main %}{% endblock %}</main>
   {% block scripts %}{% endblock %}
