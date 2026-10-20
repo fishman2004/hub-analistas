@@ -234,10 +234,9 @@ def _month(vendas: list[Venda]) -> tuple[date, list[Venda], list[date], int]:
 def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
     """Meta x realizado por pasta e no total, no mês da venda mais recente do arquivo.
 
-    Positivação é a contagem distinta de clientes de cada fornecedor (FORNECEDOR II): o cliente conta
-    uma vez no mês para o fornecedor, não importa quantos pedidos nem quantos vendedores. A pasta e o
-    total somam os fornecedores, do mesmo jeito que a meta (que vem por fornecedor). No dia, contam os
-    clientes positivados pela primeira vez no mês naquele dia.
+    Positivação é a contagem distinta de clientes, como a empresa conta: o cliente que comprou de
+    2 fornecedores da pasta é 1 positivação para a pasta e 1 para o total, sem acumular. No dia, contam
+    os clientes positivados pela primeira vez no mês naquele dia (na pasta ou no total).
     """
     last, month, days, expected = _month(vendas)
     sales_day = is_sales_day(last)
@@ -255,7 +254,7 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
 
     real_fin: dict[str, float] = {}
     day_fin: dict[str, float] = {}
-    first_buy: dict[tuple, date] = {}  # (pasta, fornecedor, cliente) -> primeiro dia de compra no mês
+    first_buy: dict[tuple, date] = {}  # (pasta ou T, cliente) -> primeiro dia de compra no mês
     unknown = set()
     daily_total = [0.0] * (calendar.monthrange(last.year, last.month)[1] + 1)
     for v in month:
@@ -263,14 +262,15 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
         if info is None:
             unknown.add(v.fornecedor)
             continue
-        group, pasta = info
+        pasta = info[1]
         real_fin[pasta] = real_fin.get(pasta, 0) + v.valor
         daily_total[v.dia.day] += v.valor
         if v.dia == last:
             day_fin[pasta] = day_fin.get(pasta, 0) + v.valor
-        key = (pasta, group, v.cliente)
-        if key not in first_buy or v.dia < first_buy[key]:
-            first_buy[key] = v.dia
+        for level in (pasta, TOTAL):
+            key = (level, v.cliente)
+            if key not in first_buy or v.dia < first_buy[key]:
+                first_buy[key] = v.dia
 
     pastas = sorted(set(meta_fin) | set(real_fin))
 
@@ -280,10 +280,9 @@ def compute_metas(fornecedores: dict, metas: list, vendas: list[Venda]) -> dict:
     meta_fin, meta_pos, real_fin, day_fin = totals(meta_fin), totals(meta_pos), totals(real_fin), totals(day_fin)
     real_pos: dict[str, int] = {}
     day_pos: dict[str, int] = {}
-    for (pasta, _, _), first in first_buy.items():
-        real_pos[pasta] = real_pos.get(pasta, 0) + 1
-        day_pos[pasta] = day_pos.get(pasta, 0) + (first == last)
-    real_pos, day_pos = totals(real_pos), totals(day_pos)
+    for (level, _), first in first_buy.items():  # o total tem a contagem própria: não é a soma das pastas
+        real_pos[level] = real_pos.get(level, 0) + 1
+        day_pos[level] = day_pos.get(level, 0) + (first == last)
     share = 1 / len(days)
 
     def month_cards(real: dict, meta: dict) -> list[dict]:

@@ -87,7 +87,7 @@ def generate(out: Path = OUT) -> None:
                                        "META II"], kpis)
 
     # vendas: pedidos sorteados e depois escalados para cada pasta chegar no ritmo de PACE
-    clients = [(str(200000 + i), f"CLIENTE {i:04d}") for i in range(1, 301)]
+    clients = [(str(200000 + i), f"CLIENTE {i:04d}") for i in range(1, 2501)]
     days = [MONTH_START + timedelta(n) for n in range((LAST_DAY - MONTH_START).days + 1)]
     lines = []
     order = 31000000

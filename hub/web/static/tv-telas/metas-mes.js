@@ -3,7 +3,7 @@
 (function () {
   "use strict";
   const { el } = HubTV;
-  const { svg, textoPct, cabecalho, barra } = HubPainel;
+  const { svg, textoPct, cabecalho, barra, letraPasta } = HubPainel;
   let ultimo = null;
 
   function evolucao(caixa, dias) {
@@ -47,7 +47,7 @@
     caixa.replaceChildren();
     for (const c of lista) {
       const card = el("div", "cartao-pasta faixa-borda-" + c.tier + (c.pasta === "T" ? " total" : ""));
-      card.append(el("div", "letra", c.pasta));  // "T" = total, como no painel do Excel
+      card.append(letraPasta(c.pasta));  // "T" = total da Polybalas, como no painel do Excel
       card.append(el("div", "pct", textoPct(c.pct)));
       card.append(barra(c.pct, c.tier, 120, [{ valor: esperado, classe: "marca-esperado" }]));
       caixa.append(card);
