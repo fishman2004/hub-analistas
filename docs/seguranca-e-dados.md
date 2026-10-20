@@ -8,6 +8,7 @@
 | Demandas normais (título, pasta, quem pediu, prazo) | Sim | Sim |
 | Demanda **reservada** | Só "Demanda reservada", a cor e as iniciais do dono e o prazo | Tudo |
 | Histórico | Não | Sim |
+| PIN | Não | Ninguém (só um resumo fica guardado) |
 
 A demanda reservada é mascarada **no servidor**: a página da TV nunca recebe o título, então nem quem inspecionar a página consegue ver.
 
@@ -28,6 +29,8 @@ Nada sai da rede da empresa: sem nuvem, sem telemetria, sem terceiros.
 
 ## Acesso
 
-- **Sem senha na versão 1.** Cada pessoa escolhe o próprio nome uma vez, e o navegador lembra. Faz sentido para uma equipe pequena numa rede interna. O histórico registra quem fez cada mudança.
+- **Nome + PIN (desde a fase 2).** Cada pessoa cria um PIN de 4 a 6 números no primeiro acesso. O Hub guarda só um resumo do PIN, com sal, e ninguém consegue ver o PIN de ninguém. A entrada vale até a meia-noite. Cinco PINs errados seguidos bloqueiam aquele nome por 5 minutos.
+- **Papéis:** analista ou gestor, mais a marcação de administrador. Só administradores gerenciam Pessoas, mudam papéis e redefinem PINs. Toda mudança de acesso fica no histórico, com quem fez.
+- **A TV continua sem login,** porque só mostra o que já é público, e o endereço da TV não lê nada de PIN, papel ou sessão.
 - Formulários enviados a partir de **outro site** são recusados (verificação de mesma origem).
-- O Hub fica acessível a quem estiver na rede da empresa e souber o endereço. Se isso não for aceitável, o próximo passo é um PIN por pessoa (roadmap).
+- O Hub fica acessível a quem estiver na rede da empresa e souber o endereço, mas só entra quem tem o PIN de alguém da equipe.

@@ -15,13 +15,13 @@
     <nav aria-label="Menu principal">
       <a href="/" {% if active == 'quadro' %}aria-current="page"{% endif %}>Quadro</a>
       <a href="/historico" {% if active == 'historico' %}aria-current="page"{% endif %}>Histórico</a>
-      <a href="/pessoas" {% if active == 'pessoas' %}aria-current="page"{% endif %}>Pessoas</a>
+      {% if user.is_admin %}<a href="/pessoas" {% if active == 'pessoas' %}aria-current="page"{% endif %}>Pessoas</a>{% endif %}
       <a href="/tv" target="_blank" rel="noopener">Ver a TV</a>
     </nav>
     <form class="eu" method="post" action="/sair">
       <span class="bolinha" style="--cor: {{ user.color }}">{{ user.initials }}</span>
-      <span>{{ user.name }}</span>
-      <button class="link">Trocar</button>
+      <a class="eu-nome" href="/meu-pin" title="Trocar meu PIN">{{ user.name }}</a>
+      <button class="link">Sair</button>
     </form>
     {% endif %}
     <button type="button" id="tema" class="tema" hidden>Tema</button>

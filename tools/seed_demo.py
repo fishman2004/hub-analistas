@@ -10,13 +10,15 @@ Serve para apresentar o Hub e tirar prints sem dados reais:
 import os
 from datetime import date, datetime, timedelta
 
+from hub.access import create_pin, set_access
 from hub.db import Database
 from hub.demands import create_demand, move_demand
 from hub.paths import data_dir
-from hub.people import add_person, list_people
+from hub.people import add_person, get_person, list_people
 from hub.presence import set_status
 
 TEAM = ["Ana Souza", "Bianca Lima", "Carla Dias", "Diego Rocha", "Elisa Prado"]
+DEMO_PIN = "1234"
 
 
 def seed(now: datetime | None = None) -> Database:
@@ -31,6 +33,9 @@ def seed(now: datetime | None = None) -> Database:
     early = now.replace(hour=8, minute=0, second=0, microsecond=0)
     ana, bianca, carla, diego, elisa = (add_person(db, early, None, n) for n in TEAM)
     today = now.date()
+    for person in (ana, bianca, carla, diego, elisa):
+        create_pin(db, early, person.id, DEMO_PIN, DEMO_PIN)  # Ana, a primeira, vira administradora
+    set_access(db, early, get_person(db, ana.id), bianca.id, "gestor", True)
 
     def demand(owner, title, column="todo", minutes=0, **kw):
         d = create_demand(db, early + timedelta(minutes=minutes), owner.id, title=title, owner_id=owner.id, **kw)
@@ -61,3 +66,4 @@ def seed(now: datetime | None = None) -> Database:
 
 if __name__ == "__main__":
     print("pasta de demonstração:", seed().path.parent)
+    print(f"PIN de todos: {DEMO_PIN} (Ana Souza é administradora; Bianca Lima é gestora e administradora)")

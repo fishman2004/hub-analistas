@@ -14,7 +14,7 @@ Aqui várias pessoas escrevem ao mesmo tempo, mas só um programa (o servidor) a
 
 "Concluído hoje", "Fora da empresa" depois da meia-noite e "atrasada" são calculados a partir das datas toda vez que a tela é montada. Não existe tarefa de meia-noite que possa falhar porque o PC estava desligado.
 
-## Sem senha na versão 1
+## Sem senha na versão 1 (substituído pelo PIN na fase 2)
 
 Equipe pequena, rede interna, nada sigiloso fora das demandas reservadas (que não aparecem na TV). A pessoa escolhe o próprio nome uma vez, e o navegador lembra. Todo movimento fica no histórico com o nome de quem fez.
 
@@ -25,3 +25,17 @@ A preferência de tema é de cada pessoa e de cada PC, não do Hub. Por isso fic
 A TV fica de fora de propósito: ela tem o próprio tema escuro, pensado para ler de longe, e não pode mudar porque alguém escolheu o claro no PC dele.
 
 Ao revisar as cores, o texto branco dos botões de presença marcados no modo escuro tinha pouco contraste (cerca de 2:1 sobre o verde e o amarelo). Agora o texto acompanha o tema (`--sobre-cor`): branco no claro, escuro no escuro, acima de 4,5:1 nos dois.
+
+## PIN de 4 a 6 números, não senha (fase 2)
+
+Para gestor e banco de horas, escolher o nome não basta. Um PIN curto é rápido de digitar várias vezes ao dia e suficiente numa rede interna, porque quem tenta pelo app esbarra no bloqueio: 5 erros seguidos travam aquele nome por 5 minutos. No banco fica só o resumo PBKDF2-SHA256 (200 mil rodadas, sal diferente por pessoa), da biblioteca padrão do Python: nenhuma dependência nova.
+
+- **Sessão até a meia-noite:** cobre o dia de trabalho sem pedir o PIN a cada página, e ninguém fica logado no PC de outra pessoa de um dia para o outro.
+- **Esqueceu o PIN:** um administrador apaga o PIN (não vê nem define), e a pessoa cria outro no próximo acesso.
+- **Primeiro administrador:** o código não pode trazer nomes reais (o repositório é público). Por isso, enquanto não há administrador, quem cria o primeiro PIN vira administrador. Na atualização, o Kayo entra primeiro e depois marca o gestor.
+- **Sempre um administrador:** o Hub recusa tirar a marcação ou desativar o último, para ninguém ficar sem conseguir gerenciar.
+- **Risco aceito:** até cada pessoa criar o próprio PIN, outra pessoa poderia criá-lo no lugar dela. O roteiro da fase pede que todos criem o PIN no primeiro dia; se acontecer, o administrador redefine.
+
+## Migração do banco versionada (fase 2)
+
+O `PRAGMA user_version` guarda qual foi a última mudança aplicada. Ao iniciar, o Hub faz uma cópia do banco e aplica só o que falta, cada mudança dentro de uma transação. Assim a atualização continua sendo extrair o ZIP e rodar `instalar.bat`, sem passo manual e sem perder dados.

@@ -29,7 +29,7 @@ def test_entrar_has_theme_button_and_script(client):
 
 def test_board_has_theme_button(client):
     c, kayo = client
-    c.post("/entrar", data={"person_id": str(kayo.id)})
+    c.post(f"/entrar/{kayo.id}", data={"pin": "1234", "confirmar": "1234"})
     html = c.get("/").text
     assert 'id="tema"' in html and "tema.js" in html
 
