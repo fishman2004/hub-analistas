@@ -106,8 +106,8 @@ body {
 .tela > .quadro { flex: 1; }
 .tela-titulo { margin: 0; font-size: 2rem; }
 
-.rotacao { flex: 1; display: flex; justify-content: center; gap: 1.5rem; }
-.rot-item { display: grid; gap: .35rem; min-width: 8rem; color: var(--suave); font-size: 1.2rem; text-align: center; }
+.rotacao { flex: 1; display: flex; justify-content: center; gap: 1.2rem; min-width: 0; }
+.rot-item { display: grid; gap: .35rem; min-width: 7rem; white-space: nowrap; color: var(--suave); font-size: 1.2rem; text-align: center; }
 .rot-item.ativa { color: var(--texto); font-weight: 600; }
 .rot-barra { height: .3rem; border-radius: 999px; background: var(--linha); overflow: hidden; }
 .rot-progresso { display: block; height: 100%; width: 0; background: var(--suave); }
