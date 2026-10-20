@@ -10,7 +10,8 @@
 | Visão do gestor (resumo do dia e todas as demandas) | Não | Só o gestor e os administradores |
 | Prazos da semana (tela da TV) | Sim, com a reservada mascarada como no Quadro | Não se aplica |
 | Painéis de vendas (metas, positivação, produtos foco) | **Só porcentagens e gráficos**, nunca valores, quantidades ou nomes | Página Painéis: só a situação das planilhas (lida, quantas linhas, quando). Enviar planilha: só administradores |
-| Histórico | Não | Sim |
+| Banco de horas (saldo e entrada/saída de cada dia) | **Nunca** (o endereço da TV nem consulta essas tabelas) | Só a própria pessoa e o gestor. Administrador sozinho não vê |
+| Histórico | Não | Sim (as linhas do banco de horas só para a própria pessoa e o gestor) |
 | PIN | Não | Ninguém (só um resumo fica guardado) |
 
 Os painéis seguem a regra do gestor: muita gente passa pela sala, então a TV mostra metas só em porcentagem. Isso também é feito **no servidor**: o endereço da TV recebe apenas percentuais e as letras das pastas, e um teste automático confere que nenhum valor, quantidade ou nome das planilhas vai junto. Os nomes de vendedor e supervisor da 8081 só são lidos para tirar a letra da pasta (ou ver se é Televendas), e não ficam guardados.
@@ -28,6 +29,7 @@ Marcada **sempre pela própria pessoa**. O Hub não detecta nada sozinho: não o
 | Código, documentação, testes | pasta do projeto | Sim |
 | Equipe, demandas, presença, histórico | `%LOCALAPPDATA%\Hub\hub.db` no PC reserva | **Não** |
 | Planilhas dos painéis (metas, vendas da 8081 etc.) | pasta dos painéis (padrão `%LOCALAPPDATA%\Hub\Painéis`, ou a pasta de rede escolhida) | **Não**. No repositório só há exemplos com dados fictícios (`tools/exemplos/`) |
+| Banco de horas | dentro do `hub.db` (a planilha do RH é lida e descartada, não fica guardada) | **Não** |
 | Cópias diárias (14 dias) | `%LOCALAPPDATA%\Hub\copias` | **Não** |
 | Dados de demonstração | criados na hora por `tools/seed_demo.py`, com nomes **fictícios** | O script sim; os dados não |
 

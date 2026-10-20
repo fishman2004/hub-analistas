@@ -76,6 +76,26 @@ MIGRATIONS: list[tuple[int, str]] = [
             value TEXT NOT NULL
         );
     """),
+    (4, """
+        -- v2 · banco de horas: saldo base de cada pessoa (do RH, pelo gestor) e a entrada e saída de cada dia
+        CREATE TABLE hours_balance (
+            person_id INTEGER PRIMARY KEY REFERENCES people(id),
+            minutes INTEGER NOT NULL,
+            as_of TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            updated_by INTEGER REFERENCES people(id)
+        );
+        CREATE TABLE hours_entries (
+            id INTEGER PRIMARY KEY,
+            person_id INTEGER NOT NULL REFERENCES people(id),
+            day TEXT NOT NULL,
+            entrada TEXT NOT NULL,
+            saida TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE (person_id, day)
+        );
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
