@@ -23,9 +23,9 @@ MONTH_START = date(2026, 9, 1)
 LAST_DAY = date(2026, 9, 17)  # uma quinta-feira: o mês "em andamento"
 PASTAS = "ABCDEFG"
 # quanto cada pasta já fez da meta do mês até o último dia (fictício, para os gráficos variarem)
-PACE = {"A": .68, "B": .52, "C": .61, "D": .40, "E": .57, "F": .33, "G": .63}
+PACE = {"A": .68, "B": .52, "C": .61, "D": .40, "E": .57, "F": .33, "G": .63, "TLV": .49}
 # quanto da carteira (meta de positivação) cada pasta já positivou
-POS_PACE = {"A": .62, "B": .48, "C": .71, "D": .39, "E": .55, "F": .45, "G": .66, "PLB": .58}
+POS_PACE = {"A": .62, "B": .48, "C": .71, "D": .39, "E": .55, "F": .45, "G": .66, "TLV": .52, "PLB": .58}
 # meta financeira do mês por pasta (fictícia); TLV é um canal sem fornecedor próprio, como na planilha real
 META_PASTA = {"A": 535000, "B": 618000, "C": 900000, "D": 615000, "E": 430000, "F": 417000, "G": 55000, "TLV": 30000}
 
@@ -48,6 +48,8 @@ def generate(out: Path = OUT) -> None:
     name = lambda key, ext: out / (FILES_BY_KEY[key].base + ext)
 
     sellers = [(str(10 + i), f"VENDEDOR {i:02d}", f"SUPERVISOR {'XYZ'[i % 3]}") for i in range(1, 11)]
+    # Televendas: aparece na 8081 como "P-TLV- ..." com o supervisor "P-TELEVENDAS (...)"
+    sellers += [(str(60 + i), f"P-TLV- VENDEDOR {60 + i}", "P-TELEVENDAS (SUPERVISOR T)") for i in range(1, 3)]
     suppliers = []  # (id, nome, grupo, pasta)
     next_id = 1001
     for pasta in PASTAS:
@@ -101,13 +103,14 @@ def generate(out: Path = OUT) -> None:
                 for product in rnd.sample(products, rnd.randint(2, 6)):
                     qty = rnd.randint(1, 24)
                     lines.append([sid, sname, sup, order, status, d, client, product, qty, rnd.uniform(5, 40) * qty])
-    sold = {p: 0.0 for p in PASTAS}
-    reached = {p: set() for p in [*PASTAS, "PLB"]}
+    group_of = lambda line: "TLV" if "TLV" in line[1] else line[7][2][3]  # a venda do Televendas é da TLV
+    sold = {p: 0.0 for p in [*PASTAS, "TLV"]}
+    reached = {p: set() for p in [*PASTAS, "TLV", "PLB"]}
     for line in lines:
-        sold[line[7][2][3]] += line[9]
-        reached[line[7][2][3]].add(line[6][0])
+        sold[group_of(line)] += line[9]
+        reached[group_of(line)].add(line[6][0])
         reached["PLB"].add(line[6][0])
-    factor = {p: META_PASTA[p] * PACE[p] / sold[p] for p in PASTAS}
+    factor = {p: META_PASTA[p] * PACE[p] / sold[p] for p in sold}
     carteira = {p: round(len(reached[p]) / POS_PACE[p]) for p in reached}
     _xlsx(name("totais", ".xlsx"), ["PASTA", "META", "CARTEIRA"],
           [[p, META_PASTA[p], carteira.get(p, 120)] for p in META_PASTA] + [["PLB", sum(META_PASTA.values()), carteira["PLB"]]])
@@ -117,7 +120,7 @@ def generate(out: Path = OUT) -> None:
                     "ID CLIENTE", "CLIENTE", "ID PRODUTO", "NOME PRODUTO", "ID FORNECEDOR", "NOME FORNECEDOR",
                     "QTDE CX", "QTDE UND", "VALOR", "QTDE CX VENDIDA"])
         for sid, sname, sup, order, status, d, client, product, qty, value in lines:
-            value *= factor[product[2][3]]
+            value *= factor["TLV" if "TLV" in sname else product[2][3]]
             br = lambda x: f"{x:.2f}".replace(".", ",")
             w.writerow([sid, sname, sup, order, status, d.strftime("%d/%m/%Y"), client[0], client[1], product[0],
                         product[1], product[2][0], product[2][1], 12, qty, br(value), br(qty / 12)])

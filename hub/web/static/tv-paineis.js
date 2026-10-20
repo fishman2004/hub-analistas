@@ -59,9 +59,10 @@
     return trilho;
   }
 
-  // letra da pasta na cor padrão da empresa (tv.css: --pasta-A ...); o total e o Canal Farma ficam neutros
+  // letra da pasta na cor padrão da empresa (tv.css: --pasta-A ...); o total, o Canal Farma e o Televendas (TLV) ficam neutros
   function letraPasta(pasta, texto) {
-    return el("div", "letra pasta-" + (/^[A-G]$/.test(pasta) ? pasta : "T"), texto || pasta);
+    const t = texto || pasta;
+    return el("div", "letra pasta-" + (/^[A-G]$/.test(pasta) ? pasta : "T") + (t.length > 1 ? " longa" : ""), t);
   }
 
   window.HubPainel = { textoPct, svg, cabecalho, barra, letraPasta };

@@ -98,7 +98,7 @@ def v(cliente, forn, dia, valor, produto="p"):
 def test_month_goals_by_folder_and_total():
     # setembro/2026 tem 26 dias de venda (segunda a sábado); até quinta 17/09 passaram 15 (58%)
     assert len(workdays(2026, 9)) == 26
-    # planilha Totais: META (financeiro) e CARTEIRA (positivação) por pasta; TLV não tem fornecedor; T = linha PLB
+    # planilha Totais: META (financeiro) e CARTEIRA (positivação) por pasta; TLV = Televendas; T = linha PLB
     totais = {"A": (2000, 8), "B": (2000, 2), "TLV": (500, 1), "T": (5000, 12)}
     vendas = [
         v("c1", "1", 1, 300), v("c1", "2", 2, 200),  # mesmo cliente em 2 fornecedores da pasta A: positiva 1 vez
@@ -112,26 +112,43 @@ def test_month_goals_by_folder_and_total():
     m = compute_metas(FORN, totais, vendas)
     assert m["last_day"] == date(2026, 9, 17) and m["expected"] == 58 and m["is_workday"]
     fin = {c["pasta"]: c["pct"] for c in m["financeiro"]["mes"]}
-    assert fin == {"A": 33, "B": 55, "T": 55}  # A: 660/2000, B: 1100/2000, T: 2759/5000 (todas as vendas)
+    assert fin == {"A": 33, "B": 55, "TLV": 0, "T": 55}  # A: 660/2000, B: 1100/2000, T: 2759/5000 (todas as vendas)
     # cliente único: c1 comprou nas pastas A e B, conta 1 em cada pasta e 1 só no total
     pos = {c["pasta"]: c["pct"] for c in m["positivacao"]["mes"]}
-    assert pos == {"A": 25, "B": 150, "T": 42}  # A: 2 / 8, B: 3 / 2, T: 5 / 12
+    assert pos == {"A": 25, "B": 150, "TLV": 0, "T": 42}  # A: 2 / 8, B: 3 / 2, T: 5 / 12
     # cor do mês = ritmo: A fez 33% com 58% esperado (57% do ritmo); B e T 55% (95%)
     tiers = {c["pasta"]: c["tier"] for c in m["financeiro"]["mes"]}
-    assert tiers == {"A": "critico", "B": "atencao", "T": "atencao"}
+    assert tiers == {"A": "critico", "B": "atencao", "TLV": "critico", "T": "atencao"}
     # meta do dia = meta do mês / 26 dias de venda
     dia = {c["pasta"]: c["pct"] for c in m["financeiro"]["dia"]}
-    assert dia == {"T": 1071, "A": 78, "B": 1300}
-    assert [c["pasta"] for c in m["financeiro"]["dia"]] == ["T", "A", "B"]
+    assert dia == {"T": 1071, "A": 78, "B": 1300, "TLV": 0}
+    assert [c["pasta"] for c in m["financeiro"]["dia"]] == ["T", "A", "B", "TLV"]
     # positivação do dia = clientes positivados pela primeira vez no mês naquele dia
     pos_dia = {c["pasta"]: c["pct"] for c in m["positivacao"]["dia"]}
-    assert pos_dia == {"T": 867, "A": 325, "B": 2600}
-    assert len(m["warnings"]) == 2 and "TLV" in m["warnings"][0]
+    assert pos_dia == {"T": 867, "A": 325, "B": 2600, "TLV": 0}
+    assert len(m["warnings"]) == 1  # venda de fornecedor fora da planilha
     evo = {e["dia"]: e for e in m["evolucao"]}
     assert len(evo) == 30 and evo[17]["real"] == 55 and evo[17]["meta"] == 58 and evo[18]["real"] is None
     assert evo[1]["real"] == 6 and evo[5]["util"] is True  # sábado é dia de venda
     assert evo[6]["util"] is False and evo[6]["meta"] == evo[5]["meta"]  # domingo não
     assert evo[30]["meta"] == 100 and evo[18]["tier"] == "futuro"
+
+
+def test_televendas_is_its_own_folder(tmp_path):
+    # o Televendas vende de todos os fornecedores; a venda dele vai para a TLV, não para a pasta do fornecedor
+    f = tmp_path / "v.csv"
+    f.write_text("ID RCA;NOME RCA;NOME SUPERVISOR;DATA PEDIDO;ID CLIENTE;ID PRODUTO;ID FORNECEDOR;VALOR\n"
+                 "61;P-TLV- PESSOA FICTICIA;P-TELEVENDAS (SUPERVISORA FICTICIA);17/09/2026;c1;p;1;300,00\n"
+                 "62;OUTRO NOME;P-TELEVENDAS (SUPERVISORA FICTICIA);17/09/2026;c2;p;3;100,00\n"
+                 "11;A-BJ-01- PESSOA FICTICIA;A-BJ (SUPERVISOR FICTICIO);17/09/2026;c1;p;1;200,00\n", encoding="cp1252")
+    vendas = paineis._parse("vendas", f)
+    assert [x.tlv for x in vendas] == [True, True, False]
+    m = compute_metas(FORN, {"A": (1000, 2), "B": (1000, 2), "TLV": (800, 4), "T": (2800, 8)}, vendas)
+    fin = {c["pasta"]: c["pct"] for c in m["financeiro"]["mes"]}
+    assert fin == {"A": 20, "B": 0, "TLV": 50, "T": 21}  # A: 200, TLV: 400, T: 600/2800
+    pos = {c["pasta"]: c["pct"] for c in m["positivacao"]["mes"]}
+    assert pos == {"A": 50, "B": 0, "TLV": 50, "T": 25}  # c1 conta na A e na TLV; no total, c1 e c2
+    assert m["warnings"] == []
 
 
 def test_total_without_plb_row_is_the_sum_of_folders():
@@ -184,7 +201,7 @@ def test_examples_reach_the_tv_with_percentages_only(db):
     mes = data["metas-mes"]["data"]
     assert mes["mes"] == "Setembro de 2026" and mes["ate"] == "17/09" and mes["dia_semana"] == "quinta"
     assert mes["atualizado"] == "09:00" and mes["velho"] is False and mes["esperado"] == 58
-    assert [c["pasta"] for c in mes["financeiro"]] == list("ABCDEFG") + ["T"]
+    assert [c["pasta"] for c in mes["financeiro"]] == list("ABCDEFG") + ["TLV", "T"]
     # nenhum valor em reais, quantidade ou nome de vendedor/cliente: só %, letras das pastas e textos fixos
     allowed_numbers = {"pct", "esperado", "meta", "real", "dia", "pos", "fin"}
     for sid in ("metas-mes", "metas-dia", "produtos-foco"):

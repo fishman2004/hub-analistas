@@ -179,6 +179,7 @@ body {
 .cartoes-pasta { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: .8rem; }
 .cartao-pasta { background: var(--cartao); border-radius: .8rem; padding: .7rem 1rem 1.1rem; display: grid; grid-template-columns: auto minmax(0, 1fr); min-width: 0; align-items: center; gap: .4rem 1rem; border-top: .35rem solid var(--fora); }
 .cartao-pasta .letra { font-size: 2.6rem; font-weight: 800; line-height: 1; width: 4rem; height: 4rem; }
+.cartao-pasta .letra.longa { font-size: 1.45rem; letter-spacing: .02em; }
 .cartao-pasta .pct { font-size: 2.3rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .cartao-pasta .trilho { grid-column: 1 / -1; }
 .cartao-pasta.total { background: #22303d; }
