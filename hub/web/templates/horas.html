@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% set active = 'horas' %}
+{% block title %}Banco de horas · Hub dos Analistas{% endblock %}
+{% block main %}
+<h1>Banco de horas{% if not own %} · {{ person.name }}{% endif %}</h1>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if request.query_params.get('salvo') %}<div class="sucesso" role="status">Dia lançado.</div>{% endif %}
+{% if not own %}<p><a href="/horas/equipe">← Equipe</a></p>{% elif user.is_manager %}<p><a href="/horas/equipe">Ver o banco de horas da equipe →</a></p>{% endif %}
+<p class="ajuda">Não substitui o RH: serve para {{ 'você' if own else person.name }} saber se está com horas extras ou negativas. Só {{ 'você' if own else person.name }} e o gestor veem estas horas, e elas nunca aparecem na TV.</p>
+
+<div class="resumo">
+  <div class="indicador {{ 'alerta' if s.balance < 0 else '' }}"><span class="numero">{{ h.duration(s.balance) }}</span><span>saldo</span></div>
+  <div class="indicador"><span class="numero">{{ h.duration(s.base) if s.base is not none else '—' }}</span>
+    <span>saldo base{% if s.as_of %} até {{ s.as_of.strftime('%d/%m/%Y') }}{% endif %}</span></div>
+  <div class="indicador {{ 'alerta' if s.missing else '' }}"><span class="numero">{{ s.missing|length }}</span><span>{{ 'dia' if s.missing|length == 1 else 'dias' }} sem lançamento</span></div>
+</div>
+{% if s.base is none %}<div class="aviso" role="status">O saldo base ainda não foi lançado pelo gestor. Por enquanto o saldo conta só os dias lançados aqui.</div>{% endif %}
+
+{% if own %}
+{% set v = typed or ({'dia': fix.day.isoformat(), 'entrada': h.hhmm(fix.entrada), 'saida': h.hhmm(fix.saida), 'corrigir': '1'} if fix else {'dia': request.query_params.get('dia') or default_day.isoformat()}) %}
+<form class="ficha cartao-form" method="post" action="/horas">
+  <h2>{{ 'Corrigir o dia ' ~ fix.day.strftime('%d/%m') if v.get('corrigir') and fix else ('Corrigir dia' if v.get('corrigir') else 'Lançar um dia') }}</h2>
+  <p class="ajuda">Use os horários do comprovante do ponto. Jornada: {{ h.hhmm(journey.semana) }} de segunda a sexta{% if journey.sabado %} e {{ h.hhmm(journey.sabado) }} no sábado{% endif %}, com o almoço dentro (o almoço não tem ponto).</p>
+  {% if s.missing and not v.get('corrigir') %}
+  <div class="faltando"><span>Faltam lançar:</span>{% for d in s.missing %} <a class="chip" href="/horas?dia={{ d.isoformat() }}">{{ d.strftime('%d/%m') }} · {{ h.DIAS[d.weekday()] }}</a>{% endfor %}</div>
+  {% endif %}
+  <input type="hidden" name="corrigir" value="{{ v.get('corrigir', '') }}">
+  <div class="linha linha-horas">
+    <div><label for="dia">Dia</label><input type="date" id="dia" name="dia" value="{{ v.get('dia', '') }}" max="{{ today.isoformat() }}" required {% if v.get('corrigir') %}readonly{% endif %}></div>
+    <div><label for="entrada">Entrada</label><input type="time" id="entrada" name="entrada" value="{{ v.get('entrada', '') }}" required></div>
+    <div><label for="saida">Saída</label><input type="time" id="saida" name="saida" value="{{ v.get('saida', '') }}" required></div>
+  </div>
+  <div><button>{{ 'Salvar correção' if v.get('corrigir') else 'Lançar' }}</button>{% if v.get('corrigir') %} <a href="/horas">Cancelar</a>{% endif %}</div>
+</form>
+{% endif %}
+
+<h2 class="secao">Dias lançados</h2>
+{% if s.missing %}<p class="ajuda">Dia com jornada que ainda não foi lançado não conta no saldo{% if not own %} ({{ s.missing|length }} desde o saldo base, no máximo {{ h.MISSING_WINDOW }} dias para trás){% endif %}.</p>{% endif %}
+{% if s.entries %}
+<div class="tabela-rolagem">
+<table class="tabela">
+  <thead><tr><th>Dia</th><th>Entrada</th><th>Saída</th><th class="num">Horas no dia</th><th class="num">Jornada</th><th class="num">Diferença</th>{% if own %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for e in s.entries %}
+  <tr>
+    <td>{{ e.day.strftime('%d/%m/%Y') }} <span class="ajuda">{{ h.DIAS[e.day.weekday()] }}</span></td>
+    <td>{{ h.hhmm(e.entrada) }}</td>
+    <td>{{ h.hhmm(e.saida) }}</td>
+    <td class="num">{{ h.duration(e.worked, false) }}</td>
+    <td class="num">{{ h.duration(e.planned, false) }}</td>
+    <td class="num {{ 'atraso' if e.diff < 0 else '' }}">{{ h.duration(e.diff) }}</td>
+    {% if own %}
+    <td class="cartao-acoes">
+      <a class="botao-link" href="/horas?corrigir={{ e.day.isoformat() }}">Corrigir</a>
+      <form method="post" action="/horas/{{ e.day.isoformat() }}/excluir" onsubmit="return confirm('Apagar o lançamento de {{ e.day.strftime('%d/%m') }}?')"><button class="link">Apagar</button></form>
+    </td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="vazio">Nenhum dia lançado{% if s.as_of %} depois de {{ s.as_of.strftime('%d/%m/%Y') }}{% endif %}.</p>
+{% endif %}
+{% endblock %}

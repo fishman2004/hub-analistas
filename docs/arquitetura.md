@@ -39,6 +39,7 @@ flowchart TB
 - **Papéis:** cada pessoa é `analista` ou `gestor` (coluna `role`) e pode ter a marcação `is_admin`. Só administrador abre Pessoas, muda papéis e redefine PIN. Sempre sobra pelo menos um administrador; sem nenhum (instalação nova ou logo depois de atualizar da v1), quem cria o primeiro PIN vira administrador.
 - **Migrações automáticas** (`db.MIGRATIONS`): cada mudança no banco depois da v1 tem um número, guardado no `PRAGMA user_version`. Ao iniciar, o Hub copia o banco para `copias/antes-da-vN-....db` e aplica as que faltam, cada uma inteira ou nada. Elas só acrescentam colunas e tabelas.
 - **Painéis de dados** (fase 5, `hub/paineis.py` e `hub/planilhas.py`): o Hub lê as planilhas da pasta dos painéis (CSV ou XLSX), calcula meta x realizado por pasta e entrega à TV **só porcentagens**. Cada arquivo é relido apenas quando muda (data e tamanho), numa linha separada, para a TV nunca esperar a leitura da 8081. Arquivo ausente ou quebrado tira da rotação só as telas que dependem dele. Contratos e regras em [paineis.md](paineis.md).
+- **Banco de horas** (fase 6, `hub/horas.py`): tabelas `hours_balance` (saldo base de cada pessoa, até uma data) e `hours_entries` (entrada e saída de cada dia, um dia por pessoa). O saldo é calculado, não guardado: saldo base + (horas do dia − jornada) de cada dia lançado depois da data do saldo base. Só a própria pessoa e o gestor veem (`horas.can_see`); as linhas do histórico sobre horas seguem a mesma regra. A TV não importa o módulo, e um teste confere que o `/api/tv` não executa nenhum comando nessas tabelas.
 - Formulários vindos de outro site são recusados (mesma origem).
 
 ## Onde está cada coisa
@@ -51,6 +52,7 @@ flowchart TB
 | `hub/gestor.py` | Visão do gestor: resumo do dia por pessoa e filtros das demandas |
 | `hub/telas.py` | Telas da TV, rotação e as configurações (tempos) |
 | `hub/paineis.py` | Painéis de dados: pasta, os arquivos, cálculo das metas, cache e o que vai para a TV |
+| `hub/horas.py` | Banco de horas: saldo base, lançamentos, saldo calculado, importação da planilha do RH e exportação |
 | `hub/planilhas.py` | Leitura de CSV e XLSX (cabeçalho sem acento, número e data em formato brasileiro) |
 | `hub/people.py` | Equipe: nome, iniciais, cor |
 | `hub/demands.py` | Demandas, quadro, ordem, atrasadas, cartão da TV |

@@ -81,3 +81,15 @@ O plano dizia "o Hub não calcula, só exibe". Na hora de fazer, o Kayo pediu o 
 ## Dependência nova: openpyxl (fase 5)
 
 As planilhas de metas, fornecedores e produtos foco são `.xlsx`. Pedir ao time para salvar tudo em CSV seria um passo manual a mais a cada exportação. O **openpyxl** lê `.xlsx` e é Python puro (ele e a única dependência dele, `et-xmlfile`): instala com o `instalar.bat` de sempre, sem compilar nada e sem administrador. Ele só é carregado quando há uma planilha `.xlsx` para ler.
+
+## Banco de horas: saldo calculado, só a pessoa e o gestor (fase 6)
+
+Pedido do Kayo: o RH envia o saldo atual de cada um, o gestor importa, e daí em diante cada analista lança a entrada e a saída do dia pelo comprovante do ponto. **Não substitui o RH**: serve para cada um saber se está com horas extras ou negativas.
+
+- **O saldo não é guardado, é calculado:** saldo base + a diferença de cada dia lançado depois da data do saldo base. Corrigir um dia, mudar a jornada ou importar um saldo novo do RH recalcula tudo sem "acertos" manuais. Os dias até a data do saldo base não podem ser lançados (já estão no saldo do RH).
+- **Jornada = horário inteiro, com o almoço dentro:** a equipe não bate ponto no almoço, então a jornada padrão é das 8h às 18h (10:00) de segunda a sexta. A diferença do dia é (saída − entrada) − jornada. O gestor muda a jornada (e pode dar jornada ao sábado) na página da equipe.
+- **Dia sem lançamento não conta** (nem como falta): ele aparece em "Faltam lançar" para a pessoa completar. Assim um esquecimento não vira saldo negativo.
+- **Quem vê:** só a própria pessoa e o **gestor** (papel). Administrador sozinho não vê: ser administrador é cuidar do Hub, não das horas de ninguém. Cada um lança só o próprio; o gestor vê, importa, ajusta o saldo base e exporta, mas não lança no lugar de ninguém.
+- **Correção fica no histórico** (antes → depois), visível só para a pessoa e o gestor.
+- **A planilha do RH não fica guardada:** é lida na hora (colunas `NOME`, `SALDO` e, se tiver, `DATA`) e descartada. Os nomes precisam bater com o cadastro do Hub; os que não batem são listados.
+- **Exportar:** saldos e dias lançados em Excel (`openpyxl`, que já era dependência) ou CSV com `;`.

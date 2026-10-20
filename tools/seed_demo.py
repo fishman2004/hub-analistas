@@ -15,6 +15,7 @@ from datetime import date, datetime, timedelta
 from hub.access import create_pin, set_access
 from hub.db import Database
 from hub.demands import create_demand, move_demand
+from hub.horas import save_entry, set_balance
 from hub.paths import data_dir
 from hub.paineis import panel_folder
 from hub.people import add_person, get_person, list_people
@@ -64,6 +65,16 @@ def seed(now: datetime | None = None) -> Database:
 
     for person, status in ((ana, "Na sala"), (bianca, "Em reunião"), (carla, "Na sala"), (diego, "Pausa")):
         set_status(db, early + timedelta(minutes=90), person.id, status)
+    # banco de horas fictício: saldo base do "RH" até 10 dias atrás e os dias lançados depois
+    gestora = get_person(db, bianca.id)
+    start = today - timedelta(days=10)
+    for k, person in enumerate((ana, bianca, carla, diego, elisa)):
+        set_balance(db, early, gestora, person.id, (k - 2) * 95, start)
+        for n in range(1, 10):
+            day = start + timedelta(days=n)
+            if day.weekday() < 5 and day < today and (n + k) % 6:  # alguns dias ficam sem lançamento
+                save_entry(db, early, get_person(db, person.id), day, f"07:{40 + (n * 7 + k) % 20:02d}",
+                           f"18:{(n * 11 + k * 3) % 40:02d}")
     # planilhas fictícias dos painéis (tools/exemplos), para as telas de metas aparecerem na TV
     for f in (Path(__file__).parent / "exemplos").iterdir():
         shutil.copy(f, panel_folder(db) / f.name)

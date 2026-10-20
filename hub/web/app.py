@@ -19,6 +19,7 @@ from ..demands import (COLUMN_LABELS, COLUMNS, FOLDERS, RESERVED_TEXT, all_deman
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..gestor import DUE_FILTERS, can_open, filter_demands, team_summary
+from .. import horas
 from ..paineis import STALE_MAX, STALE_MIN, panel_config, save_panel_config, save_upload, stale_hours, store_for
 from ..presence import STATUSES, presence_board, set_status
 from ..telas import MAX_SECONDS, MIN_SECONDS, PAGE_MAX, PAGE_MIN, rotation, save_screen_config, screen_config
@@ -387,6 +388,146 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
                             "doing": sum(r.doing for r in team), "todo": sum(r.todo for r in team),
                             "in_room": sum(r.status == "Na sala" for r in team)})
 
+    # ---------- banco de horas (só a própria pessoa e o gestor; a TV nunca consulta) ----------
+
+    def hours_page(request: Request, user: Person, person: Person, status_code: int = 200, **ctx) -> HTMLResponse:
+        today = clock().date()
+        s = horas.summary(db, person.id, today)
+        default_day = s.missing[0] if s.missing else today - timedelta(days=1)
+        return page(request, "horas.html", user, status_code, person=person, s=s, today=today,
+                    own=person.id == user.id, default_day=default_day, journey=horas.journey(db), h=horas, **ctx)
+
+    @app.get("/horas", response_class=HTMLResponse)
+    def horas_minhas(request: Request, corrigir: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        fix = None
+        if corrigir:
+            try:
+                day = date.fromisoformat(corrigir)
+            except ValueError:
+                day = None
+            fix = next((e for e in horas.summary(db, user.id, clock().date()).entries if e.day == day), None)
+        return hours_page(request, user, user, fix=fix)
+
+    @app.post("/horas")
+    def horas_lancar(request: Request, dia: str = Form(""), entrada: str = Form(""), saida: str = Form(""),
+                     corrigir: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        typed = {"dia": dia, "entrada": entrada, "saida": saida, "corrigir": corrigir}
+        try:
+            try:
+                day = date.fromisoformat(dia)
+            except ValueError:
+                raise ValidationError("Escolha o dia.")
+            horas.save_entry(db, clock(), user, day, entrada, saida, bool(corrigir))
+        except ValidationError as exc:
+            return hours_page(request, user, user, 422, error=str(exc), typed=typed)
+        return RedirectResponse("/horas?salvo=1", status_code=303)
+
+    @app.post("/horas/{dia}/excluir")
+    def horas_excluir(request: Request, dia: str):
+        user = me(request)
+        if user is None:
+            return to_login()
+        try:
+            horas.delete_entry(db, clock(), user, date.fromisoformat(dia))
+        except (ValidationError, ValueError):
+            pass  # já não estava lá: a página mostra a verdade
+        return RedirectResponse("/horas", status_code=303)
+
+    def manager_only(request: Request) -> tuple[Person | None, Response | None]:
+        user = me(request)
+        if user is None:
+            return None, to_login()
+        if not user.is_manager:
+            return user, forbidden(request, user, "O banco de horas da equipe é só do gestor.")
+        return user, None
+
+    def team_hours_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
+        today = clock().date()
+        return page(request, "horas-equipe.html", user, status_code, rows=horas.team(db, today), today=today,
+                    journey=horas.journey(db), h=horas, people=list_people(db), **ctx)
+
+    @app.get("/horas/equipe", response_class=HTMLResponse)
+    def horas_equipe(request: Request):
+        user, stop = manager_only(request)
+        return stop or team_hours_page(request, user)
+
+    @app.get("/horas/equipe/{person_id}", response_class=HTMLResponse)
+    def horas_pessoa(request: Request, person_id: int):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        person = get_person(db, person_id)
+        if person is None:
+            return RedirectResponse("/horas/equipe", status_code=303)
+        return hours_page(request, user, person)
+
+    @app.post("/horas/equipe/importar")
+    def horas_importar(request: Request, arquivo: UploadFile = File(...)):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        try:
+            updated, unknown = horas.import_balances(db, clock(), user, arquivo.filename or "", arquivo.file)
+        except ValidationError as exc:
+            return team_hours_page(request, user, 422, error=str(exc))
+        return team_hours_page(request, user, imported=updated, unknown=unknown)
+
+    @app.post("/horas/equipe/saldo")
+    def horas_saldo(request: Request, pessoa: str = Form(""), saldo: str = Form(""), data: str = Form("")):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        try:
+            try:
+                as_of = date.fromisoformat(data)
+            except ValueError:
+                raise ValidationError("Escolha a data do saldo.")
+            if not pessoa.isdigit():
+                raise ValidationError("Escolha a pessoa.")
+            horas.set_balance(db, clock(), user, int(pessoa), horas.parse_duration(saldo), as_of)
+        except ValidationError as exc:
+            return team_hours_page(request, user, 422, error=str(exc))
+        return team_hours_page(request, user, ok="Saldo base salvo.")
+
+    @app.post("/horas/equipe/jornada")
+    def horas_jornada(request: Request, semana: str = Form(""), sabado: str = Form("")):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        try:
+            horas.save_journey(db, clock(), user, semana, sabado)
+        except ValidationError as exc:
+            return team_hours_page(request, user, 422, error=str(exc))
+        return team_hours_page(request, user, ok="Jornada salva.")
+
+    @app.get("/horas/exportar")
+    def horas_exportar(request: Request, tipo: str = "saldos", formato: str = "xlsx", de: str = "", ate: str = ""):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        today = clock().date()
+        tipo = tipo if tipo in ("saldos", "lancamentos") else "saldos"
+        try:
+            start = date.fromisoformat(de) if de else None
+            end = date.fromisoformat(ate) if ate else None
+        except ValueError:
+            start = end = None
+        rows = horas.export_rows(db, today, tipo, start, end)
+        name = f"banco-de-horas-{tipo}-{today:%Y-%m-%d}"
+        if formato == "csv":
+            content, media = horas.to_csv(rows), "text/csv; charset=utf-8"
+        else:
+            content, media = horas.to_xlsx(rows, tipo), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            formato = "xlsx"
+        return Response(content, media_type=media,
+                        headers={"Content-Disposition": f'attachment; filename="{name}.{formato}"'})
+
     # ---------- histórico ----------
 
     @app.get("/historico", response_class=HTMLResponse)
@@ -400,6 +541,9 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         rows = events(db, start, end, person_id)
         people = {p.id: p for p in list_people(db, active_only=False)}
         demands = all_demands(db)
+        # banco de horas: a linha só aparece para a própria pessoa e o gestor
+        rows = [r for r in rows if not r["subject"].startswith("horas:")
+                or horas.can_see(user, int(r["subject"].partition(":")[2]))]
         lines = [(datetime.fromisoformat(r["at"]), describe(r, people, demands, user)) for r in rows]
         return page(request, "historico.html", user, lines=lines, start=start, end=end, pessoa=pessoa,
                     people=list_people(db, active_only=False))
@@ -496,6 +640,7 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         d = demands.get(ref_id)
         title = detail if d is None else d.title if can_see(d, viewer) else RESERVED_TEXT
     name = people[ref_id].name if subject.startswith("pessoa:") and ref_id in people else detail
+    name_of = lambda pid: people[pid].name if pid in people else "alguém"
     return {
         "demanda_criada": f"{who} criou “{title}”",
         "demanda_editada": f"{who} editou “{title}”",
@@ -516,5 +661,10 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         "config_tv": f"{who} mudou as configurações da TV",
         "config_paineis": f"{who} mudou as configurações dos painéis",
         "painel_arquivo": f"{who} enviou a planilha “{detail}” dos painéis",
+        "horas_lancado": f"{who} lançou o banco de horas de {detail}",
+        "horas_corrigido": f"{who} corrigiu o banco de horas de {detail}",
+        "horas_excluido": f"{who} apagou do banco de horas o dia {detail}",
+        "horas_saldo": f"{who} definiu o saldo base do banco de horas de {name_of(ref_id)} ({detail})",
+        "horas_jornada": f"{who} mudou a jornada do banco de horas ({detail})",
         "admin_alterado": f"{who} {'tornou' if detail == 'sim' else 'tirou'} {name} {'administrador' if detail == 'sim' else 'de administrador'}",
     }.get(kind, f"{who}: {kind}")
