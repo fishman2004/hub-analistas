@@ -15,3 +15,12 @@ def db(tmp_path):
 def at(h: int, m: int = 0, day: int = 19) -> datetime:
     """Horário em 2026-10 (19 = segunda-feira)."""
     return datetime(2026, 10, day, h, m)
+
+
+@pytest.fixture(autouse=True)
+def paineis_sem_segundo_plano(monkeypatch):
+    """Nos testes, a leitura dos painéis acontece na hora (no Hub de verdade, em segundo plano)."""
+    from hub import paineis
+
+    monkeypatch.setattr(paineis, "BACKGROUND", False)
+    monkeypatch.setattr(paineis, "_stores", {})

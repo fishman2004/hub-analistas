@@ -8,12 +8,15 @@ Serve para apresentar o Hub e tirar prints sem dados reais:
 """
 
 import os
+import shutil
+from pathlib import Path
 from datetime import date, datetime, timedelta
 
 from hub.access import create_pin, set_access
 from hub.db import Database
 from hub.demands import create_demand, move_demand
 from hub.paths import data_dir
+from hub.paineis import panel_folder
 from hub.people import add_person, get_person, list_people
 from hub.presence import set_status
 
@@ -61,6 +64,9 @@ def seed(now: datetime | None = None) -> Database:
 
     for person, status in ((ana, "Na sala"), (bianca, "Em reunião"), (carla, "Na sala"), (diego, "Pausa")):
         set_status(db, early + timedelta(minutes=90), person.id, status)
+    # planilhas fictícias dos painéis (tools/exemplos), para as telas de metas aparecerem na TV
+    for f in (Path(__file__).parent / "exemplos").iterdir():
+        shutil.copy(f, panel_folder(db) / f.name)
     return db
 
 

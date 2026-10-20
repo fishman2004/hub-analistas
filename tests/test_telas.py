@@ -31,6 +31,9 @@ def login(app, person):
     return c
 
 
+PANELS = {"metas-mes": "20", "metas-dia": "15", "produtos-foco": "15"}  # telas da fase 5
+
+
 def ids(db, now=at(12)):
     return [s["id"] for s in rotation(db, now)["screens"]]
 
@@ -62,17 +65,18 @@ def test_default_times_and_settings(setup):
     rot = rotation(db, at(12))
     assert [(s["id"], s["seconds"]) for s in rot["screens"]] == [("quadro", 30), ("prazos", 15)]
     assert rot["page_seconds"] == 10
-    save_screen_config(db, at(9), kayo, {"quadro": "45", "prazos": "20"}, set(), "8")
+    save_screen_config(db, at(9), kayo, {"quadro": "45", "prazos": "20", **PANELS}, set(), "8")
     rot = rotation(db, at(12))
     assert [(s["id"], s["seconds"]) for s in rot["screens"]] == [("quadro", 45)]  # prazos desligada
     assert rot["page_seconds"] == 8
     with pytest.raises(PermissionError):
-        save_screen_config(db, at(9), bia, {"quadro": "45", "prazos": "20"}, {"prazos"}, "8")
-    for bad in ({"quadro": "2", "prazos": "20"}, {"quadro": "abc", "prazos": "20"}, {"quadro": "30"}):
+        save_screen_config(db, at(9), bia, {"quadro": "45", "prazos": "20", **PANELS}, {"prazos"}, "8")
+    for bad in ({"quadro": "2", "prazos": "20", **PANELS}, {"quadro": "abc", "prazos": "20", **PANELS},
+                {"quadro": "30", **PANELS}):
         with pytest.raises(ValidationError):
             save_screen_config(db, at(9), kayo, bad, {"prazos"}, "8")
     with pytest.raises(ValidationError):
-        save_screen_config(db, at(9), kayo, {"quadro": "30", "prazos": "15"}, {"prazos"}, "1")
+        save_screen_config(db, at(9), kayo, {"quadro": "30", "prazos": "15", **PANELS}, {"prazos"}, "1")
 
 
 def test_every_registered_screen_has_a_drawing(setup):
@@ -106,12 +110,13 @@ def test_settings_page_is_admin_only(setup):
     assert analyst.post("/configuracoes", data={"segundos_quadro": "60"}).status_code == 403
     admin = login(app, kayo)
     assert 'href="/configuracoes"' in admin.get("/").text
+    panels = {f"segundos_{k}": v for k, v in PANELS.items()}
     r = admin.post("/configuracoes", data={"segundos_quadro": "40", "segundos_prazos": "12",
-                                           "ligada_prazos": "on", "pagina": "6"})
+                                           "ligada_prazos": "on", "pagina": "6", **panels})
     assert r.status_code == 200 and "Salvo" in r.text
     cfg = screen_config(db)
-    assert [(s["id"], s["seconds"], s["enabled"]) for s in cfg["screens"]] == [("quadro", 40, True), ("prazos", 12, True)]
+    assert [(s["id"], s["seconds"], s["enabled"]) for s in cfg["screens"]][:2] == [("quadro", 40, True), ("prazos", 12, True)]
     assert cfg["page_seconds"] == 6
-    r = admin.post("/configuracoes", data={"segundos_quadro": "1", "segundos_prazos": "12", "pagina": "6"})
+    r = admin.post("/configuracoes", data={"segundos_quadro": "1", "segundos_prazos": "12", "pagina": "6", **panels})
     assert r.status_code == 422 and "de 5 a 300 segundos" in r.text
     assert "mudou as configurações da TV" in admin.get("/historico?de=2026-10-19&ate=2026-10-19").text
