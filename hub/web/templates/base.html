@@ -14,6 +14,7 @@
     {% if user %}
     <nav aria-label="Menu principal">
       <a href="/" {% if active == 'quadro' %}aria-current="page"{% endif %}>Quadro</a>
+      {% if can_open_gestor(user) %}<a href="/gestor" {% if active == 'gestor' %}aria-current="page"{% endif %}>Gestor</a>{% endif %}
       <a href="/historico" {% if active == 'historico' %}aria-current="page"{% endif %}>Histórico</a>
       {% if user.is_admin %}<a href="/pessoas" {% if active == 'pessoas' %}aria-current="page"{% endif %}>Pessoas</a>{% endif %}
       <a href="/tv" target="_blank" rel="noopener">Ver a TV</a>

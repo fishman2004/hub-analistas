@@ -60,6 +60,15 @@ MIGRATIONS: list[tuple[int, str]] = [
             expires_at TEXT NOT NULL
         );
     """),
+    (2, """
+        -- v2 · demanda reservada: quem criou também vê o título (vem do histórico para as antigas)
+        ALTER TABLE demands ADD COLUMN created_by INTEGER REFERENCES people(id);
+        UPDATE demands SET created_by = (
+            SELECT actor_id FROM events
+            WHERE kind = 'demanda_criada' AND subject = 'demanda:' || demands.id
+            ORDER BY id LIMIT 1
+        );
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
@@ -131,3 +140,10 @@ def events(db: Database, start: date, end: date, person_id: int | None = None) -
         args += [person_id, person_id]
     with db.connect() as conn:
         return conn.execute(sql + " ORDER BY at DESC, id DESC", args).fetchall()
+
+
+def first_event_day(db: Database) -> date | None:
+    """Dia do registro mais antigo do histórico (para abrir o histórico completo)."""
+    with db.connect() as conn:
+        first = conn.execute("SELECT MIN(at) FROM events").fetchone()[0]
+    return datetime.fromisoformat(first).date() if first else None

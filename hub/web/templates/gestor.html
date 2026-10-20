@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% set active = 'gestor' %}
+{% block title %}Gestor · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>Visão do gestor</h1>
+  <div class="acoes"><a class="botao discreto" href="/historico?de={{ history_start.isoformat() }}&ate={{ today.isoformat() }}">Histórico completo</a></div>
+</div>
+
+<section class="resumo" aria-label="Resumo do dia">
+  <div class="indicador"><span class="numero">{{ totals.in_room }}<small>/{{ team|length }}</small></span><span>na sala</span></div>
+  <div class="indicador"><span class="numero">{{ totals.doing }}</span><span>fazendo</span></div>
+  <div class="indicador"><span class="numero">{{ totals.todo }}</span><span>a fazer</span></div>
+  <div class="indicador"><span class="numero">{{ totals.done }}</span><span>concluídas hoje</span></div>
+  <div class="indicador {{ 'alerta' if totals.overdue else '' }}"><span class="numero">{{ totals.overdue }}</span><span>atrasadas</span></div>
+</section>
+
+<h2>A equipe hoje</h2>
+<div class="tabela-rolagem">
+<table class="tabela">
+  <thead><tr><th>Pessoa</th><th>Onde está</th><th class="num">A fazer</th><th class="num">Fazendo</th><th class="num">Concluídas hoje</th><th class="num">Atrasadas</th></tr></thead>
+  <tbody>
+  {% for r in team %}
+  <tr>
+    <td><span class="bolinha" style="--cor: {{ r.person.color }}">{{ r.person.initials }}</span> {{ r.person.name }}{% if r.person.is_manager %} <span class="etiqueta">Gestor</span>{% endif %}</td>
+    <td><span class="status-ponto st-{{ STATUSES.index(r.status) + 1 }}"></span>{{ r.status }} <span class="ajuda">desde {{ r.since.strftime('%H:%M') }}</span></td>
+    <td class="num"><a href="/gestor?pessoa={{ r.person.id }}&coluna=todo">{{ r.todo }}</a></td>
+    <td class="num"><a href="/gestor?pessoa={{ r.person.id }}&coluna=doing">{{ r.doing }}</a></td>
+    <td class="num"><a href="/gestor?pessoa={{ r.person.id }}&coluna=done">{{ r.done_today }}</a></td>
+    <td class="num">{% if r.overdue %}<a class="atraso" href="/gestor?pessoa={{ r.person.id }}&atrasadas=1">{{ r.overdue }}</a>{% else %}0{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<h2 id="demandas">Todas as demandas</h2>
+<form class="filtros" method="get" action="/gestor#demandas">
+  <div><label for="pessoa">Pessoa</label>
+    <select id="pessoa" name="pessoa"><option value="">Todas</option>
+      {% for p in people %}<option value="{{ p.id }}" {% if p.id|string == f.pessoa %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+    </select></div>
+  <div><label for="coluna">Coluna</label>
+    <select id="coluna" name="coluna"><option value="">Todas</option>
+      {% for key, label in COLUMN_LABELS.items() %}<option value="{{ key }}" {% if key == f.coluna %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></div>
+  <div><label for="prazo">Prazo</label>
+    <select id="prazo" name="prazo">
+      {% for key, label in DUE_FILTERS.items() %}<option value="{{ key }}" {% if key == f.prazo %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></div>
+  <div><label class="check"><input type="checkbox" name="atrasadas" value="1" {% if f.atrasadas %}checked{% endif %}> Só atrasadas</label></div>
+  <div class="acoes"><button>Filtrar</button><a class="botao discreto" href="/gestor#demandas">Limpar</a></div>
+</form>
+
+{% if demands %}
+<div class="tabela-rolagem">
+<table class="tabela">
+  <thead><tr><th>Demanda</th><th>De quem</th><th>Coluna</th><th>Pasta</th><th>Pedido por</th><th>Prazo</th></tr></thead>
+  <tbody>
+  {% for d in demands %}
+  {% set dono = owners[d.owner_id] %}
+  <tr class="{{ 'atrasada' if is_overdue(d, today) else '' }}">
+    <td><a href="/demandas/{{ d.id }}">{{ d.title }}</a>{% if d.reserved %} <span class="etiqueta">Reservada</span>{% endif %}</td>
+    <td><span class="bolinha" style="--cor: {{ dono.color }}">{{ dono.initials }}</span> {{ dono.name }}</td>
+    <td>{{ COLUMN_LABELS[d.column] }}</td>
+    <td>{{ d.folder or '' }}</td>
+    <td>{{ d.requested_by or '' }}</td>
+    <td class="{{ 'atraso' if is_overdue(d, today) else '' }}">{% if d.due %}{{ 'atrasada · ' if is_overdue(d, today) else '' }}{{ d.due.strftime('%d/%m') }}{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="ajuda">{{ demands|length }} demanda{{ 's' if demands|length != 1 else '' }}. "Concluído hoje" mostra só as concluídas hoje; as anteriores estão no histórico.</p>
+{% else %}
+<p class="vazio">Nenhuma demanda com esses filtros.</p>
+{% endif %}
+{% endblock %}

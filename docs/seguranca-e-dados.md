@@ -6,11 +6,12 @@
 |---|---|---|
 | Presença e "desde quando" | Sim | Sim |
 | Demandas normais (título, pasta, quem pediu, prazo) | Sim | Sim |
-| Demanda **reservada** | Só "Demanda reservada", a cor e as iniciais do dono e o prazo | Tudo |
+| Demanda **reservada** | Só "Demanda reservada", a cor e as iniciais do dono e o prazo | Tudo para o dono, quem criou, o gestor e os administradores. Os demais veem como na TV e não abrem, movem nem excluem |
+| Visão do gestor (resumo do dia e todas as demandas) | Não | Só o gestor e os administradores |
 | Histórico | Não | Sim |
 | PIN | Não | Ninguém (só um resumo fica guardado) |
 
-A demanda reservada é mascarada **no servidor**: a página da TV nunca recebe o título, então nem quem inspecionar a página consegue ver.
+A demanda reservada é mascarada **no servidor**: a página da TV nunca recebe o título, então nem quem inspecionar a página consegue ver. No app vale o mesmo para quem não pode ver: o quadro, o histórico e a página da demanda chegam sem o título.
 
 ## Presença
 

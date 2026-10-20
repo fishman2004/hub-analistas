@@ -143,3 +143,25 @@ input[type=password] { width: 100%; font: inherit; font-size: 1.3rem; letter-spa
 .acesso .check { margin: 0; align-items: center; }
 .acesso .check input { margin-top: 0; }
 .sem-pin { color: var(--suave); font-size: .9rem; }
+
+/* visão do gestor */
+.resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.indicador { background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio); padding: 12px 16px; display: grid; color: var(--suave); }
+.indicador .numero { font-size: 2rem; font-weight: 700; color: var(--texto); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.indicador .numero small { font-size: 1rem; color: var(--suave); }
+.indicador.alerta { border-color: var(--atraso); }
+.indicador.alerta .numero { color: var(--atraso); }
+.tabela-rolagem { overflow-x: auto; margin-bottom: 16px; }
+.tabela { width: 100%; border-collapse: collapse; background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio); }
+.tabela th, .tabela td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--linha); vertical-align: middle; }
+.tabela th { font-size: .85rem; color: var(--suave); font-weight: 600; }
+.tabela tr:last-child td { border-bottom: none; }
+.tabela .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tabela tr.atrasada td:first-child { box-shadow: inset 4px 0 0 var(--atraso); }
+.tabela .atraso, a.atraso { color: var(--atraso); font-weight: 600; }
+.etiqueta { background: var(--fundo); color: var(--suave); border-radius: 999px; padding: 0 8px; font-size: .8rem; }
+.status-ponto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: var(--fora); }
+.status-ponto.st-1 { background: var(--sala); }
+.status-ponto.st-2 { background: var(--reuniao); }
+.status-ponto.st-3 { background: var(--pausa); }
+.cartao.oculta .titulo { color: var(--suave); font-style: italic; }
