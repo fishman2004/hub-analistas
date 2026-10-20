@@ -25,7 +25,7 @@ Uma **TV na sala**, ligada num PC sempre ligado, mostra:
 - **Quadro da equipe:** A fazer → Fazendo → Concluído hoje, com a cor e as iniciais de cada analista, as atrasadas em destaque e o prazo de cada demanda.
 - **Demanda reservada:** um assunto sensível aparece só como "Demanda reservada". O título nunca sai do servidor para a TV.
 
-Cada analista usa o **app** pelo navegador do próprio PC, sem instalar nada: marca a presença, lança demandas e as move entre as colunas. Tudo fica no **histórico**, com quem fez e quando.
+Cada analista usa o **app** pelo navegador do próprio PC, sem instalar nada: marca a presença, lança demandas e as move entre as colunas. O botão **Tema** no cabeçalho alterna entre automático (segue o Windows), claro e escuro, e cada navegador lembra a sua escolha. Tudo fica no **histórico**, com quem fez e quando.
 
 <p align="center">
   <img src="docs/imagens/app.jpg" width="680" alt="App do analista: botões de presença e o quadro com as próprias demandas">
@@ -80,7 +80,7 @@ Cria uma equipe e demandas **fictícias** numa pasta separada. O script se recus
 | [Arquitetura](docs/arquitetura.md) | Quem vai manter o código |
 | [Segurança e dados](docs/seguranca-e-dados.md) | TI e gestão: o que fica onde e quem vê o quê |
 | [Limitações](docs/limitacoes.md) | Todos |
-| [Roadmap](docs/roadmap.md) | Próximas versões: rotinas com aviso, prioridades do mês, banco de horas |
+| [Roadmap](docs/roadmap.md) | As fases da v2: tema, PIN, gestor, TV em rotação, painéis, banco de horas, rotinas, Pombo |
 | [Decisões técnicas](docs/decisoes.md) | Por que cada escolha foi feita |
 
 ## Para desenvolvedores
