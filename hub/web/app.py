@@ -20,6 +20,7 @@ from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_p
                       update_person)
 from ..gestor import DUE_FILTERS, can_open, filter_demands, team_summary
 from ..presence import STATUSES, presence_board, set_status
+from ..telas import MAX_SECONDS, MIN_SECONDS, PAGE_MAX, PAGE_MIN, rotation, save_screen_config, screen_config
 
 HERE = Path(__file__).parent
 COOKIE = "hub_sessao"
@@ -62,6 +63,9 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             ],
             "columns": {c: [tv_card(d, owners[d.owner_id], now.date()) for d in columns[c]] for c in COLUMNS},
             "counts": {c: len(columns[c]) for c in COLUMNS},
+            # aviso fixo em todas as telas da rotação
+            "overdue": sum(is_overdue(d, now.date()) for d in columns["todo"] + columns["doing"]),
+            **rotation(db, now),
         }
 
     # ---------- app do analista ----------
@@ -294,6 +298,31 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             pass
         return RedirectResponse("/", status_code=303)
 
+    # ---------- configurações (administrador) ----------
+
+    def config_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
+        return page(request, "configuracoes.html", user, status_code, config=screen_config(db),
+                    limits={"min": MIN_SECONDS, "max": MAX_SECONDS, "page_min": PAGE_MIN, "page_max": PAGE_MAX}, **ctx)
+
+    @app.get("/configuracoes", response_class=HTMLResponse)
+    def configuracoes(request: Request):
+        user, stop = admin_only(request)
+        return stop or config_page(request, user)
+
+    @app.post("/configuracoes")
+    async def configuracoes_salvar(request: Request):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        form = await request.form()
+        seconds = {k.removeprefix("segundos_"): str(v).strip() for k, v in form.items() if k.startswith("segundos_")}
+        enabled = {k.removeprefix("ligada_") for k in form if k.startswith("ligada_")}
+        try:
+            save_screen_config(db, clock(), user, seconds, enabled, str(form.get("pagina", "")).strip())
+        except ValidationError as exc:
+            return config_page(request, user, 422, error=str(exc))
+        return config_page(request, user, ok=True)
+
     # ---------- visão do gestor ----------
 
     templates.env.globals["can_open_gestor"] = can_open
@@ -420,7 +449,8 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
     """Uma linha de histórico em português. Demanda reservada só mostra o título a quem pode vê-lo."""
     who = people[row["actor_id"]].name if row["actor_id"] in people else "Alguém"
     kind, subject, detail = row["kind"], row["subject"], row["detail"]
-    ref_id = int(subject.split(":")[1]) if ":" in subject else 0
+    ref = subject.partition(":")[2]
+    ref_id = int(ref) if ref.isdigit() else 0  # "config:tv" não aponta para ninguém
     title = ""
     if subject.startswith("demanda:"):
         d = demands.get(ref_id)
@@ -443,5 +473,6 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         "pin_bloqueado": f"{name} ficou bloqueado por errar o PIN",
         "admin_definido": f"{name} virou administrador no primeiro acesso",
         "papel_alterado": f"{who} mudou o papel de {name} para {detail}",
+        "config_tv": f"{who} mudou as configurações da TV",
         "admin_alterado": f"{who} {'tornou' if detail == 'sim' else 'tirou'} {name} {'administrador' if detail == 'sim' else 'de administrador'}",
     }.get(kind, f"{who}: {kind}")
