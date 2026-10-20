@@ -107,8 +107,11 @@ body {
 .tela-titulo { margin: 0; font-size: 2rem; }
 
 .rotacao { flex: 1; display: flex; justify-content: center; gap: 1.2rem; min-width: 0; }
-.rot-item { display: grid; gap: .35rem; min-width: 7rem; white-space: nowrap; color: var(--suave); font-size: 1.2rem; text-align: center; }
-.rot-item.ativa { color: var(--texto); font-weight: 600; }
+.rot-item { display: grid; grid-template-columns: minmax(0, 1fr); gap: .35rem; min-width: 4rem; flex: 0 1 auto;
+  white-space: nowrap; color: var(--suave); font-size: 1.2rem; text-align: center; }
+/* muitas telas: os nomes das outras encurtam com "…" (sem se sobrepor); o da tela no ar fica inteiro */
+.rot-nome { overflow: hidden; text-overflow: ellipsis; }
+.rot-item.ativa { color: var(--texto); font-weight: 600; flex-shrink: 0; }
 .rot-barra { height: .3rem; border-radius: 999px; background: var(--linha); overflow: hidden; }
 .rot-progresso { display: block; height: 100%; width: 0; background: var(--suave); }
 .rot-item.ativa .rot-progresso { background: var(--pausa); }
@@ -253,3 +256,37 @@ body {
 .aviso-mudo { font-size: 1.3rem; color: var(--atraso); }
 @keyframes aviso-entra { from { opacity: 0; transform: translate(-50%, -46%) scale(.96); } }
 @keyframes aviso-sino { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 75% { transform: rotate(-14deg); } }
+
+/* ---------- prioridades do mês (fase 8) ---------- */
+.prio-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 2rem; flex: none; }
+.prio-conta { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.prio-conta .atraso { color: var(--atraso); }
+.prio-conta .pagina { margin-left: 1.2rem; color: var(--suave); font-weight: 600; }
+.prio-conta .pagina:empty { display: none; }
+.prio-barra { flex: none; height: 1.1rem; border-radius: .55rem; background: var(--linha); overflow: hidden; }
+.prio-barra .cheio { height: 100%; border-radius: .55rem; background: var(--sala); transition: width .6s ease; }
+/* uma coluna quando tudo cabe; duas quando não (o JavaScript decide medindo) */
+.prio-itens { flex: 1; min-height: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr);
+  align-content: start; gap: 1rem 1.5rem; transition: opacity .45s ease; }
+.prio-itens.duas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.prio-itens.trocando { opacity: 0; }
+.prio-item { display: flex; align-items: center; gap: 1.2rem; background: var(--cartao); border-radius: .9rem;
+  padding: 1rem 1.4rem; border-left: .5rem solid var(--reuniao); }
+.prio-marca { flex: none; width: 3rem; height: 3rem; border-radius: 50%; border: .25rem solid var(--suave);
+  display: grid; place-items: center; }
+.prio-marca svg { width: 2rem; height: 2rem; }
+.prio-texto { flex: 1; min-width: 0; display: grid; gap: .15rem; }
+.prio-titulo { font-size: 2.2rem; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.prio-prazo { font-size: 1.4rem; font-weight: 600; color: var(--suave); }
+.prio-item .letra { flex: none; width: 3.2rem; height: 3.2rem; font-size: 1.8rem; font-weight: 800; }
+.prio-item .ini { flex: none; min-width: 3rem; height: 3rem; padding: 0 .5rem; border-radius: .6rem;
+  display: grid; place-items: center; background: var(--cor); color: #0e141a; font-weight: 800; font-size: 1.3rem; }
+/* atrasado: o mesmo destaque das demandas atrasadas do Quadro */
+.prio-item.atrasada { border-left-color: var(--atraso); box-shadow: inset 0 0 0 .15rem var(--atraso); }
+.prio-item.atrasada .prio-prazo { color: var(--atraso); font-weight: 700; }
+/* feito: some para o fundo, com o check e quem fez */
+.prio-item.feita { background: var(--painel); border-left-color: var(--sala); }
+.prio-item.feita .prio-marca { background: var(--sala); border-color: var(--sala); color: #0e141a; }
+.prio-item.feita .prio-titulo { font-size: 1.75rem; color: var(--suave); text-decoration: line-through; text-decoration-thickness: .1rem; }
+.prio-item.feita .letra { opacity: .6; }

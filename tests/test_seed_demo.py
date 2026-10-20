@@ -4,6 +4,7 @@ from conftest import at
 from hub.db import Database
 from hub.demands import board
 from hub.people import add_person, list_people
+from hub.prioridades import list_month, month_of
 from tools.seed_demo import seed
 
 
@@ -34,3 +35,5 @@ def test_seeds_empty_folder(tmp_path, monkeypatch):
     people = {p.name: p for p in list_people(db)}
     assert all(p.has_pin for p in people.values())
     assert people["Ana Souza"].is_admin and people["Bianca Lima"].is_manager
+    items = list_month(db, month_of(at(10)))
+    assert len(items) == 5 and sum(p.done for p in items) == 2
