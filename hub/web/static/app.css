@@ -284,6 +284,26 @@ input[type=file] { font: inherit; color: var(--suave); max-width: 100%; }
 .busca .bolinha { min-width: 24px; height: 24px; font-size: .75rem; }
 h3 { font-size: 1rem; margin: 8px 0 0; }
 
+/* bloco de notas (fase 12) */
+.notas { display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .notas { grid-template-columns: 1fr; } }
+.notas-lista { background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio); padding: 12px; display: grid; gap: 10px; }
+.notas-lista ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.notas-lista li { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-radius: 8px; }
+.notas-lista li.atual { background: color-mix(in srgb, var(--azul) 14%, var(--cartao)); }
+.nota-item { display: grid; gap: 2px; padding: 6px 8px; color: var(--texto); text-decoration: none; min-width: 0; flex: 1; }
+.nota-item .ajuda { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.nota-item:hover { background: var(--fundo); border-radius: 8px; }
+.notas-busca input { width: 100%; }
+.notas-abas { display: flex; gap: 4px; flex-wrap: wrap; }
+.notas-abas a { padding: 4px 10px; border-radius: 999px; color: var(--suave); text-decoration: none; font-size: .9rem; }
+.notas-abas a[aria-current="page"] { background: var(--azul); color: var(--cartao); }
+.nota-form { max-width: none; gap: 10px; }
+.nota-titulo { font-size: 1.3rem; font-weight: 700; }
+.nota-acoes { margin: 12px 0 0; }
+.nota-acoes form { margin: 0; }
+.nota-aberta .anexos { max-width: none; }
+#salvo.atraso { color: var(--atraso); }
 /* descrição da demanda no cartão do quadro: abre com um clique */
 .cartao-descricao { margin-top: 6px; font-size: .9rem; }
 .cartao-descricao summary { cursor: pointer; color: var(--azul); width: max-content; }

@@ -159,6 +159,22 @@ MIGRATIONS: list[tuple[int, str]] = [
         );
         CREATE INDEX attachments_parent ON attachments(kind, parent_id);
     """),
+    (8, """
+        -- v3 · bloco de notas pessoal: só a dona vê (nem o gestor, nem os administradores) e nada vai para
+        -- o histórico geral. Os arquivos usam a tabela attachments com kind = 'nota'.
+        CREATE TABLE notes (
+            id INTEGER PRIMARY KEY,
+            person_id INTEGER NOT NULL REFERENCES people(id),
+            title TEXT NOT NULL,
+            body TEXT NOT NULL DEFAULT '',
+            pinned INTEGER NOT NULL DEFAULT 0,
+            archived INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT                   -- na lixeira; 30 dias depois a nota é apagada de vez
+        );
+        CREATE INDEX notes_person ON notes(person_id, updated_at);
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

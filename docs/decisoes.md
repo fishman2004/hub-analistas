@@ -202,3 +202,19 @@ Pedido do gestor: anexar arquivos (Excel, PDF) às demandas, para o responsável
 - **Na TV, nada muda:** nem os detalhes nem o 📎. Um teste rastreia o SQL do `/api/tv` e confere que a tabela `attachments` nunca é lida.
 
 Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 11.1 a 11.6 do [plano da v3](plano-v3.md)).
+
+## Bloco de notas pessoal (fase 12)
+
+Pedido do gestor: um bloco de notas pessoal que também guarde arquivos.
+
+- **Só a dona vê.** Nem o gestor, nem os administradores, como no banco de horas (onde o administrador também fica de fora). A rota responde "Nota não encontrada" igual para uma nota de outra pessoa e para uma que não existe, para nem contar que ela existe.
+- **Fora do histórico:** o Histórico é lido por toda a equipe, e até o título de uma nota pode ser pessoal. Por isso criar, editar, anexar e excluir notas não gravam nada lá. A TV nunca consulta a tabela (um teste rastreia o SQL do `/api/tv`).
+- **Grava sozinha** uns segundos depois da última tecla, e avisa "Não salvo… tentando de novo" se a rede cair. O botão Salvar continua lá (e funciona sem JavaScript).
+- **Os arquivos** são os mesmos das demandas (tipos, 25 MB, 20 por nota, nova versão), na mesma pasta Anexos.
+- **Fixar, arquivar, buscar** (a busca também acha as arquivadas) e **lixeira de 30 dias**: depois disso a nota é apagada de vez, com o texto.
+- **Transformar em demanda** cria uma demanda da própria pessoa com o título e o texto da nota (os detalhes vão até 4.000 caracteres) e, se marcar, copia os arquivos. A nota continua como estava.
+- **Baixar minhas notas:** um ZIP com cada nota em `.txt` (com BOM, para o Bloco de Notas do Windows ler os acentos) e os arquivos numa pasta ao lado.
+- **Quem saiu da equipe:** as notas ficam guardadas e ninguém vê. Na página Pessoas, o administrador vê só quantas notas uma pessoa desativada deixou e pode apagá-las de vez, sem abrir nenhuma.
+- **Privacidade de verdade tem limite:** o banco e a pasta Anexos não são cifrados. A página avisa para não guardar senhas.
+
+Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 12.1 a 12.4 do [plano da v3](plano-v3.md)): só pessoais, ninguém mais vê, notas de quem saiu ficam guardadas e os mesmos limites dos anexos.

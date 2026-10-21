@@ -48,10 +48,12 @@ def _backup_loop(db_path: Path) -> None:
         except Exception:
             log.exception("falha na cópia de segurança")
         try:
-            from . import anexos
+            from . import anexos, notas
             from .db import Database
 
-            anexos.purge(Database(db_path), datetime.now())  # lixeira dos anexos: some depois de 30 dias
+            # lixeiras: notas e anexos somem de vez depois de 30 dias (as notas primeiro: os arquivos vão juntos)
+            notas.purge(Database(db_path), datetime.now())
+            anexos.purge(Database(db_path), datetime.now())
         except Exception:
             log.exception("falha na limpeza da lixeira dos anexos")
         time.sleep(BACKUP_EVERY_SECONDS)

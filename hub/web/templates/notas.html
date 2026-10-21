@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% set active = 'notas' %}
+{% block title %}{{ note.title ~ ' · ' if note else '' }}Notas · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>Minhas notas</h1>
+  <div class="acoes">
+    <a class="botao discreto" href="/notas/baixar">Baixar minhas notas (ZIP)</a>
+    <form method="post" action="/notas"><button>+ Nova nota</button></form>
+  </div>
+</div>
+<p class="ajuda">🔒 Só você vê as suas notas: nem o gestor nem os administradores abrem, e elas não aparecem no histórico nem na TV. Não guarde senhas aqui: o arquivo do Hub no PC da sala não é cifrado.</p>
+{% if ok or request.query_params.get('ok') %}<div class="sucesso" role="status">{{ ok or request.query_params.get('ok') }}</div>{% endif %}
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+
+<div class="notas">
+  <aside class="notas-lista" aria-label="Lista de notas">
+    <form method="get" action="/notas" class="notas-busca">
+      <input type="text" name="q" value="{{ q }}" placeholder="Buscar nas notas" aria-label="Buscar nas notas">
+      {% if aba %}<input type="hidden" name="aba" value="{{ aba }}">{% endif %}
+    </form>
+    <nav class="notas-abas" aria-label="Quais notas">
+      <a href="/notas" {% if not aba %}aria-current="page"{% endif %}>Notas</a>
+      <a href="/notas?aba=arquivadas" {% if aba == 'arquivadas' %}aria-current="page"{% endif %}>Arquivadas</a>
+      <a href="/notas?aba=lixeira" {% if aba == 'lixeira' %}aria-current="page"{% endif %}>Lixeira</a>
+    </nav>
+    {% if notes %}
+    <ul>
+      {% for n in notes %}
+      <li{% if note and n.id == note.id %} class="atual"{% endif %}>
+        {% if aba == 'lixeira' %}
+        <div class="nota-item"><strong>{{ n.title }}</strong><span class="ajuda">na lixeira desde {{ n.deleted_at.strftime('%d/%m') }}</span></div>
+        <form method="post" action="/notas/{{ n.id }}/restaurar"><button class="discreto">Restaurar</button></form>
+        {% else %}
+        <a class="nota-item" href="/notas/{{ n.id }}"><strong>{% if n.pinned %}📌 {% endif %}{{ n.title }}{% if n.id in clips %} <span class="ajuda">📎 {{ clips[n.id] }}</span>{% endif %}</strong>
+          <span class="ajuda">{{ n.updated_at.strftime('%d/%m %H:%M') }}{% if n.preview %} · {{ n.preview }}{% endif %}</span></a>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="vazio">{{ 'Nada encontrado.' if q else ('A lixeira está vazia.' if aba == 'lixeira' else 'Nenhuma nota aqui.') }}</p>
+    {% endif %}
+    {% if aba == 'lixeira' %}<p class="ajuda">Depois de {{ trash_days }} dias na lixeira, a nota é apagada de vez.</p>{% endif %}
+  </aside>
+
+  <section class="nota-aberta">
+    {% if note %}
+    <form id="nota" method="post" action="/notas/{{ note.id }}" class="ficha nota-form">
+      <input type="text" name="title" value="{{ note.title }}" maxlength="120" aria-label="Título" class="nota-titulo">
+      <textarea name="body" rows="16" maxlength="{{ max_body }}" aria-label="Texto da nota" placeholder="Escreva aqui…">{{ note.body }}</textarea>
+      <div class="acoes">
+        <button>Salvar</button>
+        <span id="salvo" class="ajuda" role="status">Salva sozinha enquanto você digita · última vez {{ note.updated_at.strftime('%d/%m às %H:%M') }}</span>
+      </div>
+    </form>
+    <div class="acoes nota-acoes">
+      <form method="post" action="/notas/{{ note.id }}/{{ 'desafixar' if note.pinned else 'fixar' }}"><button class="discreto">{{ '📌 Desafixar' if note.pinned else '📌 Fixar no topo' }}</button></form>
+      <form method="post" action="/notas/{{ note.id }}/{{ 'desarquivar' if note.archived else 'arquivar' }}"><button class="discreto">{{ 'Desarquivar' if note.archived else 'Arquivar' }}</button></form>
+      <form method="post" action="/notas/{{ note.id }}/virar-demanda" class="ficha-inline">
+        <button class="discreto">Transformar em demanda</button>
+        {% if files %}<label class="check"><input type="checkbox" name="copiar" value="1" checked> levar os arquivos</label>{% endif %}
+      </form>
+      <form method="post" action="/notas/{{ note.id }}/excluir" onsubmit="return confirm('Mandar a nota para a lixeira? Dá para restaurar por {{ trash_days }} dias.')"><button class="perigo">Excluir</button></form>
+    </div>
+
+    <section class="cartao-form anexos" id="arquivos" aria-labelledby="h-arquivos">
+      <h2 id="h-arquivos">Arquivos</h2>
+      {% if error_files %}<div class="erro" role="alert">{{ error_files }}</div>{% endif %}
+      {% if files %}
+      <ul class="lista-anexos">
+        {% for a in files %}
+        <li>
+          <div class="anexo-info">
+            <a class="anexo-nome" href="/anexos/{{ a.id }}">📎 {{ a.name }}</a>
+            <span class="ajuda">{{ a.size_text }} · {{ a.uploaded_at.strftime('%d/%m às %H:%M') }}</span>
+            {% if a.versions %}
+            <details class="versoes"><summary>{{ a.versions|length }} versão anterior{{ 'es' if a.versions|length > 1 else '' }}</summary>
+              <ul>{% for o in a.versions %}<li><a href="/anexos/{{ o.id }}">{{ o.name }}</a> <span class="ajuda">{{ o.size_text }} · {{ o.uploaded_at.strftime('%d/%m às %H:%M') }}</span></li>{% endfor %}</ul>
+            </details>
+            {% endif %}
+          </div>
+          <div class="anexo-acoes">
+            <a class="botao discreto" href="/anexos/{{ a.id }}">Baixar</a>
+            <form method="post" action="/notas/{{ note.id }}/anexos/{{ a.id }}/versao" enctype="multipart/form-data" class="nova-versao">
+              <label class="botao discreto">Enviar nova versão<input type="file" name="arquivos" accept="{{ accept }}" onchange="this.form.submit()" hidden></label>
+            </form>
+            <form method="post" action="/notas/{{ note.id }}/anexos/{{ a.id }}/remover" onsubmit="return confirm('Remover este arquivo da nota?')"><button class="discreto">Remover</button></form>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="ajuda">Nenhum arquivo nesta nota.</p>
+      {% endif %}
+      <form method="post" action="/notas/{{ note.id }}/anexos" enctype="multipart/form-data" class="ficha-inline">
+        <input type="file" name="arquivos" multiple accept="{{ accept }}" aria-label="Escolher arquivos">
+        <button>Anexar</button>
+      </form>
+      <p class="ajuda">Até {{ max_mb }} MB por arquivo e {{ max_files }} arquivos por nota.</p>
+    </section>
+    {% else %}
+    <p class="vazio">Escolha uma nota na lista ou crie uma nova.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}{% if note %}<script src="/static/notas.js?v={{ version }}"></script>{% endif %}{% endblock %}

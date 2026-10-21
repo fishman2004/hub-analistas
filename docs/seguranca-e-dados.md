@@ -16,6 +16,7 @@
 | Envios do Pombo (tela Envios do dia) | Horário, nome do envio, analista, canal, situação e "N de M enviados". **Nunca** destinatários, motivo das falhas nem nomes de arquivo | Página Envios: tudo isso mais os destinatários, o motivo de cada falha e a situação de cada arquivo |
 | Pausa da TV (fase 10) | O selo "Pausada", com as iniciais de quem pausou pelo app | Página **TV da sala**: qual tela está na TV, quem pausou e até quando; pausar, trocar e retomar com PIN, tudo no histórico. "Abrir no meu PC" mostra o mesmo que a TV |
 | Descrição e arquivos das demandas (fase 11) | **Nunca** (nem o 📎; o endereço da TV nem consulta a tabela dos anexos) | Quem vê a demanda lê a descrição, anexa e baixa; reservada, só o dono, quem criou, o gestor e os administradores. Remover: quem anexou, o dono, gestor e administradores. Lixeira e pasta: administradores |
+| Notas pessoais (fase 12) | **Nunca** | **Só a dona**: nem o gestor, nem os administradores. Não entram no histórico. Para quem saiu da equipe, o administrador vê só a quantidade e pode apagar de vez |
 | Histórico | Não | Sim (as linhas do banco de horas só para a própria pessoa e o gestor) |
 | PIN | Não | Ninguém (só um resumo fica guardado) |
 

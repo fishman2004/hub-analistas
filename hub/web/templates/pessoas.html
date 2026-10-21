@@ -4,6 +4,7 @@
 {% block main %}
 <h1>Pessoas</h1>
 <p class="ajuda">Só administradores veem esta página. <strong>Gestor</strong> terá a visão da equipe; <strong>Administrador</strong> pode gerenciar pessoas, papéis e PINs. Ninguém vê o PIN de ninguém: "Redefinir PIN" apaga o atual e a pessoa cria outro no próximo acesso.</p>
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
 
 {% if people %}
@@ -56,4 +57,17 @@
   <input type="hidden" name="color" value="">
   <div><button>Adicionar</button></div>
 </form>
+
+{% if left_notes %}
+<section class="cartao-form" style="margin-top: 16px">
+  <h2>Notas de quem saiu da equipe</h2>
+  <p class="ajuda">As notas são só da dona: ninguém mais abre, nem o administrador. Se a pessoa não volta, dá para apagá-las de vez (com os arquivos), sem ver o conteúdo.</p>
+  <ul class="lista-pessoas">
+    {% for p, n in left_notes %}
+    <li><span class="bolinha" style="--cor: {{ p.color }}">{{ p.initials }}</span> {{ p.name }} · {{ n }} nota{{ 's' if n != 1 else '' }}
+      <form method="post" action="/pessoas/{{ p.id }}/apagar-notas" data-nome="{{ p.name }}" onsubmit="return confirm('Apagar de vez as notas de ' + this.dataset.nome + '? Não dá para desfazer.')"><button class="perigo">Apagar as notas de vez</button></form></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
 {% endblock %}
