@@ -16,7 +16,42 @@
 
   const cabe = (caixa) => caixa.scrollHeight <= caixa.clientHeight;
 
+  function etapas(i) {
+    // item com etapas (Metas do mês), à parte: etapas nas linhas, pastas nas colunas; a pasta que
+    // concluiu tem a coluna destacada. Ocupa a largura toda, mesmo com a lista em duas colunas.
+    const card = el("div", "prio-tabela" + (i.late ? " atrasada" : ""));
+    const topo = el("div", "prio-tabela-topo");
+    topo.append(el("div", "prio-titulo", i.title));
+    const feitas = i.folders.filter((f) => f.done).length;
+    topo.append(el("div", "prio-prazo", feitas + " de " + i.folders.length + " pastas concluíram" +
+      (i.due_day ? " · " + (i.late ? "atrasada · " : "") + "até dia " + i.due_day : "")));
+    card.append(topo);
+    const grade = el("div", "etapas-grade");
+    grade.style.gridTemplateColumns = "minmax(0, 1fr) repeat(" + i.folders.length + ", 4.6rem)";
+    grade.append(el("span", "cab"));
+    for (const f of i.folders) {
+      const cab = el("span", "cab col" + (f.done ? " concluida" : ""));
+      cab.append(el("span", "letra pasta-" + f.folder, f.folder));
+      grade.append(cab);
+    }
+    i.steps.forEach((nome, n) => {
+      const ultima = n === i.steps.length - 1;
+      const rot = el("span", "etapa" + (ultima ? " ultima" : ""));
+      rot.append(el("span", "num", String(n + 1)), document.createTextNode(nome));
+      grade.append(rot);
+      for (const f of i.folders) {
+        const cel = el("span", "cel col" + (f.done ? " concluida" : "") + (f.steps[n] ? " sim" : " nao") + (ultima ? " ultima" : ""));
+        if (f.steps[n]) cel.innerHTML = CHECK;
+        else cel.textContent = "✕";
+        grade.append(cel);
+      }
+    });
+    card.append(grade);
+    return card;
+  }
+
   function item(i) {
+    if (i.steps && i.folders) return etapas(i);
     const card = el("div", "prio-item" + (i.done ? " feita" : "") + (i.late ? " atrasada" : ""));
     const marca = el("span", "prio-marca");
     if (i.done) marca.innerHTML = CHECK;  // só o ícone fixo; o texto vindo do servidor entra por textContent
@@ -26,16 +61,12 @@
     if (i.due_day && !i.done) texto.append(el("div", "prio-prazo", (i.late ? "atrasada · " : "") + "até dia " + i.due_day));
     card.append(texto);
     if (i.folders && i.folders.length > 1) {
-      // por pasta (fase 16): cada pasta com o check e as iniciais de quem fez, ou apagada enquanto falta
+      // por pasta (fase 16): a pasta que concluiu fica acesa com o check, a que falta fica apagada
       const pastas = el("div", "prio-pastas");
       for (const f of i.folders) {
         const chip = el("span", "prio-pasta" + (f.done ? " feita" : ""));
         chip.append(el("span", "letra pasta-" + f.folder, f.folder));
-        if (f.done && f.initials) {
-          const ini = el("span", "ini", f.initials);
-          ini.style.setProperty("--cor", f.color);
-          chip.append(ini);
-        }
+        if (f.done) chip.insertAdjacentHTML("beforeend", '<span class="ok">' + CHECK + "</span>");
         pastas.append(chip);
       }
       card.append(pastas);

@@ -31,7 +31,8 @@ from ..presence import STATUSES, presence_board, set_status
 from ..rotinas import (WEEKDAY_LABELS, alerts_today, can_manage, create_suggested, get_routine, list_routines,
                        save_routine, set_routine_active, start_test_alert, tv_alerts, weekdays_label)
 from ..prioridades import (DEFAULT_LIST, add_priority, by_folder, can_mark, can_remove, create_default_list, is_late,
-                           is_month, last_day, list_month, mark_done, month_label, month_of, parse_due_day, past_months,
+                           is_month, last_day, list_month, mark_done, month_label, month_of, parse_due_day, parse_steps,
+                           past_months,
                            remove_priority, undo_done)
 from ..telas import MAX_SECONDS, MIN_SECONDS, PAGE_MAX, PAGE_MIN, rotation, save_screen_config, screen_config
 from .. import tvcontrole
@@ -1273,7 +1274,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         month = month if is_month(month) and month <= current else current
         items = list_month(db, month)
         mine = pastas.folders_of(db, user.id)
-        ctx.setdefault("v", {"title": "", "folder": "", "prazo": ""})
+        ctx.setdefault("v", {"title": "", "folder": "", "prazo": "", "etapas": ""})
         return page(request, "prioridades.html", user, status_code, month=month, current=current, items=items,
                     mine=mine, owners=pastas.owners(db), folder_summary=by_folder(items),
                     can_mark=lambda folder: can_mark(user, folder, mine),
@@ -1291,15 +1292,18 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         return to_login() if user is None else priorities_page(request, user, mes)
 
     @app.post("/prioridades")
-    def prioridades_acrescentar(request: Request, title: str = Form(""), folder: str = Form(""), prazo: str = Form("")):
+    def prioridades_acrescentar(request: Request, title: str = Form(""), folder: str = Form(""), prazo: str = Form(""),
+                                etapas: str = Form("")):
         user = me(request)
         if user is None:
             return to_login()
         try:
-            add_priority(db, clock(), user, title, folder or None, parse_due_day(prazo))
+            add_priority(db, clock(), user, title, folder or None, parse_due_day(prazo), parse_steps(etapas))
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
         except ValidationError as exc:
             return priorities_page(request, user, status_code=422, error=str(exc),
-                                   v={"title": title, "folder": folder, "prazo": prazo})
+                                   v={"title": title, "folder": folder, "prazo": prazo, "etapas": etapas})
         return back_to_priorities()
 
     @app.post("/prioridades/padrao")
@@ -1307,11 +1311,14 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         user = me(request)
         if user is None:
             return to_login()
-        create_default_list(db, clock(), user)  # o mês já tem lista (outro PC criou antes): não muda nada
+        try:
+            create_default_list(db, clock(), user)  # o mês já tem lista (outro PC criou antes): não muda nada
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
         return back_to_priorities()
 
     @app.post("/prioridades/{item_id}/{action}")
-    def prioridades_item(request: Request, item_id: int, action: str, pasta: str = ""):
+    def prioridades_item(request: Request, item_id: int, action: str, pasta: str = "", etapa: str = ""):
         user = me(request)
         if user is None:
             return to_login()
@@ -1322,7 +1329,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             if action == "remover":
                 remove_priority(db, clock(), user, item_id)
             else:  # sem pasta: as pastas de quem clicou
-                actions[action](db, clock(), user, item_id, pasta or None)
+                actions[action](db, clock(), user, item_id, pasta or None, int(etapa) if etapa.isdigit() else None)
         except PermissionError as exc:
             return forbidden(request, user, str(exc))
         except ValidationError as exc:

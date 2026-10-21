@@ -128,11 +128,10 @@ def test_month_boundaries(team):
 def test_default_list_is_created_once(team):
     db, kayo, bia, _ = team
     created = create_default_list(db, at(8), bia)
-    expected = ["Lançar a meta no sistema", "Confirmar o recebimento da meta com o gerente",
-                "Entregar as comissões", "Entregar as campanhas"]
+    expected = ["Metas do mês", "Entregar as comissões", "Entregar as campanhas"]
     assert [p.title for p in created] == expected == titles(db)
-    assert [(p.folder, p.due_day) for p in created] == [(None, None), (None, None), (None, 10), (None, 15)]
-    assert [p.position for p in created] == [1, 2, 3, 4]
+    assert [(p.folder, p.due_day, len(p.steps)) for p in created] == [(None, None, 4), (None, 10, 0), (None, 15, 0)]
+    assert [p.position for p in created] == [1, 2, 3]
     assert {p.created_by for p in created} == {bia.id}
     assert create_default_list(db, at(9), kayo) == []  # de novo (ou duplo clique): nada muda
     assert len(titles(db)) == len(expected)
@@ -225,7 +224,7 @@ def test_page_flow(web):
     assert 'href="/prioridades"' in page and "Criar lista padrão do mês" in page and "outubro de 2026" in page
     assert c.post("/prioridades/padrao", follow_redirects=False).status_code == 303
     page = c.get("/prioridades").text
-    assert "Confirmar o recebimento da meta com o gerente" in page and "0 de 4 feitas" in page
+    assert "Metas do mês" in page and "0 de 3 feitas" in page
     assert "Criar lista padrão do mês" not in page  # o mês já tem lista
     # dia 19: "Entregar as comissões" (até dia 10) e "Entregar as campanhas" (até dia 15) estão atrasadas
     assert page.count("atrasada · até dia") == 2 and "2 atrasadas" in page
@@ -240,14 +239,14 @@ def test_page_flow(web):
     first = list_month(db, OUT)[0]
     c.post(f"/prioridades/{first.id}/feita")
     page = c.get("/prioridades").text
-    assert "1 de 5 feitas" in page and "feita por Bia em 19/10 às 12:00" in page and "Desfazer" in page
+    assert "1 de 4 feitas" in page and "feita por Bia em 19/10 às 12:00" in page and "Desfazer" in page
     c.post(f"/prioridades/{first.id}/desfazer")
     assert not list_month(db, OUT)[0].done
     history = c.get("/historico?de=2026-10-19&ate=2026-10-19").text
     for line in ("Bia criou a lista padrão de prioridades de outubro de 2026",
                  "Bia acrescentou “Conferir bonificações” às prioridades do mês",
-                 "Bia marcou como feita a prioridade “Lançar a meta no sistema”",
-                 "Bia desmarcou a prioridade “Lançar a meta no sistema”"):
+                 "Bia marcou como feita a prioridade “Metas do mês”",
+                 "Bia desmarcou a prioridade “Metas do mês”"):
         assert line in history
 
 

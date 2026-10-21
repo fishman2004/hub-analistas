@@ -18,6 +18,7 @@ from hub.db import Database, put_setting
 from hub.demands import create_demand, move_demand, routine_ref, toggle_folder
 from hub.envios import COLUMNS, SETTING_FOLDER, analyst_slug
 from hub.horas import save_entry, set_balance
+from hub.pastas import set_folders
 from hub.paths import data_dir
 from hub.paineis import panel_folder
 from hub.people import add_person, get_person, list_people
@@ -98,10 +99,20 @@ def seed(now: datetime | None = None) -> Database:
             toggle_folder(db, when, person.id, routine_ref(routine.id, today), folder)
         else:
             move_demand(db, when, person.id, routine_ref(routine.id, today), "done")
-    # prioridades do mês: a lista padrão com duas já feitas, mais um item com pasta e prazo
-    first, second, *_ = create_default_list(db, early, ana)
-    mark_done(db, min(now, early + timedelta(minutes=40)), ana, first.id)
-    mark_done(db, min(now, early + timedelta(minutes=80)), bianca, second.id)
+    # pastas de cada analista (fictícias) e as prioridades do mês: a lista padrão, com as Metas do mês
+    # andando etapa por etapa em cada pasta, as comissões já feitas e um item só da pasta B
+    admin = get_person(db, ana.id)
+    for person, folders in ((ana, ["A", "B"]), (carla, ["C", "D"]), (diego, ["E"]), (elisa, ["F", "G"])):
+        set_folders(db, early, admin, person.id, folders)
+    metas, comissoes, _ = create_default_list(db, early, ana)
+    folders = {"A": ana, "B": ana, "C": carla, "D": carla, "E": diego, "F": elisa, "G": elisa}
+    for minutes, (folder, steps) in enumerate((("A", 4), ("B", 4), ("C", 2), ("D", 3), ("E", 1), ("F", 3))):
+        for n in range(steps):
+            mark_done(db, min(now, early + timedelta(minutes=20 + 5 * minutes + n)), get_person(db, folders[folder].id),
+                      metas.id, folder, n)
+    for minutes, (folder, person) in enumerate(folders.items()):
+        mark_done(db, min(now, early + timedelta(minutes=60 + 5 * minutes)), get_person(db, person.id), comissoes.id,
+                  folder)
     add_priority(db, early, carla, "Novos acompanhamentos da pasta B", folder="B", due_day=25)
     # planilhas fictícias dos painéis (tools/exemplos), para as telas de metas aparecerem na TV
     for f in (Path(__file__).parent / "exemplos").iterdir():

@@ -298,15 +298,38 @@ body.exportar { height: auto; overflow: auto; display: block; padding: 0; }
 .prio-item.feita .prio-marca { background: var(--sala); border-color: var(--sala); color: #0e141a; }
 .prio-item.feita .prio-titulo { font-size: 1.75rem; color: var(--suave); text-decoration: line-through; text-decoration-thickness: .1rem; }
 .prio-item.feita .letra { opacity: .6; }
-/* por pasta (fase 16): a pasta que falta fica apagada e tracejada; a que fez ganha as iniciais de quem marcou */
+/* por pasta (fase 16): a pasta que falta fica apagada e tracejada; a que concluiu fica acesa com o check */
 .prio-pastas { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; max-width: 55%; }
-.prio-pasta { display: flex; align-items: center; gap: .3rem; padding: .25rem; border-radius: .7rem; border: .15rem dashed var(--suave); }
-.prio-pasta .letra { width: 2.6rem; height: 2.6rem; font-size: 1.4rem; opacity: .4; }
-.prio-pasta .ini { min-width: 2.4rem; height: 2.4rem; font-size: 1.05rem; }
+.prio-pasta { display: flex; align-items: center; gap: .25rem; padding: .25rem; border-radius: .7rem; border: .15rem dashed var(--suave); }
+.prio-pasta .letra { width: 2.6rem; height: 2.6rem; font-size: 1.4rem; opacity: .35; }
+.prio-pasta .ok { display: grid; place-items: center; width: 2rem; height: 2rem; color: var(--sala); }
+.prio-pasta .ok svg { width: 1.8rem; height: 1.8rem; }
 .prio-pasta.feita { border: .15rem solid var(--sala); }
 .prio-pasta.feita .letra { opacity: 1; }
 .prio-item.atrasada .prio-pasta:not(.feita) { border-color: var(--atraso); }
 .prio-item.feita .prio-pasta .letra { opacity: .6; }
+/* item com etapas (Metas do mês): a tabela de comparação, com a coluna da pasta que concluiu destacada */
+.prio-tabela { grid-column: 1 / -1; background: var(--cartao); border-radius: .9rem; border-left: .5rem solid var(--reuniao); padding: 1rem 1.4rem 1.2rem; }
+.prio-tabela.atrasada { border-left-color: var(--atraso); box-shadow: inset 0 0 0 .15rem var(--atraso); }
+.prio-tabela.atrasada .prio-prazo { color: var(--atraso); }
+.prio-tabela-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 2rem; margin-bottom: .6rem; }
+.etapas-grade { display: grid; row-gap: 0; align-items: stretch; }
+.etapas-grade > span { display: grid; place-items: center; padding: .45rem 0; }
+.etapas-grade .cab { padding-bottom: .5rem; }
+.etapas-grade .cab .letra { width: 3rem; height: 3rem; font-size: 1.6rem; font-weight: 800; }
+.etapas-grade .etapa { justify-items: start; grid-auto-flow: column; justify-content: start; gap: .8rem; font-size: 1.6rem; font-weight: 600;
+  border-top: .1rem solid var(--linha); }
+.etapas-grade .etapa .num { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: var(--linha); font-size: 1.2rem; font-weight: 800; }
+.etapas-grade .cel { border-top: .1rem solid var(--linha); font-size: 1.8rem; font-weight: 700; }
+.etapas-grade .cel.sim { color: var(--sala); }
+.etapas-grade .cel.nao { color: var(--suave); opacity: .7; }
+.prio-tabela.atrasada .etapas-grade .cel.nao { color: var(--atraso); opacity: 1; }
+.etapas-grade .cel svg { width: 2.2rem; height: 2.2rem; }
+.etapas-grade .col.concluida { background: rgba(76, 192, 109, .16); }
+body.clara .etapas-grade .col.concluida { background: rgba(26, 127, 55, .12); }
+.etapas-grade .cab.col.concluida { border-radius: .7rem .7rem 0 0; }
+.etapas-grade .cel.col.concluida.ultima { border-radius: 0 0 .7rem .7rem; }
+.etapas-grade .cab:not(.concluida) .letra { opacity: .55; }
 
 /* ---------- envios do Pombo (fase 9): uma linha por rodada ---------- */
 .envios-bloco { flex: 1; }
