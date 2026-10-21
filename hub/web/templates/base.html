@@ -21,6 +21,7 @@
       <a href="/paineis" {% if active == 'paineis' %}aria-current="page"{% endif %}>Painéis</a>
       <a href="/horas" {% if active == 'horas' %}aria-current="page"{% endif %}>Banco de horas</a>
       <a href="/envios" {% if active == 'envios' %}aria-current="page"{% endif %}>Envios</a>
+      <a href="/notas" {% if active == 'notas' %}aria-current="page"{% endif %}>Notas</a>
       <a href="/historico" {% if active == 'historico' %}aria-current="page"{% endif %}>Histórico</a>
       {% if user.is_admin %}<a href="/pessoas" {% if active == 'pessoas' %}aria-current="page"{% endif %}>Pessoas</a>
       <a href="/configuracoes" {% if active == 'config' %}aria-current="page"{% endif %}>Configurações</a>{% endif %}

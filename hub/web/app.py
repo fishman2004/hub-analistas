@@ -6,7 +6,7 @@ from typing import Callable
 from urllib.parse import quote, urlencode, urlsplit
 
 from fastapi import FastAPI, File, Form, Query, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -17,7 +17,7 @@ from ..db import Database, events, first_event_day
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos
+from .. import anexos, notas
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -493,7 +493,169 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         if a.kind == "demanda":
             d = find_demand(db, a.parent_id)
             return d is not None and can_see(d, user)
+        if a.kind == notas.KIND:  # arquivo de nota: só a dona, nem gestor nem administrador
+            return notas.get_note(db, user, a.parent_id) is not None
         return False
+
+    # ---------- bloco de notas pessoal (fase 12): só a dona vê; nada vai para o histórico ----------
+
+    def notes_page(request: Request, user: Person, note=None, status_code: int = 200, q: str = "", aba: str = "",
+                   **ctx) -> HTMLResponse:
+        listed = notas.list_notes(db, user, text=q, archived=aba == "arquivadas", trash=aba == "lixeira")
+        files = anexos.list_for(db, notas.KIND, note.id) if note else []
+        return page(request, "notas.html", user, status_code, notes=listed, note=note, files=files, q=q, aba=aba,
+                    accept=anexos.ACCEPT, max_mb=anexos.MAX_BYTES // 1024 ** 2, max_files=anexos.MAX_PER_PARENT,
+                    max_body=notas.MAX_BODY, trash_days=notas.TRASH_DAYS,
+                    clips=anexos.counts(db, notas.KIND), **ctx)
+
+    def my_note(request: Request, note_id: int, deleted: bool = False):
+        user = me(request)
+        if user is None:
+            return None, None, to_login()
+        try:
+            return user, notas._own(db, user, note_id, deleted), None
+        except ValidationError:
+            # de outra pessoa ou inexistente: a mesma resposta, para não contar que a nota existe
+            return user, None, page(request, "sem-permissao.html", user, 404, message="Nota não encontrada.")
+
+    def back_to_note(note_id: int, message: str = "") -> RedirectResponse:
+        return RedirectResponse(f"/notas/{note_id}" + (f"?ok={quote(message)}" if message else ""), status_code=303)
+
+    @app.get("/notas", response_class=HTMLResponse)
+    def notas_lista(request: Request, q: str = "", aba: str = ""):
+        user = me(request)
+        return to_login() if user is None else notes_page(request, user, q=q, aba=aba)
+
+    @app.post("/notas")
+    def notas_criar(request: Request):
+        user = me(request)
+        if user is None:
+            return to_login()
+        return back_to_note(notas.create_note(db, clock(), user).id)
+
+    @app.get("/notas/baixar")
+    def notas_baixar(request: Request):
+        user = me(request)
+        if user is None:
+            return to_login()
+        name = f"Minhas notas {clock().strftime('%Y-%m-%d')}.zip"
+        return Response(notas.export_zip(db, user), media_type="application/zip",
+                        headers={"Content-Disposition": f"attachment; filename*=utf-8''{quote(name)}",
+                                 "Cache-Control": "no-store"})
+
+    @app.get("/notas/{note_id}", response_class=HTMLResponse)
+    def notas_abrir(request: Request, note_id: int, ok: str = "", q: str = "", aba: str = ""):
+        user, note, stop = my_note(request, note_id)
+        return stop or notes_page(request, user, note, ok=ok, q=q, aba="arquivadas" if note.archived else aba)
+
+    @app.post("/notas/{note_id}")
+    async def notas_salvar(request: Request, note_id: int):
+        user, note, stop = my_note(request, note_id)
+        auto = request.headers.get("x-hub-auto") == "1"  # gravação automática enquanto a pessoa digita
+        if stop:
+            return JSONResponse({"erro": "Nota não encontrada."}, 404) if auto and user else stop
+        form = await request.form()
+        try:
+            saved = notas.save_note(db, clock(), user, note_id, str(form.get("title", "")), str(form.get("body", "")))
+        except ValidationError as exc:
+            if auto:
+                return JSONResponse({"erro": str(exc)}, 422)
+            return notes_page(request, user, note, 422, error=str(exc))
+        if auto:
+            return JSONResponse({"salvo": saved.updated_at.strftime("%H:%M"), "titulo": saved.title})
+        return back_to_note(note_id, "Salvo.")
+
+    @app.post("/notas/{note_id}/virar-demanda")
+    def notas_virar_demanda(request: Request, note_id: int, copiar: str = Form("")):
+        user, note, stop = my_note(request, note_id)
+        if stop:
+            return stop
+        try:
+            d = create_demand(db, clock(), user.id, title=note.title[:120], owner_id=user.id,
+                              details=note.body[:MAX_DETAILS] or None)
+        except ValidationError as exc:
+            return notes_page(request, user, note, 422, error=str(exc))
+        problems = []
+        if copiar == "1":
+            for a in anexos.list_for(db, notas.KIND, note.id):
+                try:
+                    with open(anexos.path_of(db, a), "rb") as data:
+                        anexos.save(db, clock(), user, "demanda", d.id, a.name, data, subject=f"demanda:{d.id}")
+                except (OSError, ValidationError) as exc:
+                    problems.append(str(exc) if isinstance(exc, ValidationError) else f"“{a.name}” não abriu.")
+        message = "Demanda criada a partir da nota." + (" " + " ".join(problems) if problems else "")
+        return RedirectResponse(f"/demandas/{d.id}?ok={quote(message)}", status_code=303)
+
+    @app.post("/notas/{note_id}/anexos")
+    async def notas_anexar(request: Request, note_id: int):
+        user, note, stop = my_note(request, note_id)
+        if stop:
+            return stop
+        files = uploads(await request.form())
+        if not files:
+            return notes_page(request, user, note, 422, error_files="Escolha um arquivo para anexar.")
+        problems = []
+        for f in files:
+            try:
+                anexos.save(db, clock(), user, notas.KIND, note.id, f.filename, f.file)  # sem histórico
+            except ValidationError as exc:
+                problems.append(str(exc))
+        if len(problems) < len(files):
+            notas.touch(db, clock(), note.id)
+        if problems:
+            return notes_page(request, user, notas.get_note(db, user, note.id), 422, error_files=" ".join(problems))
+        return back_to_note(note.id, "Arquivo anexado." if len(files) == 1 else f"{len(files)} arquivos anexados.")
+
+    def note_file(note, attachment_id: int):
+        a = anexos.find(db, attachment_id)
+        ok = a is not None and a.kind == notas.KIND and a.parent_id == note.id and a.deleted_at is None
+        return a if ok else None
+
+    @app.post("/notas/{note_id}/anexos/{attachment_id}/versao")
+    async def notas_anexo_versao(request: Request, note_id: int, attachment_id: int):
+        user, note, stop = my_note(request, note_id)
+        if stop:
+            return stop
+        a, files = note_file(note, attachment_id), uploads(await request.form())[:1]
+        if a is None or not files:
+            return notes_page(request, user, note, 422, error_files="Escolha o arquivo da nova versão.")
+        try:
+            anexos.save(db, clock(), user, notas.KIND, note.id, files[0].filename, files[0].file, replaces=a.id)
+        except ValidationError as exc:
+            return notes_page(request, user, note, 422, error_files=str(exc))
+        notas.touch(db, clock(), note.id)
+        return back_to_note(note.id, f"Nova versão de “{a.name}” enviada.")
+
+    @app.post("/notas/{note_id}/anexos/{attachment_id}/remover")
+    def notas_anexo_remover(request: Request, note_id: int, attachment_id: int):
+        user, note, stop = my_note(request, note_id)
+        if stop:
+            return stop
+        a = note_file(note, attachment_id)
+        if a is not None:
+            anexos.remove(db, clock(), user, a)
+            notas.touch(db, clock(), note.id)
+        return back_to_note(note.id, "Arquivo removido.")
+
+    # depois das rotas acima: /notas/{id}/{ação} pegaria /anexos e /virar-demanda
+    @app.post("/notas/{note_id}/{acao}")
+    def notas_acao(request: Request, note_id: int, acao: str):
+        flags = {"fixar": ("pinned", True), "desafixar": ("pinned", False),
+                 "arquivar": ("archived", True), "desarquivar": ("archived", False)}
+        if acao not in (*flags, "excluir", "restaurar"):
+            return Response(status_code=404)
+        user, note, stop = my_note(request, note_id, deleted=acao == "restaurar")
+        if stop:
+            return stop
+        if acao == "excluir":
+            notas.delete_note(db, clock(), user, note_id)
+            return RedirectResponse(f"/notas?ok={quote('Nota na lixeira por ' + str(notas.TRASH_DAYS) + ' dias.')}",
+                                    status_code=303)
+        if acao == "restaurar":
+            notas.restore_note(db, clock(), user, note_id)
+            return back_to_note(note_id, "Nota restaurada.")
+        notas.set_flag(db, clock(), user, note_id, *flags[acao])
+        return back_to_note(note_id)
 
     # ---------- busca de demandas (fase 11) ----------
 
@@ -1059,7 +1221,10 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         return user, None
 
     def people_page(request: Request, user: Person | None, status_code: int = 200, **ctx) -> HTMLResponse:
-        return page(request, "pessoas.html", user, status_code, people=list_people(db), palette=PALETTE, **ctx)
+        # quem saiu da equipe e deixou notas: o administrador só vê quantas são e pode apagar de vez
+        left = [(p, notas.count_for(db, p.id)) for p in list_people(db, active_only=False) if not p.active]
+        return page(request, "pessoas.html", user, status_code, people=list_people(db), palette=PALETTE,
+                    left_notes=[(p, n) for p, n in left if n], **ctx)
 
     @app.get("/pessoas", response_class=HTMLResponse)
     def pessoas(request: Request):
@@ -1110,6 +1275,20 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             return stop
         reset_pin(db, clock(), user, person_id)
         return RedirectResponse("/pessoas", status_code=303)
+
+    @app.post("/pessoas/{person_id}/apagar-notas")
+    def pessoas_apagar_notas(request: Request, person_id: int):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        person = get_person(db, person_id)
+        try:
+            if person is None:
+                raise ValidationError("Pessoa não encontrada.")
+            erased = notas.erase_person_notes(db, clock(), user, person)
+        except ValidationError as exc:
+            return people_page(request, user, 422, error=str(exc))
+        return people_page(request, user, ok=f"{erased} nota{'s' if erased != 1 else ''} de {person.name} apagada{'s' if erased != 1 else ''} de vez.")
 
     @app.post("/pessoas/{person_id}/desativar")
     def pessoas_desativar(request: Request, person_id: int):
