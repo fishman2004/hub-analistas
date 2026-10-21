@@ -106,8 +106,8 @@ body {
 .tela > .quadro { flex: 1; }
 .tela-titulo { margin: 0; font-size: 2rem; }
 
-.rotacao { flex: 1; display: flex; justify-content: center; gap: 1.5rem; }
-.rot-item { display: grid; gap: .35rem; min-width: 8rem; color: var(--suave); font-size: 1.2rem; text-align: center; }
+.rotacao { flex: 1; display: flex; justify-content: center; gap: 1.2rem; min-width: 0; }
+.rot-item { display: grid; gap: .35rem; min-width: 7rem; white-space: nowrap; color: var(--suave); font-size: 1.2rem; text-align: center; }
 .rot-item.ativa { color: var(--texto); font-weight: 600; }
 .rot-barra { height: .3rem; border-radius: 999px; background: var(--linha); overflow: hidden; }
 .rot-progresso { display: block; height: 100%; width: 0; background: var(--suave); }
@@ -124,3 +124,96 @@ body {
 /* prazos da semana */
 .prazos { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--grupos, 4), minmax(0, 1fr)); gap: 1rem; }
 .prazos .grupo-atraso { box-shadow: inset 0 .3rem 0 var(--atraso); }
+
+/* ---------- painéis de dados (fase 5): só gráficos e porcentagens ---------- */
+:root {
+  /* faixas de resultado: sempre junto da porcentagem escrita, nunca só a cor */
+  --bom: #0ca30c; --atencao: #fab219; --alerta: #ec835a; --critico: #d03b3b;
+  --esperado: #eef1f4;
+  /* cor de cada pasta: o padrão da empresa, pela marca mais forte da pasta. G (Canal Farma) não tem cor própria */
+  --pasta-A: #e1251b; --pasta-B: #fe017e; --pasta-C: #6b2c91; --pasta-D: #5bb8ea;
+  --pasta-E: #1e6b3a; --pasta-F: #1f3fa0;
+}
+.letra[class*="pasta-"] { display: grid; place-items: center; border-radius: .6rem; color: #fff; background: var(--linha); }
+.pasta-A { background: var(--pasta-A) !important; } .pasta-B { background: var(--pasta-B) !important; }
+.pasta-C { background: var(--pasta-C) !important; } .pasta-D { background: var(--pasta-D) !important; color: #0e141a !important; }
+.pasta-E { background: var(--pasta-E) !important; } .pasta-F { background: var(--pasta-F) !important; }
+.faixa-bom { background: var(--bom); } .faixa-atencao { background: var(--atencao); }
+.faixa-alerta { background: var(--alerta); } .faixa-critico { background: var(--critico); }
+.faixa-sem-meta { background: var(--fora); }
+
+.painel-topo { display: flex; justify-content: space-between; align-items: flex-end; gap: 2rem; flex: none; }
+.painel-titulo { display: flex; align-items: baseline; flex-wrap: wrap; gap: .3rem 1.4rem; }
+.painel-info { font-size: 1.35rem; color: var(--suave); }
+.painel-velho { font-size: 1.3rem; font-weight: 700; color: #f3c46b; background: #3a2a14; border-radius: 999px; padding: .15rem .9rem; }
+.legenda { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .4rem 1.2rem; font-size: 1.2rem; color: var(--suave); }
+.legenda-nome { color: var(--texto); font-weight: 600; }
+.legenda-item { display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; }
+.legenda-item i { width: 1rem; height: 1rem; border-radius: .25rem; display: inline-block; }
+.legenda-item i.marca-esperado { position: static; width: .25rem; height: 1.2rem; transform: none; }
+
+.bloco { background: var(--painel); border-radius: 1rem; padding: .9rem 1.2rem; min-height: 0; display: flex; flex-direction: column; }
+.bloco h2 { margin: 0 0 .6rem; font-size: 1.35rem; text-transform: uppercase; letter-spacing: .08em; color: var(--suave); }
+.bloco h2 .pagina { float: right; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+
+/* barra com trilho, a linha dos 100% e as marcas */
+.trilho { position: relative; height: 1.1rem; border-radius: .3rem; background: var(--linha); }
+.cheio { height: 100%; border-radius: .3rem; transition: width .6s ease; }
+.linha-100 { position: absolute; top: -.35rem; bottom: -.35rem; width: .15rem; background: var(--suave); opacity: .8; transform: translateX(-50%); }
+.marca-esperado { position: absolute; top: -.45rem; bottom: -.45rem; width: .3rem; border-radius: .15rem; background: var(--esperado); transform: translateX(-50%); box-shadow: 0 0 0 .12rem var(--painel); }
+
+/* metas do mês */
+.tela[data-tela="metas-mes"] .evolucao { flex: 1.25; }
+.grafico { flex: 1; min-height: 0; position: relative; }
+.grafico svg { position: absolute; inset: 0; display: block; }
+.grafico .grade { stroke: var(--linha); stroke-width: 1; }
+.grafico .grade-100 { stroke: var(--suave); stroke-dasharray: 6 6; }
+.grafico .eixo { fill: var(--suave); font-size: 1.1rem; }
+.grafico .eixo-fds { opacity: .5; }
+.grafico .dia.faixa-bom { fill: var(--bom); } .grafico .dia.faixa-atencao { fill: var(--atencao); }
+.grafico .dia.faixa-alerta { fill: var(--alerta); } .grafico .dia.faixa-critico { fill: var(--critico); }
+.grafico .linha-mes { fill: none; stroke: var(--esperado); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.grafico .ponto-mes { fill: var(--esperado); stroke: var(--painel); stroke-width: 2; }
+.grafico .linha-mes-fundo { fill: none; stroke: var(--painel); stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; }
+.grafico .rotulo-mes { fill: var(--esperado); }
+.evolucao-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.legenda-item i.faixa-bom { background: var(--bom); }
+.legenda-item i.traco-mes { height: .25rem; width: 1.6rem; border-radius: .15rem; background: var(--esperado); }
+.grafico .rotulo { fill: var(--texto); font-size: 1.5rem; font-weight: 700; }
+
+.cartoes-pasta { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: .8rem; }
+.cartao-pasta { background: var(--cartao); border-radius: .8rem; padding: .7rem 1rem 1.1rem; display: grid; grid-template-columns: auto minmax(0, 1fr); min-width: 0; align-items: center; gap: .4rem 1rem; border-top: .35rem solid var(--fora); }
+.cartao-pasta .letra { font-size: 2.6rem; font-weight: 800; line-height: 1; width: 4rem; height: 4rem; }
+.cartao-pasta .letra.longa { font-size: 1.45rem; letter-spacing: .02em; }
+.cartao-pasta .pct { font-size: 2.3rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.cartao-pasta .trilho { grid-column: 1 / -1; }
+.cartao-pasta.total { background: #22303d; }
+.faixa-borda-bom { border-top-color: var(--bom); } .faixa-borda-atencao { border-top-color: var(--atencao); }
+.faixa-borda-alerta { border-top-color: var(--alerta); } .faixa-borda-critico { border-top-color: var(--critico); }
+
+/* metas do dia */
+.dia-lados { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.barras-pasta { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: .6rem; }
+.linha-pasta { display: grid; grid-template-columns: 6rem 1fr 7rem; align-items: center; gap: 1.2rem; }
+.linha-pasta .letra { font-size: 2.2rem; font-weight: 800; height: 3.4rem; }
+.linha-pasta .trilho { height: 2.4rem; border-radius: .5rem; }
+.linha-pasta .cheio { border-radius: .5rem; }
+.linha-pasta .pct { font-size: 2.3rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.linha-pasta.total .letra { font-size: 1.6rem; text-transform: uppercase; letter-spacing: .05em; }
+.linha-pasta.total { padding-bottom: .6rem; border-bottom: .12rem solid var(--linha); }
+
+/* produtos foco */
+.focos-bloco { flex: 1; }
+.focos { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 1.1rem; transition: opacity .45s ease; }
+.focos.trocando { opacity: 0; }
+.focos-colunas, .linha-foco { display: grid; grid-template-columns: minmax(0, 24rem) 1fr 1fr; align-items: center; gap: 2.5rem; }
+.focos-colunas h2 .pagina { float: right; }
+.linha-foco { flex: none; }
+.foco-lado { display: grid; grid-template-columns: 1fr 6.5rem; align-items: center; gap: 1rem; }
+.foco-lado.sem-meta .trilho { opacity: .35; }
+.foco-nome { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.foco-nome span:first-child { font-size: 1.7rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.foco-classe { font-size: 1.1rem; color: var(--suave); text-transform: uppercase; letter-spacing: .06em; }
+.linha-foco .trilho { height: 1.8rem; border-radius: .45rem; }
+.linha-foco .cheio { border-radius: .45rem; }
+.linha-foco .pct { font-size: 2.1rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }

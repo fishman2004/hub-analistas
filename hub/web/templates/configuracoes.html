@@ -28,4 +28,21 @@
   </div>
   <div><button>Salvar</button></div>
 </form>
+
+<form class="ficha cartao-form" method="post" action="/configuracoes/paineis" id="paineis">
+  <h2>Painéis de dados</h2>
+  {% if error_paineis %}<div class="erro" role="alert">{{ error_paineis }}</div>{% endif %}
+  {% if ok_paineis %}<div class="sucesso" role="status">Salvo.</div>{% endif %}
+  <div>
+    <label for="pasta">Pasta das planilhas</label>
+    <input type="text" id="pasta" name="pasta" value="{{ paineis.folder }}" placeholder="{{ paineis.default_folder }}">
+    <p class="ajuda">Em branco, o Hub usa a pasta padrão ({{ paineis.default_folder }}). Pode ser uma pasta da rede, por exemplo <code>Y:\Hub</code>, desde que o PC da sala consiga abrir.</p>
+  </div>
+  <div>
+    <label for="horas">Avisar que os dados estão velhos depois de (horas)</label>
+    <input class="curto" type="number" id="horas" name="horas" value="{{ paineis.stale_hours }}" min="{{ stale_limits.min }}" max="{{ stale_limits.max }}" required>
+    <p class="ajuda">Se o arquivo de vendas não muda há mais tempo que isso, a TV mostra o aviso junto dos painéis.</p>
+  </div>
+  <div><button>Salvar</button></div>
+</form>
 {% endblock %}

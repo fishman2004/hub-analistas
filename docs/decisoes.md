@@ -61,3 +61,23 @@ A rotação acontece no JavaScript da TV, sem recarregar a página: o servidor s
 ## Paginação das colunas em vez de "+ N" (fase 4, ideia do Kayo)
 
 Com muitas demandas, "+ N demandas" escondia justamente o que a sala precisava ver. Agora cada coluna do Quadro se divide em páginas que cabem na tela e passa de uma para outra com um fade (padrão 10 s por página, configurável). O número da página aparece no título da coluna ("2/3"). Ao voltar para o Quadro na rotação, as colunas recomeçam da primeira página. A TV continua sem rolar.
+
+## Painéis de dados: o Hub calcula, a TV só recebe porcentagens (fase 5)
+
+O plano dizia "o Hub não calcula, só exibe". Na hora de fazer, o Kayo pediu o contrário: guardar as planilhas que o time já usa (metas por pasta e por fornecedor, fornecedores, produtos foco e a 8081 de vendas) numa pasta própria e deixar o Hub montar o painel que hoje é feito no Excel. Assim ninguém precisa preparar um arquivo extra só para a TV. As regras do cálculo estão em [paineis.md](paineis.md), num arquivo só do código (`hub/paineis.py`).
+
+**Cores das pastas** seguem o padrão da empresa (a cor da marca mais forte de cada pasta) e aparecem só na letra da pasta. As barras continuam com as cores de faixa (verde a vermelho), para a cor da pasta nunca ser confundida com o resultado.
+
+**Só porcentagens na TV**, por decisão do gestor (gerentes, vendedores e executivos passam pela sala). Isso é garantido no servidor: o `/api/tv` só recebe percentuais, as letras das pastas e textos fixos, e um teste confere que nenhum valor, quantidade ou nome das planilhas aparece na resposta.
+
+**Cor pelo ritmo no mês.** Comparar o realizado do mês com a meta cheia deixaria tudo vermelho até o fim do mês. A cor do mês compara com o esperado até o último dia com venda (dias de venda já passados, de segunda a sábado); a cor do dia compara com a meta do dia.
+
+**O mês é o da venda mais recente do arquivo**, não o do relógio: assim a TV continua certa no dia 1º, antes da primeira exportação do mês novo, e com arquivos de teste.
+
+**Leitura em segundo plano.** A 8081 tem ~23 MB; a TV não pode esperar a leitura (ela desiste em 4 s e mostraria "sem atualização"). O Hub relê o arquivo numa linha separada e, enquanto isso, a TV segue com os dados anteriores.
+
+**Pasta e envio.** A pasta padrão fica ao lado do banco (`%LOCALAPPDATA%\Hub\Painéis`) e um administrador pode apontar para outra (por exemplo, na rede). Para quem não quer mexer em pastas, a página Painéis aceita o envio do arquivo pelo navegador e grava com o nome certo, trocando o antigo de uma vez (a TV nunca lê um arquivo pela metade).
+
+## Dependência nova: openpyxl (fase 5)
+
+As planilhas de metas, fornecedores e produtos foco são `.xlsx`. Pedir ao time para salvar tudo em CSV seria um passo manual a mais a cada exportação. O **openpyxl** lê `.xlsx` e é Python puro (ele e a única dependência dele, `et-xmlfile`): instala com o `instalar.bat` de sempre, sem compilar nada e sem administrador. Ele só é carregado quando há uma planilha `.xlsx` para ler.

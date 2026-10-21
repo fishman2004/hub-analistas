@@ -9,8 +9,11 @@
 | Demanda **reservada** | Só "Demanda reservada", a cor e as iniciais do dono e o prazo | Tudo para o dono, quem criou, o gestor e os administradores. Os demais veem como na TV e não abrem, movem nem excluem |
 | Visão do gestor (resumo do dia e todas as demandas) | Não | Só o gestor e os administradores |
 | Prazos da semana (tela da TV) | Sim, com a reservada mascarada como no Quadro | Não se aplica |
+| Painéis de vendas (metas, positivação, produtos foco) | **Só porcentagens e gráficos**, nunca valores, quantidades ou nomes | Página Painéis: só a situação das planilhas (lida, quantas linhas, quando). Enviar planilha: só administradores |
 | Histórico | Não | Sim |
 | PIN | Não | Ninguém (só um resumo fica guardado) |
+
+Os painéis seguem a regra do gestor: muita gente passa pela sala, então a TV mostra metas só em porcentagem. Isso também é feito **no servidor**: o endereço da TV recebe apenas percentuais e as letras das pastas, e um teste automático confere que nenhum valor, quantidade ou nome das planilhas vai junto. Os nomes de vendedor e supervisor da 8081 só são lidos para tirar a letra da pasta (ou ver se é Televendas), e não ficam guardados.
 
 A demanda reservada é mascarada **no servidor**: a página da TV nunca recebe o título, então nem quem inspecionar a página consegue ver. No app vale o mesmo para quem não pode ver: o quadro, o histórico e a página da demanda chegam sem o título.
 
@@ -24,6 +27,7 @@ Marcada **sempre pela própria pessoa**. O Hub não detecta nada sozinho: não o
 |---|---|---|
 | Código, documentação, testes | pasta do projeto | Sim |
 | Equipe, demandas, presença, histórico | `%LOCALAPPDATA%\Hub\hub.db` no PC reserva | **Não** |
+| Planilhas dos painéis (metas, vendas da 8081 etc.) | pasta dos painéis (padrão `%LOCALAPPDATA%\Hub\Painéis`, ou a pasta de rede escolhida) | **Não**. No repositório só há exemplos com dados fictícios (`tools/exemplos/`) |
 | Cópias diárias (14 dias) | `%LOCALAPPDATA%\Hub\copias` | **Não** |
 | Dados de demonstração | criados na hora por `tools/seed_demo.py`, com nomes **fictícios** | O script sim; os dados não |
 

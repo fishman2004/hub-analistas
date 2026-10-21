@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% set active = 'paineis' %}
+{% block title %}Painéis · Hub dos Analistas{% endblock %}
+{% block main %}
+<h1>Painéis de dados</h1>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if request.query_params.get('enviado') %}<div class="sucesso" role="status">Planilha recebida. A TV usa os dados novos em poucos segundos.</div>{% endif %}
+<p class="ajuda">A TV mostra as metas de venda e positivação <strong>só com gráficos e porcentagens</strong>: valores em reais, quantidades e nomes de vendedores ou clientes nunca aparecem nela.</p>
+
+<section class="ficha cartao-form largo">
+  <h2>Pasta dos painéis</h2>
+  <p><code class="caminho">{{ snap.folder }}</code></p>
+  <p class="ajuda">Salve (ou exporte) as planilhas nesta pasta com os nomes abaixo, em <code>.xlsx</code> ou <code>.csv</code>.{% if user.is_admin %} Também dá para enviar por aqui. A pasta muda em <a href="/configuracoes">Configurações</a>.{% endif %} Quando um arquivo muda, a TV se atualiza sozinha.</p>
+  {% if stale %}<div class="aviso" role="status">As vendas estão desatualizadas: o arquivo é de {{ snap.status('vendas').modified.strftime('%d/%m às %H:%M') }}. A TV mostra esse aviso junto dos painéis.</div>{% endif %}
+  {% for message in snap.errors + (snap.metas.warnings if snap.metas else []) + (snap.focos.warnings if snap.focos else []) %}
+  <div class="aviso" role="status">{{ message }}</div>
+  {% endfor %}
+  <table class="tabela">
+    <thead><tr><th>Planilha</th><th>Situação</th><th>Atualizada</th>{% if user.is_admin %}<th>Enviar</th>{% endif %}</tr></thead>
+    <tbody>
+    {% for f in snap.files %}
+    <tr>
+      <td><strong>{{ f.label }}</strong><br><span class="ajuda">{{ f.base }}</span></td>
+      <td>{% if f.ok %}<span class="ok">Lida ({{ f.rows }} linhas)</span>{% elif f.optional %}<span class="ajuda">{{ f.error }} Opcional: nenhuma tela usa ainda.</span>{% else %}<span class="falha">{{ f.error }}</span>{% endif %}</td>
+      <td>{{ f.modified.strftime('%d/%m %H:%M') if f.modified else '—' }}</td>
+      {% if user.is_admin %}
+      <td>
+        <form class="envio" method="post" action="/paineis/enviar/{{ f.key }}" enctype="multipart/form-data">
+          <input type="file" name="arquivo" accept=".xlsx,.xlsm,.csv" required aria-label="Planilha {{ f.label }}">
+          <button>Enviar</button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="ficha cartao-form largo">
+  <h2>Na TV</h2>
+  {% if snap.metas %}
+  <p>Metas de {{ "%02d"|format(snap.metas.month) }}/{{ snap.metas.year }}, com vendas até {{ snap.metas.last_day.strftime('%d/%m') }}: telas <strong>Metas do mês</strong>{% if snap.metas.is_workday %} e <strong>Metas do dia</strong>{% endif %}.</p>
+  {% else %}
+  <p class="ajuda">Metas do mês e do dia ficam fora da TV até as planilhas de vendas, metas por pasta (Totais) e fornecedores estarem lidas.</p>
+  {% endif %}
+  {% if snap.focos and snap.focos.focos %}
+  <p>Tela <strong>Produtos foco</strong> com {{ snap.focos.focos|length }} produtos foco.</p>
+  {% else %}
+  <p class="ajuda">Produtos foco fica fora da TV até as planilhas de vendas, produtos foco e metas dos produtos foco estarem lidas.</p>
+  {% endif %}
+  {% if snap.fornecedores and snap.fornecedores.pastas %}
+  <p>Tela <strong>Fornecedores das pastas</strong>: tudo o que saiu dos fornecedores de cada pasta, vendido por qualquer equipe.</p>
+  {% else %}
+  <p class="ajuda">Fornecedores das pastas fica fora da TV até as planilhas de vendas, fornecedores e metas por fornecedor estarem lidas.</p>
+  {% endif %}
+  <p><a href="/tv" target="_blank" rel="noopener">Ver a TV</a> · as regras do cálculo estão em <code>docs/paineis.md</code>.</p>
+</section>
+{% endblock %}

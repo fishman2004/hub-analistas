@@ -166,3 +166,12 @@ input[type=password] { width: 100%; font: inherit; font-size: 1.3rem; letter-spa
 .status-ponto.st-2 { background: var(--reuniao); }
 .status-ponto.st-3 { background: var(--pausa); }
 .cartao.oculta .titulo { color: var(--suave); font-style: italic; }
+
+/* ---------- painéis de dados ---------- */
+.caminho { display: inline-block; padding: 6px 10px; border-radius: var(--raio); background: var(--fundo); border: 1px solid var(--linha); word-break: break-all; }
+.cartao-form .aviso { margin-bottom: 10px; }
+.ok { color: var(--sala); font-weight: 600; }
+.falha { color: var(--atraso); font-weight: 600; }
+.envio { display: flex; gap: 8px; align-items: center; }
+.envio input[type="file"] { max-width: 260px; }
+.ficha.largo { max-width: 1100px; }

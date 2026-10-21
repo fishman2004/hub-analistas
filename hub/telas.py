@@ -12,6 +12,7 @@ from typing import Callable
 
 from .db import Database, log_event
 from .demands import Demand, board, is_overdue, tv_card
+from .paineis import tv_focos, tv_fornecedores, tv_metas_dia, tv_metas_mes
 from .people import Person, ValidationError, list_people
 
 @dataclass(frozen=True)
@@ -61,6 +62,11 @@ def _day_label(d: Demand, today: date) -> str:
 SCREENS: list[Screen] = [
     Screen("quadro", "Quadro", 30, _quadro, always=True),
     Screen("prazos", "Prazos da semana", 15, _prazos),
+    # painéis de dados (fase 5): só porcentagens, e só entram quando as planilhas estão na pasta
+    Screen("metas-mes", "Metas do mês", 20, tv_metas_mes),
+    Screen("metas-dia", "Metas do dia", 15, tv_metas_dia),
+    Screen("produtos-foco", "Produtos foco", 15, tv_focos),
+    Screen("fornecedores", "Fornecedores", 15, tv_fornecedores),
 ]
 SCREEN_IDS = {s.id for s in SCREENS}
 

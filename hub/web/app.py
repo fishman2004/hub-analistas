@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -19,6 +19,7 @@ from ..demands import (COLUMN_LABELS, COLUMNS, FOLDERS, RESERVED_TEXT, all_deman
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..gestor import DUE_FILTERS, can_open, filter_demands, team_summary
+from ..paineis import STALE_MAX, STALE_MIN, panel_config, save_panel_config, save_upload, stale_hours, store_for
 from ..presence import STATUSES, presence_board, set_status
 from ..telas import MAX_SECONDS, MIN_SECONDS, PAGE_MAX, PAGE_MIN, rotation, save_screen_config, screen_config
 
@@ -302,6 +303,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     def config_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
         return page(request, "configuracoes.html", user, status_code, config=screen_config(db),
+                    paineis=panel_config(db), stale_limits={"min": STALE_MIN, "max": STALE_MAX},
                     limits={"min": MIN_SECONDS, "max": MAX_SECONDS, "page_min": PAGE_MIN, "page_max": PAGE_MAX}, **ctx)
 
     @app.get("/configuracoes", response_class=HTMLResponse)
@@ -322,6 +324,44 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return config_page(request, user, 422, error=str(exc))
         return config_page(request, user, ok=True)
+
+    @app.post("/configuracoes/paineis")
+    def configuracoes_paineis(request: Request, pasta: str = Form(""), horas: str = Form("")):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            save_panel_config(db, clock(), user, pasta, horas.strip())
+        except ValidationError as exc:
+            return config_page(request, user, 422, error_paineis=str(exc))
+        return config_page(request, user, ok_paineis=True)
+
+    # ---------- painéis de dados ----------
+
+    def panels_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
+        snap = store_for(db).get(wait=True)
+        now = clock()
+        sales = snap.status("vendas").modified
+        return page(request, "paineis.html", user, status_code, snap=snap, now=now,
+                    stale=sales is not None and now - sales > timedelta(hours=stale_hours(db)), **ctx)
+
+    @app.get("/paineis", response_class=HTMLResponse)
+    def paineis(request: Request):
+        user = me(request)
+        return to_login() if user is None else panels_page(request, user)
+
+    @app.post("/paineis/enviar/{key}")
+    def paineis_enviar(request: Request, key: str, arquivo: UploadFile = File(...)):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            save_upload(db, clock(), user, key, arquivo.filename or "", arquivo.file)
+        except ValidationError as exc:
+            return panels_page(request, user, 422, error=str(exc))
+        except OSError:
+            return panels_page(request, user, 422, error="Não consegui gravar na pasta dos painéis. Confira se ela existe e se o PC da sala pode escrever nela.")
+        return RedirectResponse("/paineis?enviado=1", status_code=303)
 
     # ---------- visão do gestor ----------
 
@@ -474,5 +514,7 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         "admin_definido": f"{name} virou administrador no primeiro acesso",
         "papel_alterado": f"{who} mudou o papel de {name} para {detail}",
         "config_tv": f"{who} mudou as configurações da TV",
+        "config_paineis": f"{who} mudou as configurações dos painéis",
+        "painel_arquivo": f"{who} enviou a planilha “{detail}” dos painéis",
         "admin_alterado": f"{who} {'tornou' if detail == 'sim' else 'tirou'} {name} {'administrador' if detail == 'sim' else 'de administrador'}",
     }.get(kind, f"{who}: {kind}")
