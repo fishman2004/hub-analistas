@@ -7,7 +7,8 @@
 - Números no formato brasileiro ("1.234,56") ou como o Excel guarda (1234.56).
 - Datas "dd/mm/aaaa" (com ou sem hora) ou data de verdade do Excel.
 
-Esta leitura serve a qualquer painel (fase 5) e ao histórico do Pombo (fase 9).
+Esta leitura serve a qualquer painel (fase 5). O histórico do Pombo (fase 9) tem leitura própria
+em envios.py, que segue a do Pombo linha a linha.
 """
 
 import csv

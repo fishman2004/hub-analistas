@@ -12,6 +12,7 @@ from typing import Callable
 
 from .db import Database, log_event
 from .demands import Demand, board, is_overdue, tv_card
+from .envios import tv_envios
 from .paineis import tv_focos, tv_fornecedores, tv_metas_dia, tv_metas_mes
 from .people import Person, ValidationError, list_people
 from .prioridades import tv_prioridades
@@ -72,6 +73,8 @@ SCREENS: list[Screen] = [
     Screen("metas-dia", "Metas do dia", 15, tv_metas_dia),
     Screen("produtos-foco", "Produtos foco", 15, tv_focos),
     Screen("fornecedores", "Fornecedores", 15, tv_fornecedores),
+    # envios do Pombo (fase 9): só entra com a pasta do histórico configurada e algum envio hoje
+    Screen("envios", "Envios do dia", 15, tv_envios),
 ]
 SCREEN_IDS = {s.id for s in SCREENS}
 

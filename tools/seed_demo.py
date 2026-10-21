@@ -7,14 +7,16 @@ Serve para apresentar o Hub e tirar prints sem dados reais:
     depois:      .venv\\Scripts\\python -m tools.seed_demo
 """
 
+import csv
 import os
 import shutil
 from pathlib import Path
 from datetime import date, datetime, time, timedelta
 
 from hub.access import create_pin, set_access
-from hub.db import Database
+from hub.db import Database, put_setting
 from hub.demands import create_demand, move_demand, routine_ref, toggle_folder
+from hub.envios import COLUMNS, SETTING_FOLDER, analyst_slug
 from hub.horas import save_entry, set_balance
 from hub.paths import data_dir
 from hub.paineis import panel_folder
@@ -25,6 +27,7 @@ from hub.rotinas import create_suggested, list_routines
 
 TEAM = ["Ana Souza", "Bianca Lima", "Carla Dias", "Diego Rocha", "Elisa Prado"]
 DEMO_PIN = "1234"
+POMBO_FOLDER = "Histórico do Pombo"
 
 
 def seed(now: datetime | None = None) -> Database:
@@ -103,7 +106,77 @@ def seed(now: datetime | None = None) -> Database:
     # planilhas fictícias dos painéis (tools/exemplos), para as telas de metas aparecerem na TV
     for f in (Path(__file__).parent / "exemplos").iterdir():
         shutil.copy(f, panel_folder(db) / f.name)
+    # histórico fictício do Pombo, para a tela Envios do dia aparecer na TV
+    pombo = write_pombo_history(db.path.parent / POMBO_FOLDER, now)
+    with db.connect() as conn:
+        put_setting(conn, SETTING_FOLDER, str(pombo))
     return db
+
+
+def write_pombo_history(root: Path, now: datetime) -> Path:
+    """Grava um histórico do Pombo FICTÍCIO (mesmo formato do pombo/history.py) com os envios de hoje
+    até agora: enviados, uma falha depois de 4 tentativas, uma nova tentativa em andamento, uma espera
+    pela atualização do arquivo, um "não atualizado", um "perdido" e um envio manual."""
+    today = now.date()
+    lines: dict[Path, list[list[str]]] = {}
+
+    def run(who: str, did: str, name: str, scheduled: datetime, *events, manual: bool = False, files="Relatório.xlsx"):
+        if scheduled > now:
+            return  # ainda não chegou a hora: o Pombo não gravou nada
+        label = f"manual {scheduled:%Y-%m-%d %H:%M:%S}" if manual else f"{scheduled:%Y-%m-%d %H:%M}"
+        for minutes, channel, target, status, detail in events:
+            when = scheduled + timedelta(minutes=minutes)
+            if when > now:
+                continue
+            key = f"{'group' if channel == 'whatsapp' else 'list'}:{analyst_slug(target)}" if channel else ""
+            path = root / analyst_slug(who) / f"{when:%Y-%m}.csv"
+            lines.setdefault(path, []).append([f"{when:%Y-%m-%d %H:%M:%S}", who, name, label, channel, target,
+                                               files, status, detail, did, key])
+
+    def at(hour: int, minute: int = 0, day: date = today) -> datetime:
+        return datetime(day.year, day.month, day.day, hour, minute)
+
+    def ago(minutes: int) -> datetime:
+        return (now - timedelta(minutes=minutes)).replace(second=0, microsecond=0)
+
+    ok = "enviado", ""
+    timeout = "falhou", "WhatsApp: tempo esgotado"
+    ana, bianca, carla, diego, elisa = TEAM
+    run(ana, "vendas", "Vendas Diárias", at(17, day=today - timedelta(days=1)),
+        (0, "email", "Gestão", *ok))  # ontem: não aparece hoje
+    run(bianca, "fechamento", "Fechamento de ontem", at(7), (150, "", "", "perdido", "programa fechado no horário"))
+    run(ana, "vendas", "Vendas Diárias", at(7, 30), (1, "email", "Gestão", *ok), (1, "whatsapp", "Comercial — Vendas", *ok))
+    run(carla, "positivacao", "Positivação do dia", at(8), (0, "email", "Supervisores", *ok))
+    run(diego, "base", "Base 8081 (CSV)", at(8),
+        (0, "", "", "esperando", "(DADOS) - 8081 - Vendas.csv: não atualizado hoje (esperando até 09:00)"),
+        (60, "", "", "desistiu", "(DADOS) - 8081 - Vendas.csv: não atualizado hoje"), files="(DADOS) - 8081 - Vendas.csv")
+    run(elisa, "rotas", "Pedidos fora de rota", at(9), (0, "email", "Gestão", *ok),
+        *[(m, "whatsapp", "Supervisão Norte", *timeout) for m in (0, 5, 10, 15)])
+    run(ana, "plano", "Plano de Excelência", at(10), (0, "email", "Gestor Comercial", *ok),
+        (0, "whatsapp", "Supervisores", *timeout), (5, "whatsapp", "Supervisores", *ok))
+    run(bianca, "cobertura", "Cobertura por cliente", at(11), (1, "email", "Gestão", *ok))
+    run(ana, "vendas", "Vendas Diárias", at(12), (0, "email", "Gestão", *ok), (0, "whatsapp", "Comercial — Vendas", *ok))
+    run(diego, "ranking", "Ranking de vendedores", at(13, 30), (0, "whatsapp", "Comercial — Vendas", *ok))
+    run(elisa, "metas", "Metas da semana", at(14), (2, "email", "Gestão", *ok), (2, "email", "Supervisores", *ok),
+        (2, "email", "Diretoria Comercial", *ok))
+    run(carla, "positivacao", "Positivação do dia", at(15),
+        (0, "whatsapp", "Supervisores", "esperando", "WhatsApp desconectado"), (12, "whatsapp", "Supervisores", *ok))
+    run(bianca, "cobertura", "Cobertura por cliente", at(16, 20), (0, "email", "Gestão", *ok), manual=True)
+    run(ana, "vendas", "Vendas Diárias", at(17), (0, "email", "Gestão", *ok), (0, "whatsapp", "Comercial — Vendas", *ok))
+    # perto de agora: uma nova tentativa em andamento e uma espera pela atualização do arquivo
+    run(carla, "pedidos", "Pedidos do dia", ago(4), (1, "email", "Gestão", *ok), (1, "whatsapp", "Supervisores", *timeout))
+    waiting = ago(20)
+    run(diego, "rotas", "Positivação por rota", waiting,
+        (0, "", "", "esperando", f"Positivacao_rotas.xlsx: não atualizado hoje (esperando até {waiting + timedelta(hours=1):%H:%M})"))
+
+    root.mkdir(parents=True, exist_ok=True)
+    for path, rows in lines.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8-sig", newline="") as f:  # como o Pombo: UTF-8 com BOM
+            out = csv.writer(f)
+            out.writerow(COLUMNS)
+            out.writerows(sorted(rows))
+    return root
 
 
 if __name__ == "__main__":

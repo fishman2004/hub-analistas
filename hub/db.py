@@ -199,6 +199,22 @@ def log_event(conn: sqlite3.Connection, at: datetime, actor_id: int | None, kind
     )
 
 
+def get_setting(db: Database, key: str) -> str | None:
+    """Uma configuração da tabela settings. None = não foi mudada (vale o padrão)."""
+    with db.connect() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def put_setting(conn: sqlite3.Connection, key: str, value: str | None) -> None:
+    """Grava uma configuração; None apaga a linha e volta para o padrão."""
+    if value is None:
+        conn.execute("DELETE FROM settings WHERE key = ?", (key,))
+    else:
+        conn.execute("INSERT INTO settings(key, value) VALUES (?, ?) "
+                     "ON CONFLICT(key) DO UPDATE SET value = excluded.value", (key, value))
+
+
 def events(db: Database, start: date, end: date, person_id: int | None = None) -> list[sqlite3.Row]:
     sql = "SELECT * FROM events WHERE at >= ? AND at <= ?"
     args: list = [datetime.combine(start, time.min).isoformat(), datetime.combine(end, time.max).isoformat()]

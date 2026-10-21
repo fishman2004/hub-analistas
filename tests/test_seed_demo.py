@@ -3,6 +3,7 @@ import pytest
 from conftest import at
 from hub.db import Database
 from hub.demands import board
+from hub.envios import tv_envios
 from hub.people import add_person, list_people
 from hub.prioridades import list_month, month_of
 from tools.seed_demo import seed
@@ -37,3 +38,6 @@ def test_seeds_empty_folder(tmp_path, monkeypatch):
     assert people["Ana Souza"].is_admin and people["Bianca Lima"].is_manager
     items = list_month(db, month_of(at(10)))
     assert len(items) == 5 and sum(p.done for p in items) == 2
+    envios = tv_envios(db, at(10))  # o histórico fictício do Pombo entra na TV
+    assert envios and {"ok", "falha", "andamento"} == {r["grupo"] for r in envios["rodadas"]}
+    assert all(r["hora"] <= "10:00" for r in envios["rodadas"])  # só o que já aconteceu
