@@ -11,6 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .. import __version__
+from ..access import (ROLES, change_pin, create_pin, end_session, has_admin, reset_pin, session_end, session_person,
+                      set_access, start_session, verify_pin)
 from ..db import Database, events
 from ..demands import (COLUMN_LABELS, COLUMNS, FOLDERS, board, create_demand, delete_demand, demand_titles,
                        find_demand, is_overdue, move_demand, tv_card, update_demand)
@@ -19,8 +21,7 @@ from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_p
 from ..presence import STATUSES, presence_board, set_status
 
 HERE = Path(__file__).parent
-COOKIE = "hub_pessoa"
-COOKIE_DAYS = 365
+COOKIE = "hub_sessao"
 
 
 def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> FastAPI:
@@ -68,12 +69,11 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         COLUMN_LABELS=COLUMN_LABELS, FOLDERS=FOLDERS, STATUSES=STATUSES, is_overdue=is_overdue,
     )
 
+    templates.env.globals["ROLES"] = ROLES
+
     def me(request: Request) -> Person | None:
-        try:
-            person = get_person(db, int(request.cookies.get(COOKIE, "")))
-        except ValueError:
-            return None
-        return person if person and person.active else None
+        # a sessão é criada ao entrar com o PIN e acaba à meia-noite (ou ao clicar em Sair)
+        return session_person(db, clock(), request.cookies.get(COOKIE))
 
     def page(request: Request, name: str, user: Person | None, status_code: int = 200, **ctx) -> HTMLResponse:
         return templates.TemplateResponse(request, name, {"user": user, **ctx}, status_code=status_code)
@@ -93,21 +93,67 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             "show_all": show_all,
         }
 
+    def forbidden(request: Request, user: Person) -> HTMLResponse:
+        return page(request, "sem-permissao.html", user, 403)
+
     @app.get("/entrar", response_class=HTMLResponse)
     def entrar(request: Request):
-        return page(request, "entrar.html", me(request), people=list_people(db))
+        return page(request, "entrar.html", None, people=list_people(db))
 
-    @app.post("/entrar")
-    def entrar_post(person_id: int = Form(...)):
+    def pin_page(request: Request, person: Person, status_code: int = 200, error: str = "") -> HTMLResponse:
+        return page(request, "pin.html", None, status_code, person=person, error=error,
+                    first_admin=not has_admin(db))
+
+    @app.get("/entrar/{person_id}", response_class=HTMLResponse)
+    def entrar_pessoa(request: Request, person_id: int):
+        person = get_person(db, person_id)
+        if person is None or not person.active:
+            return to_login()
+        return pin_page(request, person)
+
+    @app.post("/entrar/{person_id}")
+    def entrar_pin(request: Request, person_id: int, pin: str = Form(""), confirmar: str = Form("")):
+        person = get_person(db, person_id)
+        if person is None or not person.active:
+            return to_login()
+        now = clock()
+        try:
+            if person.has_pin:
+                verify_pin(db, now, person_id, pin)
+            else:
+                create_pin(db, now, person_id, pin, confirmar)
+        except ValidationError as exc:
+            return pin_page(request, get_person(db, person_id), 422, str(exc))
+        token = start_session(db, now, person_id)
         r = RedirectResponse("/", status_code=303)
-        r.set_cookie(COOKIE, str(person_id), max_age=COOKIE_DAYS * 86400, httponly=True, samesite="lax")
+        seconds = int((session_end(now) - now).total_seconds())
+        r.set_cookie(COOKIE, token, max_age=max(seconds, 60), httponly=True, samesite="lax")
         return r
 
     @app.post("/sair")
-    def sair():
+    def sair(request: Request):
+        end_session(db, request.cookies.get(COOKIE))
         r = to_login()
         r.delete_cookie(COOKIE)
         return r
+
+    @app.get("/meu-pin", response_class=HTMLResponse)
+    def meu_pin(request: Request):
+        user = me(request)
+        if user is None:
+            return to_login()
+        return page(request, "meu-pin.html", user)
+
+    @app.post("/meu-pin")
+    def meu_pin_salvar(request: Request, atual: str = Form(""), pin: str = Form(""), confirmar: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        try:
+            change_pin(db, clock(), user.id, atual, pin, confirmar)
+        except ValidationError as exc:
+            return page(request, "meu-pin.html", user, 422, error=str(exc))
+        return page(request, "meu-pin.html", user, ok=True)
 
     @app.get("/", response_class=HTMLResponse)
     def quadro(request: Request, todas: int = 0):
@@ -250,18 +296,30 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     # ---------- pessoas ----------
 
+    def people_gate(request: Request) -> tuple[Person | None, Response | None]:
+        """Pessoas é só de administrador. Exceção: Hub vazio, para cadastrar a primeira pessoa."""
+        user = me(request)
+        if not list_people(db):
+            return user, None
+        if user is None:
+            return None, to_login()
+        if not user.is_admin:
+            return user, forbidden(request, user)
+        return user, None
+
+    def people_page(request: Request, user: Person | None, status_code: int = 200, **ctx) -> HTMLResponse:
+        return page(request, "pessoas.html", user, status_code, people=list_people(db), palette=PALETTE, **ctx)
+
     @app.get("/pessoas", response_class=HTMLResponse)
     def pessoas(request: Request):
-        user = me(request)
-        if user is None and list_people(db):
-            return to_login()
-        return page(request, "pessoas.html", user, people=list_people(db), palette=PALETTE)
+        user, stop = people_gate(request)
+        return stop or people_page(request, user)
 
     @app.post("/pessoas")
     async def pessoas_salvar(request: Request):
-        user = me(request)
-        if user is None and list_people(db):
-            return to_login()
+        user, stop = people_gate(request)
+        if stop:
+            return stop
         form = await request.form()
         actor = user.id if user else None
         try:
@@ -271,16 +329,46 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             else:
                 add_person(db, clock(), actor, form.get("name", ""), form.get("initials", ""), form.get("color", ""))
         except ValidationError as exc:
-            return page(request, "pessoas.html", user, 422, people=list_people(db), palette=PALETTE, error=str(exc),
-                        v={k: form.get(k, "") for k in ("id", "name", "initials", "color")})
+            return people_page(request, user, 422, error=str(exc),
+                               v={k: form.get(k, "") for k in ("id", "name", "initials", "color")})
+        return RedirectResponse("/pessoas", status_code=303)
+
+    def admin_only(request: Request) -> tuple[Person | None, Response | None]:
+        user = me(request)
+        if user is None:
+            return None, to_login()
+        if not user.is_admin:
+            return user, forbidden(request, user)
+        return user, None
+
+    @app.post("/pessoas/{person_id}/acesso")
+    def pessoas_acesso(request: Request, person_id: int, role: str = Form(...), admin: str = Form("")):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            set_access(db, clock(), user, person_id, role, admin == "on")
+        except ValidationError as exc:
+            return people_page(request, user, 422, error=str(exc))
+        return RedirectResponse("/pessoas", status_code=303)
+
+    @app.post("/pessoas/{person_id}/pin")
+    def pessoas_redefinir_pin(request: Request, person_id: int):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        reset_pin(db, clock(), user, person_id)
         return RedirectResponse("/pessoas", status_code=303)
 
     @app.post("/pessoas/{person_id}/desativar")
     def pessoas_desativar(request: Request, person_id: int):
-        user = me(request)
-        if user is None:
-            return to_login()
-        deactivate_person(db, clock(), user.id, person_id)
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            deactivate_person(db, clock(), user.id, person_id)
+        except ValidationError as exc:
+            return people_page(request, user, 422, error=str(exc))
         return RedirectResponse("/pessoas", status_code=303)
 
     app.state.templates = templates
@@ -304,4 +392,12 @@ def describe(row, people: dict, titles: dict) -> str:
         "pessoa_editada": f"{who} editou o cadastro de {name}",
         "pessoa_desativada": f"{who} desativou {name}",
         "pessoa_reativada": f"{who} reativou {name}",
+        "entrou": f"{who} entrou no Hub",
+        "pin_criado": f"{who} criou o próprio PIN",
+        "pin_trocado": f"{who} trocou o próprio PIN",
+        "pin_redefinido": f"{who} redefiniu o PIN de {name}",
+        "pin_bloqueado": f"{name} ficou bloqueado por errar o PIN",
+        "admin_definido": f"{name} virou administrador no primeiro acesso",
+        "papel_alterado": f"{who} mudou o papel de {name} para {detail}",
+        "admin_alterado": f"{who} {'tornou' if detail == 'sim' else 'tirou'} {name} {'administrador' if detail == 'sim' else 'de administrador'}",
     }.get(kind, f"{who}: {kind}")

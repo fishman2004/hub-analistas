@@ -31,3 +31,6 @@ def test_seeds_empty_folder(tmp_path, monkeypatch):
     columns = board(db, at(10))
     everything = columns["todo"] + columns["doing"] + columns["done"]
     assert any(d.reserved for d in everything) and columns["done"]
+    people = {p.name: p for p in list_people(db)}
+    assert all(p.has_pin for p in people.values())
+    assert people["Ana Souza"].is_admin and people["Bianca Lima"].is_manager

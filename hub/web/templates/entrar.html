@@ -3,15 +3,12 @@
 {% block main %}
 <h1>Quem é você?</h1>
 {% if people %}
-<p class="ajuda">Escolha seu nome. Este computador vai lembrar de você.</p>
+<p class="ajuda">Escolha seu nome e digite o seu PIN.</p>
 <div class="pessoas-entrar">
   {% for p in people %}
-  <form method="post" action="/entrar">
-    <input type="hidden" name="person_id" value="{{ p.id }}">
-    <button class="pessoa-botao" style="--cor: {{ p.color }}">
-      <span class="bolinha grande">{{ p.initials }}</span>{{ p.name }}
-    </button>
-  </form>
+  <a class="botao pessoa-botao" href="/entrar/{{ p.id }}" style="--cor: {{ p.color }}">
+    <span class="bolinha grande">{{ p.initials }}</span>{{ p.name }}
+  </a>
   {% endfor %}
 </div>
 {% else %}

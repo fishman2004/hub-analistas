@@ -21,7 +21,7 @@ Dois cliques em **`iniciar.bat`**. O servidor sobe sem janela, e a TV abre no Ed
 
 1. De qualquer PC da sala, abra `http://NOME-DO-PC-RESERVA:8800`. O nome do PC aparece no teste de rede ([primeiro-uso.md](primeiro-uso.md)).
 2. Em **Pessoas**, cadastre a equipe. Iniciais e cor são escolhidas sozinhas e podem ser trocadas.
-3. Cada analista abre o mesmo endereço no próprio PC, escolhe o próprio nome e salva o endereço nos favoritos.
+3. Cada analista abre o mesmo endereço no próprio PC, escolhe o próprio nome, cria o PIN e salva o endereço nos favoritos.
 
 ## Desligar o "abrir com o Windows"
 

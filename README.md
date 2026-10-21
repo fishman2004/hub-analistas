@@ -25,7 +25,7 @@ Uma **TV na sala**, ligada num PC sempre ligado, mostra:
 - **Quadro da equipe:** A fazer → Fazendo → Concluído hoje, com a cor e as iniciais de cada analista, as atrasadas em destaque e o prazo de cada demanda.
 - **Demanda reservada:** um assunto sensível aparece só como "Demanda reservada". O título nunca sai do servidor para a TV.
 
-Cada analista usa o **app** pelo navegador do próprio PC, sem instalar nada: marca a presença, lança demandas e as move entre as colunas. O botão **Tema** no cabeçalho alterna entre automático (segue o Windows), claro e escuro, e cada navegador lembra a sua escolha. Tudo fica no **histórico**, com quem fez e quando.
+Cada analista usa o **app** pelo navegador do próprio PC, sem instalar nada. Entra com o próprio nome e um **PIN** de 4 a 6 números, marca a presença, lança demandas e as move entre as colunas. O botão **Tema** no cabeçalho alterna entre automático (segue o Windows), claro e escuro, e cada navegador lembra a sua escolha. Tudo fica no **histórico**, com quem fez e quando.
 
 <p align="center">
   <img src="docs/imagens/app.jpg" width="680" alt="App do analista: botões de presença e o quadro com as próprias demandas">
@@ -57,7 +57,7 @@ flowchart LR
 2. Baixe o projeto (**Code › Download ZIP**) e extraia numa pasta fixa.
 3. Dois cliques em **`instalar.bat`**. Ele também faz o Hub abrir junto com o Windows.
 4. Dois cliques em **`iniciar.bat`**. A TV abre em tela cheia.
-5. Em outro PC, abra `http://NOME-DO-PC-RESERVA:8800`, cadastre a equipe em **Pessoas** e pronto.
+5. Em outro PC, abra `http://NOME-DO-PC-RESERVA:8800` e cadastre a equipe em **Pessoas**. Quem criar o primeiro PIN vira administrador.
 
 Primeira vez na empresa? Comece pelo [teste de rede](docs/primeiro-uso.md).
 
@@ -69,7 +69,7 @@ $env:HUB_DADOS = "$env:TEMP\hub-demo"
 .venv\Scripts\python -m hub
 ```
 
-Cria uma equipe e demandas **fictícias** numa pasta separada. O script se recusa a escrever sobre uma equipe de verdade.
+Cria uma equipe e demandas **fictícias** numa pasta separada (PIN de todos: `1234`). O script se recusa a escrever sobre uma equipe de verdade.
 
 ## Documentação
 

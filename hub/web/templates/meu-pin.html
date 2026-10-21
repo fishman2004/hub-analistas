@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Meu PIN · Hub dos Analistas{% endblock %}
+{% block main %}
+<h1>Trocar meu PIN</h1>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">PIN trocado. Use o novo da próxima vez que entrar.</div>{% endif %}
+<form class="ficha cartao-form ficha-pin" method="post" action="/meu-pin">
+  <div>
+    <label for="atual">PIN atual</label>
+    <input type="password" id="atual" name="atual" inputmode="numeric" maxlength="6" autocomplete="current-password" required>
+  </div>
+  <div class="linha">
+    <div>
+      <label for="pin">Novo PIN</label>
+      <input type="password" id="pin" name="pin" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required>
+    </div>
+    <div>
+      <label for="confirmar">Repita o novo PIN</label>
+      <input type="password" id="confirmar" name="confirmar" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required>
+    </div>
+  </div>
+  <div><button>Trocar PIN</button></div>
+</form>
+{% endblock %}
