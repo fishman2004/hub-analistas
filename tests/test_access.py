@@ -171,8 +171,11 @@ def test_v1_database_migrates_without_losing_data(tmp_path):
         assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 1
     kayo = get_person(db, 1)
     assert (kayo.name, kayo.role, kayo.is_admin, kayo.has_pin) == ("Kayo", "analista", False, False)
+    # quem criou cada demanda antiga vem do histórico (fase 3: quem criou vê a reservada)
+    from hub.demands import find_demand
+    assert find_demand(db, 1).created_by == 1
     # cópia do banco antes de mexer, com nome que a limpeza das cópias diárias não apaga
-    copies = list((tmp_path / "copias").glob("antes-da-v1-*.db"))
+    copies = list((tmp_path / "copias").glob("antes-da-v1-*.db"))  # uma cópia só, antes da primeira migração
     assert len(copies) == 1
     old = sqlite3.connect(copies[0])
     assert old.execute("SELECT COUNT(*) FROM demands").fetchone()[0] == 1

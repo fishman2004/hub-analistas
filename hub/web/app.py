@@ -13,11 +13,12 @@ from fastapi.templating import Jinja2Templates
 from .. import __version__
 from ..access import (ROLES, change_pin, create_pin, end_session, has_admin, reset_pin, session_end, session_person,
                       set_access, start_session, verify_pin)
-from ..db import Database, events
-from ..demands import (COLUMN_LABELS, COLUMNS, FOLDERS, board, create_demand, delete_demand, demand_titles,
-                       find_demand, is_overdue, move_demand, tv_card, update_demand)
+from ..db import Database, events, first_event_day
+from ..demands import (COLUMN_LABELS, COLUMNS, FOLDERS, RESERVED_TEXT, all_demands, board, can_see, create_demand,
+                       delete_demand, find_demand, is_overdue, move_demand, tv_card, update_demand)
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
+from ..gestor import DUE_FILTERS, can_open, filter_demands, team_summary
 from ..presence import STATUSES, presence_board, set_status
 
 HERE = Path(__file__).parent
@@ -67,6 +68,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     templates.env.globals.update(
         COLUMN_LABELS=COLUMN_LABELS, FOLDERS=FOLDERS, STATUSES=STATUSES, is_overdue=is_overdue,
+        can_see=can_see, RESERVED_TEXT=RESERVED_TEXT,
     )
 
     templates.env.globals["ROLES"] = ROLES
@@ -93,8 +95,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             "show_all": show_all,
         }
 
-    def forbidden(request: Request, user: Person) -> HTMLResponse:
-        return page(request, "sem-permissao.html", user, 403)
+    def forbidden(request: Request, user: Person, message: str = "") -> HTMLResponse:
+        return page(request, "sem-permissao.html", user, 403, message=message)
 
     @app.get("/entrar", response_class=HTMLResponse)
     def entrar(request: Request):
@@ -233,16 +235,27 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         d = find_demand(db, demand_id)
         if d is None:
             return RedirectResponse("/", status_code=303)
+        if not can_see(d, user):
+            return forbidden(request, user, "Esta demanda é reservada. Só o dono, quem criou, o gestor e os administradores podem abrir.")
         return demand_form(request, user, {
             "id": d.id, "title": d.title, "owner_id": str(d.owner_id), "folder": d.folder or "",
             "requested_by": d.requested_by or "", "due": d.due.isoformat() if d.due else "", "reserved": d.reserved,
         })
+
+    def hidden_from(user: Person, demand_id: int) -> bool:
+        d = find_demand(db, demand_id)
+        return d is not None and not can_see(d, user)
+
+    def reserved_forbidden(request: Request, user: Person) -> HTMLResponse:
+        return forbidden(request, user, "Esta demanda é reservada. Só o dono, quem criou, o gestor e os administradores podem mexer nela.")
 
     @app.post("/demandas/{demand_id}")
     async def demanda_salvar(request: Request, demand_id: int):
         user = me(request)
         if user is None:
             return to_login()
+        if hidden_from(user, demand_id):
+            return reserved_forbidden(request, user)
         form = await request.form()
         values = {"id": demand_id}
         try:
@@ -260,6 +273,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         user = me(request)
         if user is None:
             return to_login()
+        if hidden_from(user, demand_id):
+            return reserved_forbidden(request, user)
         try:
             move_demand(db, clock(), user.id, demand_id, column)
         except ValidationError:
@@ -271,11 +286,37 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         user = me(request)
         if user is None:
             return to_login()
+        if hidden_from(user, demand_id):
+            return reserved_forbidden(request, user)
         try:
             delete_demand(db, clock(), user.id, demand_id)
         except ValidationError:
             pass
         return RedirectResponse("/", status_code=303)
+
+    # ---------- visão do gestor ----------
+
+    templates.env.globals["can_open_gestor"] = can_open
+
+    @app.get("/gestor", response_class=HTMLResponse)
+    def gestor(request: Request, pessoa: str = "", coluna: str = "", prazo: str = "", atrasadas: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        if not can_open(user):
+            return forbidden(request, user, "Só o gestor e os administradores podem abrir a visão do gestor.")
+        now = clock()
+        owner_id = int(pessoa) if pessoa.isdigit() else None
+        prazo = prazo if prazo in DUE_FILTERS else ""
+        demands = filter_demands(db, now, owner_id=owner_id, column=coluna, due=prazo, overdue_only=bool(atrasadas))
+        team = team_summary(db, now)
+        return page(request, "gestor.html", user, team=team, demands=demands, today=now.date(), now=now,
+                    owners={p.id: p for p in list_people(db, active_only=False)}, people=list_people(db),
+                    f={"pessoa": pessoa, "coluna": coluna, "prazo": prazo, "atrasadas": bool(atrasadas)},
+                    DUE_FILTERS=DUE_FILTERS, history_start=first_event_day(db) or now.date(),
+                    totals={"done": sum(r.done_today for r in team), "overdue": sum(r.overdue for r in team),
+                            "doing": sum(r.doing for r in team), "todo": sum(r.todo for r in team),
+                            "in_room": sum(r.status == "Na sala" for r in team)})
 
     # ---------- histórico ----------
 
@@ -289,8 +330,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         person_id = int(pessoa) if pessoa.isdigit() else None
         rows = events(db, start, end, person_id)
         people = {p.id: p for p in list_people(db, active_only=False)}
-        titles = demand_titles(db)
-        lines = [(datetime.fromisoformat(r["at"]), describe(r, people, titles)) for r in rows]
+        demands = all_demands(db)
+        lines = [(datetime.fromisoformat(r["at"]), describe(r, people, demands, user)) for r in rows]
         return page(request, "historico.html", user, lines=lines, start=start, end=end, pessoa=pessoa,
                     people=list_people(db, active_only=False))
 
@@ -375,12 +416,15 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
     return app
 
 
-def describe(row, people: dict, titles: dict) -> str:
-    """Uma linha de histórico em português."""
+def describe(row, people: dict, demands: dict, viewer: Person) -> str:
+    """Uma linha de histórico em português. Demanda reservada só mostra o título a quem pode vê-lo."""
     who = people[row["actor_id"]].name if row["actor_id"] in people else "Alguém"
     kind, subject, detail = row["kind"], row["subject"], row["detail"]
     ref_id = int(subject.split(":")[1]) if ":" in subject else 0
-    title = titles.get(ref_id, detail) if subject.startswith("demanda:") else ""
+    title = ""
+    if subject.startswith("demanda:"):
+        d = demands.get(ref_id)
+        title = detail if d is None else d.title if can_see(d, viewer) else RESERVED_TEXT
     name = people[ref_id].name if subject.startswith("pessoa:") and ref_id in people else detail
     return {
         "demanda_criada": f"{who} criou “{title}”",
