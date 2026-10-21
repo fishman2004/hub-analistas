@@ -186,3 +186,19 @@ Pedido do gestor: pausar a TV numa tela para analisar algo, tanto na própria TV
 **Sem lugar a mais no topo:** com a TV pausada, o selo "⏸ Pausada" ocupa o lugar do indicador da rotação, que não teria o que mostrar.
 
 Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 10.1 a 10.4 do [plano da v3](plano-v3.md)): 15 minutos, um clique, qualquer pessoa com PIN e aviso sonoro tocando com a TV pausada.
+
+## Demandas com detalhes e anexos (fase 11)
+
+Pedido do gestor: anexar arquivos (Excel, PDF) às demandas, para o responsável (inclusive quem criou) mexer depois. Editar a demanda já existia; faltavam a **descrição** (o Kayo pediu depois: para pedidos extensos, quem vê clica no cartão e lê) e os **arquivos**. No banco o campo continua `details`; na tela, "Descrição", e o cartão do quadro abre o texto com um clique (📝).
+
+- **"Mexer depois" num arquivo** é baixar, editar no Excel e usar **Enviar nova versão**. O Hub não edita planilha no navegador (precisaria de um programa a mais e de internet). A versão de antes continua guardada e baixável em "versões anteriores", então ninguém perde o arquivo anterior.
+- **Arquivo fora do banco e fora do repositório:** na pasta Anexos, com nome aleatório. O banco continua pequeno (a cópia diária segue rápida) e nenhum nome de arquivo estranho (`..\`, acento, nome repetido) chega ao disco.
+- **Tipos aceitos:** `.xlsx`, `.xls`, `.xlsb`, `.csv`, `.pdf`, `.docx`, `.doc`, `.pptx`, `.txt`, `.png`, `.jpg`. Ficam de fora executáveis, scripts, `.zip`, `.html` e planilhas com macro (`.xlsm`), e o começo do arquivo precisa bater com a extensão (um `.exe` renomeado para `.pdf` é recusado). O Hub nunca abre nem executa o arquivo: entrega como download.
+- **Limites:** 25 MB por arquivo (a 8081 tem ~23 MB), 20 arquivos por demanda e nada recebido com menos de 2 GB livres no disco (Configurações mostra o espaço usado e o livre).
+- **Quem pode:** quem vê a demanda edita, anexa e baixa, como era com a edição; remove um arquivo quem anexou, o dono, o gestor e os administradores. Reservada segue a regra de sempre (só o dono, quem criou, o gestor e os administradores).
+- **Lixeira de 30 dias:** remover tira o arquivo (e as versões dele) da lista; um administrador restaura em Configurações. Depois de 30 dias, a limpeza diária apaga do disco.
+- **Achar demandas antigas:** "Concluído hoje" some no dia seguinte, e com ele o caminho para os arquivos. A página **Demandas** busca todas, por texto (título e detalhes), pessoa, pasta, situação, período e "só com arquivos".
+- **Ao concluir pelo quadro**, aparece "Anexar o arquivo final?" (opcional), com o link para a demanda.
+- **Na TV, nada muda:** nem os detalhes nem o 📎. Um teste rastreia o SQL do `/api/tv` e confere que a tabela `attachments` nunca é lida.
+
+Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 11.1 a 11.6 do [plano da v3](plano-v3.md)).

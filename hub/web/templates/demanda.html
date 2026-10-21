@@ -6,7 +6,9 @@
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
 {% if v.routine %}<p class="ajuda">Este é o cartão de hoje de uma <a href="/rotinas">rotina</a>. O que mudar aqui vale só para hoje; amanhã a rotina aparece de novo como está cadastrada.</p>{% endif %}
 
-<form class="ficha" method="post" action="/demandas{{ '/' ~ v.id if v.id else '' }}">
+{% if ok_files %}<div class="sucesso" role="status">{{ ok_files }}</div>{% endif %}
+
+<form class="ficha" method="post" action="/demandas{{ '/' ~ v.id if v.id else '' }}"{% if not v.id %} enctype="multipart/form-data"{% endif %}>
   <div>
     <label for="title">Título</label>
     <input type="text" id="title" name="title" value="{{ v.title }}" maxlength="120" required autofocus placeholder="Relatório Aurora para o gerente">
@@ -36,6 +38,18 @@
       <input type="date" id="due" name="due" value="{{ v.due }}">
     </div>
   </div>
+  <div>
+    <label for="details">Descrição <span class="opcional">(opcional)</span></label>
+    <textarea id="details" name="details" rows="6" maxlength="{{ max_details }}" placeholder="Explique a demanda: o que precisa ser feito, de onde vêm os dados, links, observações…">{{ v.details }}</textarea>
+    <p class="ajuda">Para pedidos extensos. No quadro, o cartão mostra “📝 Descrição” e um clique abre o texto. Só aparece no app, nunca na TV.</p>
+  </div>
+  {% if not v.id %}
+  <div>
+    <label for="arquivos">Arquivos <span class="opcional">(opcional)</span></label>
+    <input type="file" id="arquivos" name="arquivos" multiple accept="{{ accept }}">
+    <p class="ajuda">Excel, PDF, Word, PowerPoint, CSV, texto ou imagem, até {{ max_mb }} MB cada.</p>
+  </div>
+  {% endif %}
   <label class="check">
     <input type="checkbox" name="reserved" {% if v.reserved %}checked{% endif %}>
     <span><strong>Reservada</strong> · na TV aparece só "Demanda reservada", sem o título</span>
@@ -47,6 +61,53 @@
 </form>
 
 {% if v.id %}
+<section class="cartao-form anexos" id="arquivos" aria-labelledby="h-arquivos">
+  <h2 id="h-arquivos">Arquivos</h2>
+  {% if error_files %}<div class="erro" role="alert">{{ error_files }}</div>{% endif %}
+  {% if files %}
+  <ul class="lista-anexos">
+    {% for a in files %}
+    <li>
+      <div class="anexo-info">
+        <a class="anexo-nome" href="/anexos/{{ a.id }}">📎 {{ a.name }}</a>
+        <span class="ajuda">{{ a.size_text }} · {{ everyone[a.uploaded_by].name if a.uploaded_by in everyone else 'alguém' }}, {{ a.uploaded_at.strftime('%d/%m às %H:%M') }}</span>
+        {% if a.versions %}
+        <details class="versoes"><summary>{{ a.versions|length }} versão anterior{{ 'es' if a.versions|length > 1 else '' }}</summary>
+          <ul>{% for o in a.versions %}<li><a href="/anexos/{{ o.id }}">{{ o.name }}</a> <span class="ajuda">{{ o.size_text }} · {{ o.uploaded_at.strftime('%d/%m às %H:%M') }}</span></li>{% endfor %}</ul>
+        </details>
+        {% endif %}
+      </div>
+      <div class="anexo-acoes">
+        <a class="botao discreto" href="/anexos/{{ a.id }}">Baixar</a>
+        <form method="post" action="/demandas/{{ v.id }}/anexos/{{ a.id }}/versao" enctype="multipart/form-data" class="nova-versao">
+          <label class="botao discreto">Enviar nova versão<input type="file" name="arquivos" accept="{{ accept }}" onchange="this.form.submit()" hidden></label>
+        </form>
+        {% if demand and can_remove_file(demand, a.uploaded_by, user) %}
+        <form method="post" action="/demandas/{{ v.id }}/anexos/{{ a.id }}/remover" onsubmit="return confirm('Remover “{{ a.name|e }}”? Ele fica na lixeira por 30 dias.')"><button class="discreto">Remover</button></form>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="ajuda">Nenhum arquivo ainda.</p>
+  {% endif %}
+  <form method="post" action="/demandas/{{ v.id }}/anexos" enctype="multipart/form-data" class="ficha-inline">
+    <input type="file" name="arquivos" multiple accept="{{ accept }}" aria-label="Escolher arquivos">
+    <button>Anexar</button>
+  </form>
+  <p class="ajuda">Para mexer num arquivo: baixe, edite no Excel (ou no programa dele), salve e use <strong>Enviar nova versão</strong>. A versão de antes continua guardada. Até {{ max_mb }} MB por arquivo e {{ max_files }} arquivos por demanda. Os arquivos nunca aparecem na TV.</p>
+</section>
+
+{% if timeline %}
+<section class="linha-tempo" aria-labelledby="h-tempo">
+  <h2 id="h-tempo">Linha do tempo</h2>
+  <ul class="historico">
+    {% for when, text in timeline %}<li><time>{{ when.strftime('%d/%m %H:%M') }}</time>{{ text }}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 {% if v.routine %}
 <form method="post" action="/demandas/{{ v.id }}/excluir" onsubmit="return confirm('Dispensar a rotina hoje? Amanhã ela aparece de novo.')" class="excluir">
   <button class="perigo">Dispensar a rotina hoje</button>

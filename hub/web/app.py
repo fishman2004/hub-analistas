@@ -3,10 +3,10 @@
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Callable
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, urlencode, urlsplit
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi import FastAPI, File, Form, Query, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -14,8 +14,10 @@ from .. import __version__
 from ..access import (ROLES, change_pin, create_pin, end_session, has_admin, reset_pin, session_end, session_person,
                       set_access, start_session, verify_pin)
 from ..db import Database, events, first_event_day
-from ..demands import (COLUMN_LABELS, COLUMNS, FOLDERS, RESERVED_TEXT, all_demands, board, can_see, create_demand,
-                       delete_demand, find_card, is_overdue, move_demand, toggle_folder, tv_card, update_demand)
+from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
+                       can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
+                       is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
+from .. import anexos
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -186,6 +188,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             "owners": {p.id: p for p in list_people(db, active_only=False)},
             "today": now.date(),
             "show_all": show_all,
+            "clips": anexos.counts(db, "demanda"),  # 📎 no cartão (só no app, nunca na TV)
         }
 
     def forbidden(request: Request, user: Person, message: str = "") -> HTMLResponse:
@@ -251,11 +254,13 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         return page(request, "meu-pin.html", user, ok=True)
 
     @app.get("/", response_class=HTMLResponse)
-    def quadro(request: Request, todas: int = 0):
+    def quadro(request: Request, todas: int = 0, concluida: str = ""):
         user = me(request)
         if user is None:
             return to_login()
-        return page(request, "quadro.html", user, **board_context(user, bool(todas)))
+        done = find_demand(db, int(concluida)) if concluida.isdigit() else None
+        done = done if done is not None and done.column == "done" and can_see(done, user) else None
+        return page(request, "quadro.html", user, concluida=done, **board_context(user, bool(todas)))
 
     @app.get("/parcial/quadro", response_class=HTMLResponse)
     def quadro_parcial(request: Request, todas: int = 0):
@@ -279,12 +284,27 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         owner = get_person(db, owner_id) if owner_id else None
         if owner and not owner.active:
             people = people + [owner]
-        return page(request, "demanda.html", user, status_code, v=values, people=people, **ctx)
+        demand = find_demand(db, int(values["id"])) if str(values.get("id", "")).isdigit() else None
+        if demand is not None:
+            ctx.setdefault("files", anexos.list_for(db, "demanda", demand.id))
+            ctx.setdefault("timeline", demand_timeline(demand, user))
+        everyone = {p.id: p for p in list_people(db, active_only=False)}
+        return page(request, "demanda.html", user, status_code, v=values, people=people, demand=demand,
+                    everyone=everyone, accept=anexos.ACCEPT, max_mb=anexos.MAX_BYTES // 1024 ** 2,
+                    max_files=anexos.MAX_PER_PARENT, max_details=MAX_DETAILS, can_remove_file=can_remove_file, **ctx)
+
+    def demand_timeline(d, user: Person) -> list[tuple[datetime, str]]:
+        """Tudo o que aconteceu com uma demanda, do mais antigo ao mais novo."""
+        with db.connect() as conn:
+            rows = conn.execute("SELECT * FROM events WHERE subject = ? ORDER BY at, id", (f"demanda:{d.id}",)).fetchall()
+        people = {p.id: p for p in list_people(db, active_only=False)}
+        return [(datetime.fromisoformat(r["at"]), describe(r, people, {d.id: d}, user)) for r in rows]
 
     def parse_demand(form) -> tuple[dict, dict]:
         values = {
             "title": form.get("title", ""), "owner_id": form.get("owner_id", ""), "folder": form.get("folder", ""),
             "requested_by": form.get("requested_by", ""), "due": form.get("due", ""), "reserved": "reserved" in form,
+            "details": form.get("details", ""),
         }
         try:
             due = date.fromisoformat(values["due"]) if values["due"] else None
@@ -292,7 +312,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             raise ValidationError("Data inválida.")
         owner = int(values["owner_id"]) if values["owner_id"].isdigit() else 0
         fields = dict(title=values["title"], owner_id=owner, folder=values["folder"] or None,
-                      requested_by=values["requested_by"] or None, due=due, reserved=values["reserved"])
+                      requested_by=values["requested_by"] or None, due=due, reserved=values["reserved"],
+                      details=values["details"])
         return values, fields
 
     @app.get("/demandas/nova", response_class=HTMLResponse)
@@ -301,7 +322,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         if user is None:
             return to_login()
         return demand_form(request, user, {"id": "", "title": "", "owner_id": str(user.id), "folder": "",
-                                           "requested_by": "", "due": "", "reserved": False})
+                                           "requested_by": "", "due": "", "reserved": False, "details": ""})
 
     @app.post("/demandas")
     async def demanda_criar(request: Request):
@@ -313,17 +334,41 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         try:
             parsed, fields = parse_demand(form)
             values.update(parsed)
-            create_demand(db, clock(), user.id, **fields)
+            d = create_demand(db, clock(), user.id, **fields)
         except ValidationError as exc:
-            values.update({k: form.get(k, "") for k in ("title", "owner_id", "folder", "requested_by", "due")},
+            values.update({k: form.get(k, "") for k in ("title", "owner_id", "folder", "requested_by", "due", "details")},
                           reserved="reserved" in form)
             return demand_form(request, user, values, 422, error=str(exc))
+        problem = save_files(user, d, uploads(form))
+        if problem:  # a demanda já foi criada: mostra a página dela com o motivo do arquivo recusado
+            return demand_form(request, user, demand_values(d), 422, error_files=problem)
         return RedirectResponse("/", status_code=303)
+
+    def uploads(form) -> list:
+        return [f for f in form.getlist("arquivos") if getattr(f, "filename", "")]
+
+    def save_files(user: Person, d, files: list, replaces: int | None = None) -> str:
+        """Grava os arquivos enviados; devolve o motivo do primeiro recusado (os outros seguem)."""
+        problems = []
+        for f in files:
+            try:
+                anexos.save(db, clock(), user, "demanda", d.id, f.filename, f.file, replaces=replaces,
+                            subject=f"demanda:{d.id}")
+            except ValidationError as exc:
+                problems.append(str(exc))
+        if len(problems) < len(files):
+            touch_demand(db, clock(), d.id)
+        return " ".join(problems)
+
+    def demand_values(d) -> dict:
+        return {"id": d.ref, "title": d.title, "owner_id": str(d.owner_id), "folder": d.folder or "",
+                "requested_by": d.requested_by or "", "due": d.due.isoformat() if d.due else "", "reserved": d.reserved,
+                "routine": d.routine_id is not None, "details": d.details or ""}
 
     # {ref}: o número da demanda, ou "rotina-<número>-<dia>" para o cartão calculado de uma rotina de hoje,
     # que vira demanda na primeira ação (mover, salvar, excluir ou marcar pasta). Abrir o formulário não cria nada.
     @app.get("/demandas/{ref}", response_class=HTMLResponse)
-    def demanda_editar(request: Request, ref: str):
+    def demanda_editar(request: Request, ref: str, ok: str = ""):
         user = me(request)
         if user is None:
             return to_login()
@@ -332,11 +377,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             return RedirectResponse("/", status_code=303)
         if not can_see(d, user):
             return forbidden(request, user, "Esta demanda é reservada. Só o dono, quem criou, o gestor e os administradores podem abrir.")
-        return demand_form(request, user, {
-            "id": d.ref, "title": d.title, "owner_id": str(d.owner_id), "folder": d.folder or "",
-            "requested_by": d.requested_by or "", "due": d.due.isoformat() if d.due else "", "reserved": d.reserved,
-            "routine": d.routine_id is not None,
-        })
+        return demand_form(request, user, demand_values(d), ok_files=ok)
 
     def hidden_from(user: Person, ref: str) -> bool:
         d = find_card(db, clock(), ref)
@@ -360,10 +401,127 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             values.update(parsed)
             update_demand(db, clock(), user.id, ref, **fields)
         except ValidationError as exc:
-            values.update({k: form.get(k, "") for k in ("title", "owner_id", "folder", "requested_by", "due")},
+            values.update({k: form.get(k, "") for k in ("title", "owner_id", "folder", "requested_by", "due", "details")},
                           reserved="reserved" in form)
             return demand_form(request, user, values, 422, error=str(exc))
         return RedirectResponse("/", status_code=303)
+
+    # ---------- anexos das demandas (fase 11) ----------
+
+    def file_target(request: Request, ref: str):
+        """A demanda para anexar (o cartão de rotina vira demanda aqui), ou a resposta de recusa."""
+        user = me(request)
+        if user is None:
+            return None, None, to_login()
+        if hidden_from(user, ref):
+            return user, None, reserved_forbidden(request, user)
+        try:
+            return user, ensure_demand(db, clock(), user.id, ref), None
+        except ValidationError as exc:
+            return user, None, board_error(request, user, str(exc))
+
+    def back_to_demand(d, message: str) -> RedirectResponse:
+        return RedirectResponse(f"/demandas/{d.id}?ok={quote(message)}#arquivos", status_code=303)
+
+    @app.post("/demandas/{ref}/anexos")
+    async def demanda_anexar(request: Request, ref: str):
+        user, d, stop = file_target(request, ref)
+        if stop:
+            return stop
+        files = uploads(await request.form())
+        if not files:
+            return demand_form(request, user, demand_values(d), 422, error_files="Escolha um arquivo para anexar.")
+        problem = save_files(user, d, files)
+        if problem:
+            return demand_form(request, user, demand_values(d), 422, error_files=problem)
+        return back_to_demand(d, "Arquivo anexado." if len(files) == 1 else f"{len(files)} arquivos anexados.")
+
+    def demand_file(d, attachment_id: int):
+        a = anexos.find(db, attachment_id)
+        ok = a is not None and a.kind == "demanda" and a.parent_id == d.id and a.deleted_at is None
+        return a if ok else None
+
+    @app.post("/demandas/{ref}/anexos/{attachment_id}/versao")
+    async def demanda_anexo_versao(request: Request, ref: str, attachment_id: int):
+        user, d, stop = file_target(request, ref)
+        if stop:
+            return stop
+        a = demand_file(d, attachment_id)
+        files = uploads(await request.form())[:1]
+        if a is None:
+            return demand_form(request, user, demand_values(d), 422, error_files="Esse arquivo não está mais na lista.")
+        if not files:
+            return demand_form(request, user, demand_values(d), 422, error_files="Escolha o arquivo da nova versão.")
+        problem = save_files(user, d, files, replaces=a.id)
+        if problem:
+            return demand_form(request, user, demand_values(d), 422, error_files=problem)
+        return back_to_demand(d, f"Nova versão de “{a.name}” enviada. A anterior fica em “versões anteriores”.")
+
+    @app.post("/demandas/{ref}/anexos/{attachment_id}/remover")
+    def demanda_anexo_remover(request: Request, ref: str, attachment_id: int):
+        user, d, stop = file_target(request, ref)
+        if stop:
+            return stop
+        a = demand_file(d, attachment_id)
+        if a is None:
+            return back_to_demand(d, "Esse arquivo já tinha sido removido.")
+        if not can_remove_file(d, a.uploaded_by, user):
+            return forbidden(request, user, "Remove um arquivo quem anexou, o dono da demanda, o gestor e os administradores.")
+        anexos.remove(db, clock(), user, a, subject=f"demanda:{d.id}")
+        touch_demand(db, clock(), d.id)
+        return back_to_demand(d, f"“{a.name}” foi para a lixeira. Um administrador consegue restaurar por "
+                                 f"{anexos.TRASH_DAYS} dias.")
+
+    @app.get("/anexos/{attachment_id}")
+    def anexo_baixar(request: Request, attachment_id: int):
+        user = me(request)
+        if user is None:
+            return to_login()
+        a = anexos.get(db, attachment_id)
+        if a is None or not file_allowed(a, user):
+            return page(request, "sem-permissao.html", user, 404, message="Arquivo não encontrado (ele pode ter sido removido).")
+        path = anexos.path_of(db, a)
+        if not path.is_file():
+            return page(request, "sem-permissao.html", user, 404,
+                        message="O arquivo não está na pasta dos anexos. Avise um administrador.")
+        # sempre como download, nunca aberto dentro do Hub
+        return FileResponse(path, filename=a.name, media_type="application/octet-stream",
+                            headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"},
+                            content_disposition_type="attachment")
+
+    def file_allowed(a, user: Person) -> bool:
+        if a.kind == "demanda":
+            d = find_demand(db, a.parent_id)
+            return d is not None and can_see(d, user)
+        return False
+
+    # ---------- busca de demandas (fase 11) ----------
+
+    @app.get("/demandas", response_class=HTMLResponse)
+    def demandas_busca(request: Request, q: str = "", pessoa: str = "", pasta: str = "", coluna: str = "",
+                       de: str = "", ate: str = "", anexos_: str = Query("", alias="anexos"), pagina: int = 1):
+        user = me(request)
+        if user is None:
+            return to_login()
+        try:
+            start = date.fromisoformat(de) if de else None
+            end = date.fromisoformat(ate) if ate else None
+        except ValueError:
+            start = end = None
+        clips = anexos.counts(db, "demanda")
+        found = search_demands(db, user, text=q, owner_id=int(pessoa) if pessoa.isdigit() else None,
+                               folder=pasta or None, column=coluna or None, start=start, end=end,
+                               with_files=set(clips) if anexos_ == "1" else None)
+        per_page = 50
+        pages = max(1, -(-len(found) // per_page))
+        pagina = min(max(pagina, 1), pages)
+        return page(request, "demandas.html", user, found=found[(pagina - 1) * per_page: pagina * per_page],
+                    total=len(found), pagina=pagina, pages=pages, clips=clips,
+                    f={"q": q, "pessoa": pessoa, "pasta": pasta, "coluna": coluna, "de": de, "ate": ate, "anexos": anexos_},
+                    base_qs=urlencode({k: v for k, v in {"q": q, "pessoa": pessoa, "pasta": pasta, "coluna": coluna,
+                                                         "de": de, "ate": ate, "anexos": anexos_}.items() if v}),
+                    people=list_people(db, active_only=False), owners={p.id: p for p in list_people(db, active_only=False)},
+                    today=clock().date())
 
     def board_error(request: Request, user: Person, message: str) -> HTMLResponse:
         # regra de rotina (esperando outra, faltam pastas): mostra o motivo em cima do quadro
@@ -378,12 +536,17 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         if hidden_from(user, ref):
             return reserved_forbidden(request, user)
         try:
-            move_demand(db, clock(), user.id, ref, column)
+            moved = move_demand(db, clock(), user.id, ref, column)
         except ValidationError as exc:
             if str(exc) != "Demanda não encontrada.":
                 return board_error(request, user, str(exc))
             # outro PC já excluiu: o quadro atualizado mostra a verdade
-        return RedirectResponse(request.headers.get("referer") or "/", status_code=303)
+            moved = None
+        back = request.headers.get("referer") or "/"
+        if moved is not None and column == "done" and urlsplit(back).path == "/":
+            # concluiu pelo quadro: oferece anexar o arquivo final (opcional)
+            back = "/?" + "&".join(["concluida=" + str(moved.id)] + (["todas=1"] if "todas=1" in back else []))
+        return RedirectResponse(back, status_code=303)
 
     @app.post("/demandas/{ref}/pasta")
     def demanda_pasta(request: Request, ref: str, folder: str = Form(...)):
@@ -580,7 +743,12 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
     # ---------- configurações (administrador) ----------
 
     def config_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
+        demands = all_demands(db)
+        trash = [(a, demands.get(a.parent_id)) for a in anexos.trash(db, clock(), "demanda")]
         return page(request, "configuracoes.html", user, status_code, config=screen_config(db),
+                    anexos_cfg={"folder": str(anexos.folder(db)) if anexos.get_setting(db, anexos.SETTING_FOLDER) else "",
+                                "default_folder": str(anexos.default_folder()), "usage": anexos.usage(db),
+                                "trash": trash, "trash_days": anexos.TRASH_DAYS},
                     paineis=panel_config(db), pombo=pombo_config(db),
                     stale_limits={"min": STALE_MIN, "max": STALE_MAX},
                     limits={"min": MIN_SECONDS, "max": MAX_SECONDS, "page_min": PAGE_MIN, "page_max": PAGE_MAX}, **ctx)
@@ -603,6 +771,31 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return config_page(request, user, 422, error=str(exc))
         return config_page(request, user, ok=True)
+
+    @app.post("/configuracoes/anexos")
+    def configuracoes_anexos(request: Request, pasta: str = Form("")):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            anexos.save_folder(db, clock(), user, pasta)
+        except ValidationError as exc:
+            return config_page(request, user, 422, error_anexos=str(exc))
+        return config_page(request, user, ok_anexos=True)
+
+    @app.post("/configuracoes/anexos/{attachment_id}/restaurar")
+    def configuracoes_anexo_restaurar(request: Request, attachment_id: int):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        a = anexos.find(db, attachment_id)
+        try:
+            if a is None or a.kind != "demanda":
+                raise ValidationError("Esse arquivo não está mais na lixeira.")
+            anexos.restore(db, clock(), user, a, subject=f"demanda:{a.parent_id}")
+        except ValidationError as exc:
+            return config_page(request, user, 422, error_anexos=str(exc))
+        return config_page(request, user, ok_anexos=f"“{a.name}” voltou para a demanda.")
 
     @app.post("/configuracoes/paineis")
     def configuracoes_paineis(request: Request, pasta: str = Form(""), horas: str = Form("")):
@@ -939,15 +1132,24 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
     kind, subject, detail = row["kind"], row["subject"], row["detail"]
     ref = subject.partition(":")[2]
     ref_id = int(ref) if ref.isdigit() else 0  # "config:tv" não aponta para ninguém
-    title = ""
+    title, changes, visible = "", "", True
     if subject.startswith("demanda:"):
         d = demands.get(ref_id)
-        title = detail if d is None else d.title if can_see(d, viewer) else RESERVED_TEXT
+        visible = d is None or can_see(d, viewer)
+        if kind == "demanda_editada":
+            detail, _, changes = detail.partition(CHANGES_SEP)
+        title = detail if d is None else d.title if visible else RESERVED_TEXT
+    file_name = f"“{detail}”" if visible else "um arquivo"  # nome de arquivo de reservada também é escondido
     name = people[ref_id].name if subject.startswith("pessoa:") and ref_id in people else detail
     name_of = lambda pid: people[pid].name if pid in people else "alguém"
     return {
         "demanda_criada": f"{who} criou “{title}”",
-        "demanda_editada": f"{who} editou “{title}”",
+        "demanda_editada": f"{who} editou “{title}”" + (f": {changes}" if changes and visible else ""),
+        "anexo_enviado": f"{who} anexou {file_name} em “{title}”",
+        "anexo_versao": f"{who} enviou uma nova versão de {file_name} em “{title}”",
+        "anexo_removido": f"{who} removeu {file_name} de “{title}”",
+        "anexo_restaurado": f"{who} restaurou {file_name} em “{title}”",
+        "config_anexos": f"{who} mudou a pasta dos anexos",
         "demanda_movida": f"{who} moveu “{title}” para {COLUMN_LABELS.get(detail, detail)}",
         "demanda_excluida": f"{who} excluiu “{title}”",
         "presenca": f"{who} ficou: {detail}",

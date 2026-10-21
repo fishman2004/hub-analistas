@@ -263,3 +263,28 @@ fieldset.escolhas .check input { margin-top: 0; }
 .tv-botoes form { margin: 0; }
 .lista-telas { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
 .lista-telas li { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid var(--linha); padding: 4px 0; }
+
+/* demandas com detalhes e anexos (fase 11) */
+textarea { width: 100%; font: inherit; color: var(--texto); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--linha); background: var(--cartao); resize: vertical; }
+input[type=file] { font: inherit; color: var(--suave); max-width: 100%; }
+.anexos { margin-top: 24px; max-width: 720px; display: grid; gap: 12px; }
+.anexos h2, .linha-tempo h2 { margin: 0; }
+.lista-anexos { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.lista-anexos > li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; border-bottom: 1px solid var(--linha); padding: 6px 0; }
+.anexo-info { display: grid; gap: 2px; min-width: 0; }
+.anexo-nome { font-weight: 600; overflow-wrap: anywhere; }
+.anexo-acoes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.anexo-acoes form { margin: 0; }
+.anexo-acoes .botao, .anexo-acoes button { padding: 4px 10px; font-size: .9rem; }
+.nova-versao label.botao { cursor: pointer; margin: 0; font-weight: 600; }
+.versoes summary { cursor: pointer; color: var(--suave); font-size: .9rem; }
+.versoes ul { margin: 4px 0 0; padding-left: 18px; }
+.linha-tempo { margin-top: 24px; max-width: 720px; }
+.linha-tempo .historico { margin-top: 10px; }
+.busca .bolinha { min-width: 24px; height: 24px; font-size: .75rem; }
+h3 { font-size: 1rem; margin: 8px 0 0; }
+
+/* descrição da demanda no cartão do quadro: abre com um clique */
+.cartao-descricao { margin-top: 6px; font-size: .9rem; }
+.cartao-descricao summary { cursor: pointer; color: var(--azul); width: max-content; }
+.cartao-descricao p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; padding: 8px 10px; background: var(--fundo); border-radius: 8px; max-height: 260px; overflow: auto; }

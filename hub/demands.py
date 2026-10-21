@@ -20,6 +20,7 @@ FOLDERS = ("A", "B", "C", "D", "E", "F", "G")
 RESERVED_TEXT = "Demanda reservada"
 MAX_TITLE = 120
 MAX_REQUESTED_BY = 60
+MAX_DETAILS = 4000
 _ROUTINE_REF = re.compile(r"rotina-(\d+)-(\d{4}-\d{2}-\d{2})")
 
 
@@ -55,6 +56,7 @@ class Demand:
     routine_id: int | None = None
     routine_day: date | None = None
     routine: RoutineInfo | None = None  # só nos cartões que vêm do quadro
+    details: str | None = None  # texto livre (fase 11); nunca vai para a TV
 
     @property
     def ref(self) -> str:
@@ -73,6 +75,7 @@ def _row(r) -> Demand:
         datetime.fromisoformat(r["created_at"]), datetime.fromisoformat(r["updated_at"]),
         datetime.fromisoformat(r["done_at"]) if r["done_at"] else None,
         r["created_by"], r["routine_id"], date.fromisoformat(r["routine_day"]) if r["routine_day"] else None,
+        details=r["details"],
     )
 
 
@@ -147,35 +150,92 @@ def _resolve(conn, now: datetime, actor_id: int | None, ref: int | str) -> int:
     return demand_id
 
 
+def _clean_details(details: str | None) -> str | None:
+    text = (details or "").replace("\r\n", "\n").strip()
+    if len(text) > MAX_DETAILS:
+        raise ValidationError(f"Descrição muito longa (máximo {MAX_DETAILS} caracteres).")
+    return text or None
+
+
 def create_demand(db: Database, now: datetime, actor_id: int | None, *, title: str, owner_id: int,
                   folder: str | None = None, requested_by: str | None = None, due: date | None = None,
-                  reserved: bool = False) -> Demand:
+                  reserved: bool = False, details: str | None = None) -> Demand:
     with db.connect() as conn:
         title, folder, requested_by = _clean(conn, title, owner_id, folder, requested_by)
+        details = _clean_details(details)
         cur = conn.execute(
             "INSERT INTO demands(title, owner_id, folder, requested_by, due, reserved, column_, created_at, updated_at, "
-            "created_by) VALUES (?, ?, ?, ?, ?, ?, 'todo', ?, ?, ?)",
+            "created_by, details) VALUES (?, ?, ?, ?, ?, ?, 'todo', ?, ?, ?, ?)",
             (title, owner_id, folder, requested_by, due.isoformat() if due else None, int(reserved), _iso(now), _iso(now),
-             actor_id),
+             actor_id, details),
         )
         log_event(conn, now, actor_id, "demanda_criada", f"demanda:{cur.lastrowid}", title)
         return _row(_get(conn, cur.lastrowid))
 
 
+CHANGES_SEP = "\x1f"  # no histórico: "título<sep>o que mudou" (o que mudou só aparece para quem vê o título)
+
+
+def _changes(conn, current, title, owner_id, folder, requested_by, due, reserved, details) -> str:
+    """O que mudou numa edição, em português ("prazo 22/10 → 25/10, dono Kayo → Bianca, detalhes").
+    O título e os detalhes aparecem só pelo nome do campo: o texto continua na página da demanda."""
+    def name(pid):
+        r = conn.execute("SELECT name FROM people WHERE id = ?", (pid,)).fetchone()
+        return r["name"] if r else "?"
+
+    def day(iso):
+        return f"{iso[8:10]}/{iso[5:7]}" if iso else "sem prazo"
+
+    new_due = due.isoformat() if due else None
+    out = []
+    if current["title"] != title:
+        out.append("título")
+    if current["owner_id"] != owner_id:
+        out.append(f"dono {name(current['owner_id'])} → {name(owner_id)}")
+    if (current["folder"] or None) != folder:
+        out.append(f"pasta {current['folder'] or 'nenhuma'} → {folder or 'nenhuma'}")
+    if (current["requested_by"] or None) != requested_by:
+        out.append("pedido por")
+    if (current["due"] or None) != new_due:
+        out.append(f"prazo {day(current['due'])} → {day(new_due)}")
+    if bool(current["reserved"]) != reserved:
+        out.append("marcada como reservada" if reserved else "deixou de ser reservada")
+    if (current["details"] or None) != details:
+        out.append("descrição")
+    return ", ".join(out)
+
+
 def update_demand(db: Database, now: datetime, actor_id: int | None, demand_id: int | str, *, title: str,
                   owner_id: int, folder: str | None, requested_by: str | None, due: date | None,
-                  reserved: bool) -> Demand:
+                  reserved: bool, details: str | None = None) -> Demand:
     with db.connect() as conn:
         demand_id = _resolve(conn, now, actor_id, demand_id)
         current = _get(conn, demand_id)
         title, folder, requested_by = _clean(conn, title, owner_id, folder, requested_by, current["owner_id"])
+        details = _clean_details(details)
+        changes = _changes(conn, current, title, owner_id, folder, requested_by, due, reserved, details)
         conn.execute(
             "UPDATE demands SET title = ?, owner_id = ?, folder = ?, requested_by = ?, due = ?, reserved = ?, "
-            "updated_at = ? WHERE id = ?",
-            (title, owner_id, folder, requested_by, due.isoformat() if due else None, int(reserved), _iso(now), demand_id),
+            "details = ?, updated_at = ? WHERE id = ?",
+            (title, owner_id, folder, requested_by, due.isoformat() if due else None, int(reserved), details,
+             _iso(now), demand_id),
         )
-        log_event(conn, now, actor_id, "demanda_editada", f"demanda:{demand_id}", title)
+        log_event(conn, now, actor_id, "demanda_editada", f"demanda:{demand_id}",
+                  title + (CHANGES_SEP + changes if changes else ""))
         return _row(_get(conn, demand_id))
+
+
+def ensure_demand(db: Database, now: datetime, actor_id: int | None, ref: int | str) -> Demand:
+    """A demanda de um cartão, para anexar um arquivo: o cartão calculado de uma rotina vira demanda aqui."""
+    with db.connect() as conn:
+        demand_id = _resolve(conn, now, actor_id, ref)
+        return _row(_get(conn, demand_id))
+
+
+def touch_demand(db: Database, now: datetime, demand_id: int) -> None:
+    """Um arquivo novo ou removido conta como mexer na demanda (a busca ordena pela última mudança)."""
+    with db.connect() as conn:
+        conn.execute("UPDATE demands SET updated_at = ? WHERE id = ?", (_iso(now), demand_id))
 
 
 def _set_column(conn, now: datetime, actor_id: int | None, demand_id: int, column: str) -> None:
@@ -400,3 +460,38 @@ def tv_card(d: Demand, owner: Person, today: date) -> dict:
         "reserved": d.reserved,
         "routine": routine,
     }
+
+
+# ---------- anexos e busca (fase 11) ----------
+
+def can_remove_file(d: Demand, uploaded_by: int | None, person: Person) -> bool:
+    """Remove um arquivo quem anexou, o dono da demanda, o gestor e os administradores."""
+    return can_see(d, person) and (person.id in (uploaded_by, d.owner_id) or person.is_manager or person.is_admin)
+
+
+def search_demands(db: Database, viewer: Person, *, text: str = "", owner_id: int | None = None,
+                   folder: str | None = None, column: str | None = None, start: date | None = None,
+                   end: date | None = None, with_files: set[int] | None = None) -> list[Demand]:
+    """Todas as demandas (inclusive as concluídas há tempo), da mais recente para a mais antiga.
+    O texto procura no título e nos detalhes, mas nunca numa reservada que a pessoa não pode ver:
+    a busca não pode servir para adivinhar o título dela."""
+    words = [w for w in text.lower().split() if w]
+    with db.connect() as conn:
+        rows = [_row(r) for r in conn.execute("SELECT * FROM demands WHERE deleted = 0 ORDER BY updated_at DESC, id DESC")]
+    out = []
+    for d in rows:
+        visible = can_see(d, viewer)
+        if words and (not visible or not all(w in f"{d.title} {d.details or ''}".lower() for w in words)):
+            continue
+        if owner_id is not None and d.owner_id != owner_id:
+            continue
+        if folder and (not visible or d.folder != folder):
+            continue
+        if column and d.column != column:
+            continue
+        if start and d.updated_at.date() < start or end and d.updated_at.date() > end:
+            continue
+        if with_files is not None and (not visible or d.id not in with_files):
+            continue
+        out.append(d)
+    return out

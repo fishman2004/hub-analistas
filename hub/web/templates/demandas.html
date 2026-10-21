@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% set active = 'demandas' %}
+{% block title %}Demandas · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>Demandas</h1>
+  <a class="botao" href="/demandas/nova">+ Nova demanda</a>
+</div>
+<p class="ajuda">Todas as demandas, inclusive as concluídas em outros dias, da última mudança para a mais antiga. Reservada de outra pessoa aparece como no quadro, sem o título.</p>
+
+<form class="filtros" method="get" action="/demandas">
+  <div><label for="q">Texto</label><input type="text" id="q" name="q" value="{{ f.q }}" placeholder="título ou descrição"></div>
+  <div><label for="pessoa">De quem</label>
+    <select id="pessoa" name="pessoa"><option value="">Todos</option>
+      {% for p in people %}<option value="{{ p.id }}" {% if p.id|string == f.pessoa %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+    </select></div>
+  <div><label for="pasta">Pasta</label>
+    <select id="pasta" name="pasta"><option value="">Todas</option>
+      {% for x in FOLDERS %}<option value="{{ x }}" {% if x == f.pasta %}selected{% endif %}>{{ x }}</option>{% endfor %}
+    </select></div>
+  <div><label for="coluna">Situação</label>
+    <select id="coluna" name="coluna"><option value="">Todas</option>
+      <option value="todo" {% if f.coluna == 'todo' %}selected{% endif %}>A fazer</option>
+      <option value="doing" {% if f.coluna == 'doing' %}selected{% endif %}>Fazendo</option>
+      <option value="done" {% if f.coluna == 'done' %}selected{% endif %}>Concluída</option>
+    </select></div>
+  <div><label for="de">Mexida de</label><input type="date" id="de" name="de" value="{{ f.de }}"></div>
+  <div><label for="ate">até</label><input type="date" id="ate" name="ate" value="{{ f.ate }}"></div>
+  <label class="check"><input type="checkbox" name="anexos" value="1" {% if f.anexos == '1' %}checked{% endif %}> Só com arquivos</label>
+  <div><button>Buscar</button></div>
+</form>
+
+<p class="ajuda">{{ total }} demanda{{ 's' if total != 1 else '' }}{% if pages > 1 %} · página {{ pagina }} de {{ pages }}{% endif %}</p>
+{% if found %}
+<table class="tabela busca">
+  <thead><tr><th>Demanda</th><th>De quem</th><th>Pasta</th><th>Situação</th><th>Prazo</th><th>Arquivos</th></tr></thead>
+  <tbody>
+  {% for d in found %}{% set dono = owners[d.owner_id] %}{% set ok = can_see(d, user) %}
+  <tr>
+    <td>{% if ok %}<a href="/demandas/{{ d.id }}">{{ d.title }}</a>{% else %}<span class="ajuda">🔒 {{ RESERVED_TEXT }}</span>{% endif %}</td>
+    <td><span class="bolinha" style="--cor: {{ dono.color }}">{{ dono.initials }}</span> {{ dono.name }}</td>
+    <td>{{ d.folder if ok and d.folder else '' }}</td>
+    <td>{% if d.column == 'done' %}Concluída{% if d.done_at %} em {{ d.done_at.strftime('%d/%m/%Y') }}{% endif %}{% else %}{{ COLUMN_LABELS[d.column] }}{% endif %}</td>
+    <td>{% if d.due %}<span class="{{ 'atraso' if is_overdue(d, today) else '' }}">{{ d.due.strftime('%d/%m/%Y') }}</span>{% endif %}</td>
+    <td>{% if ok and d.id in clips %}📎 {{ clips[d.id] }}{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if pages > 1 %}
+<div class="acoes">
+  {% if pagina > 1 %}<a class="botao discreto" href="?{{ base_qs }}&amp;pagina={{ pagina - 1 }}">◀ Anteriores</a>{% endif %}
+  {% if pagina < pages %}<a class="botao discreto" href="?{{ base_qs }}&amp;pagina={{ pagina + 1 }}">Próximas ▶</a>{% endif %}
+</div>
+{% endif %}
+{% else %}
+<p class="vazio">Nenhuma demanda com esses filtros.</p>
+{% endif %}
+{% endblock %}
