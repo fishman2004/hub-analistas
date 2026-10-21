@@ -14,6 +14,10 @@
 // páginas do Quadro) e ela volta sozinha depois do tempo padrão. A pausa feita pelo app (página "TV da
 // sala") chega no /api/tv e vence a local. Com ?tela=<id>&fixa=1, a aba é "a TV no meu PC": nasce
 // pausada naquela tela, não obedece à pausa da sala, não toca aviso e não conta como a TV da sala.
+//
+// Modos (fase 14): o servidor já manda a rotação do modo que vale agora; a TV só mostra o nome do
+// modo no topo (o Padrão não aparece) e não toca o som quando o aviso vem "mudo". Com ?modo=<id>, a
+// aba é a pré-visualização de um modo no PC de alguém: passa as telas daquele modo, sem mexer na sala.
 (function () {
   "use strict";
   const INTERVALO_MS = 5000;
@@ -33,6 +37,8 @@
   let inicioTela = Date.now();
   const PARAMS = new URLSearchParams(location.search);
   const ESPIAR = PARAMS.get("fixa") === "1";
+  const PREVIA = /^\d+$/.test(PARAMS.get("modo") || "") ? PARAMS.get("modo") : null;
+  const NO_PC = ESPIAR || Boolean(PREVIA);  // não é a TV da sala: não toca aviso nem obedece à pausa da sala
   let pedida = ESPIAR ? PARAMS.get("tela") : null;  // a tela que a aba "no meu PC" abre primeiro
   let pausaLocal = ESPIAR ? { ate: Infinity } : null;
   let pausaRemota = null;  // { tela, ate, iniciais, pagina }, do /api/tv
@@ -159,6 +165,13 @@
     }
   }
 
+  function desenharModo(modo) {
+    const selo = document.getElementById("modo");
+    const mostrar = modo && (modo.previa || !modo.padrao);
+    selo.hidden = !mostrar;
+    if (mostrar) selo.textContent = (modo.previa ? "Pré-visualização · " : "") + modo.nome;
+  }
+
   function avisoAtrasadas(n) {
     const aviso = document.getElementById("atrasadas");
     aviso.hidden = !n;
@@ -209,6 +222,7 @@
     faixa.hidden = false;
     clearTimeout(timerAviso);
     timerAviso = setTimeout(() => { faixa.hidden = true; }, AVISO_MS);
+    if (lista.every((a) => a.mudo)) return;  // modo sem som (ex.: Reunião na sala): só a faixa
     try {
       som.currentTime = 0;
       const tocando = som.play();
@@ -218,7 +232,7 @@
   }
 
   function conferirAvisos() {
-    if (ESPIAR || !avisos.length) return;  // a TV aberta no PC de alguém não toca aviso
+    if (NO_PC || !avisos.length) return;  // a TV aberta no PC de alguém não toca aviso
     const agora = Date.now() + desvio;
     const novos = [];
     let mudou = false;
@@ -265,7 +279,7 @@
 
   // ---------- pausa ----------
 
-  const remota = () => !ESPIAR && pausaRemota;
+  const remota = () => !NO_PC && pausaRemota;
   const pausada = () => Boolean(remota() || pausaLocal);
   const horaCurta = (d) => String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
 
@@ -343,7 +357,7 @@
     try {
       // servidor travado (aceita a conexão mas não responde) também conta como "sem atualização"
       // conta qual tela está aparecendo, para a página "TV da sala" do app saber
-      const url = "/api/tv?tela=" + encodeURIComponent(atual) + "&pausada=" + (pausada() ? 1 : 0) + (ESPIAR ? "&espiar=1" : "");
+      const url = "/api/tv?tela=" + encodeURIComponent(atual) + "&pausada=" + (pausada() ? 1 : 0) + (NO_PC ? "&espiar=1" : "") + (PREVIA ? "&modo=" + PREVIA : "");
       const r = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(4000) });
       if (!r.ok) throw new Error("HTTP " + r.status);
       const dados = await r.json();
@@ -361,6 +375,7 @@
       if (paginaRemota !== undefined && pagina > paginaRemota && remota()) trocarPagina(1);
       paginaRemota = pagina;
       desenharPausa();
+      desenharModo(dados.modo);
       conferirAvisos();
       desenharPresenca(dados.people);
       avisoAtrasadas(dados.overdue || 0);

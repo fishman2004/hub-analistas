@@ -29,6 +29,29 @@
   </div>
 </section>
 
+<form class="ficha cartao-form" method="post" action="/tv-da-sala/modo">
+  <h2>Modo da TV</h2>
+  <p>Agora: <strong>{{ mode_now.mode.name }}</strong>
+    {%- if mode_now.how == 'manual' %}, escolhido{% if mode_by %} por {{ mode_by.name }}{% endif %} {{ 'até ' ~ mode_now.until.strftime('%H:%M') if mode_now.until else 'até trocar de novo' }}
+    {%- elif mode_now.how == 'automatico' %}, automático ({{ mode_now.mode.rule_text }})
+    {%- else %} <span class="ajuda">(nenhum modo automático vale agora)</span>{% endif %}.</p>
+  <div class="linha">
+    <div>
+      <label for="modo">Trocar para</label>
+      <select id="modo" name="modo">
+        {% if mode_now.how == 'manual' %}<option value="automatico">Voltar ao automático</option>{% endif %}
+        {% for m in modes %}<option value="{{ m.id }}" {% if m.id == mode_now.mode.id and mode_now.how != 'manual' %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="ate">Até quando</label>
+      <select id="ate" name="ate">{% for k, label in mode_durations.items() %}<option value="{{ k }}">{{ label|capitalize }}</option>{% endfor %}</select>
+    </div>
+  </div>
+  <p class="ajuda">Cada modo diz quais telas passam e por quanto tempo (por exemplo, Fim de mês foca nos painéis). Escolhido à mão, vale até o prazo; depois a TV volta ao automático. <a href="/modos">Ver e pré-visualizar os modos</a>.</p>
+  <div><button>Trocar o modo</button></div>
+</form>
+
 <form class="ficha cartao-form" method="post" action="/tv-da-sala/pausar">
   <h2>Pausar a TV da sala</h2>
   <div class="linha">

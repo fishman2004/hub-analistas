@@ -218,6 +218,32 @@ MIGRATIONS: list[tuple[int, str]] = [
         );
         ALTER TABLE routines ADD COLUMN on_holidays INTEGER NOT NULL DEFAULT 0;
     """),
+    (10, """
+        -- v3 · modos da TV: cada modo é uma receita da rotação (telas, ordem, tempos e opções), com uma
+        -- regra para ligar sozinho. O modo "Padrão" nasce das configurações da TV que já existiam
+        -- (feito no primeiro uso, em hub/modos.py, porque os tempos padrão das telas estão no código).
+        CREATE TABLE tv_modes (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            builtin TEXT UNIQUE,                         -- 'padrao', 'inicio-mes'...: os prontos não se apagam
+            page_seconds INTEGER NOT NULL DEFAULT 10,
+            sound INTEGER NOT NULL DEFAULT 1,            -- toca o som do aviso das rotinas
+            hide_titles INTEGER NOT NULL DEFAULT 0,      -- cartões só com cor e iniciais
+            rule TEXT NOT NULL DEFAULT '',               -- JSON: {"tipo": "primeiros_dias_uteis", "n": 5}...
+            rule_on INTEGER NOT NULL DEFAULT 0,
+            priority INTEGER NOT NULL,                   -- duas regras valendo: a de cima na lista vence
+            created_by INTEGER REFERENCES people(id),
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE tv_mode_screens (
+            mode_id INTEGER NOT NULL REFERENCES tv_modes(id) ON DELETE CASCADE,
+            screen TEXT NOT NULL,                        -- id em hub/telas.py SCREENS
+            position INTEGER NOT NULL,
+            seconds INTEGER NOT NULL,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY (mode_id, screen)
+        );
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

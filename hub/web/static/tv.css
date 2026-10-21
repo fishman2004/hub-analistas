@@ -344,3 +344,7 @@ body {
 /* ausência na faixa de presença: só "Ausente" e a data de volta */
 .pessoa.st-ausente { --st: var(--fora); }
 .pessoa.st-ausente .nome, .pessoa.st-ausente .ini { opacity: .55; }
+
+/* modo da TV (fase 14): o nome do modo, discreto, quando não é o Padrão */
+.selo-modo { font-size: 1.2rem; font-weight: 600; color: var(--suave); border: .12rem solid var(--linha);
+  border-radius: 999px; padding: .15rem .9rem; white-space: nowrap; }

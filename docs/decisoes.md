@@ -233,3 +233,18 @@ Pedido do gestor: "calendário". O Hub já sabia muita coisa com data (prazos, p
 - **Sem Outlook:** o calendário é só do Hub (exportar `.ics` fica como ideia futura). Aniversários não entram sozinhos (dado pessoal); dá para criar como compromisso anual.
 
 Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 13.1 a 13.5 do [plano da v3](plano-v3.md)).
+
+## Modos da TV (fase 14)
+
+Pedido do gestor: um "modo" para dias como Início de mês (mais demandas que números) e Fim de mês (mais números que demandas), um brainstorm de modos úteis e uma forma de criar modos.
+
+- **Um modo é uma receita da rotação:** quais telas, em que ordem, quanto tempo cada uma, o tempo das páginas, o som do aviso e se os títulos aparecem. O que estava em Configurações virou o modo **Padrão**, sem mudar nada para quem não mexer.
+- **Calculado, não agendado:** a cada busca da TV, o Hub vê qual modo vale: a escolha feita à mão (até o prazo), depois o primeiro da lista com regra ligada que vale agora, senão o Padrão. A ordem da lista desempata.
+- **Início de mês e Fim de mês ligam sozinhos:** do dia 1º até o 5º dia útil, e dos 5 últimos dias úteis até o fim do mês. Dia útil aqui é de segunda a sexta, sem os feriados do calendário. No Fim de mês, o Quadro continua, com 15 s.
+- **Brainstorm, pronto e sem ligar sozinho:** Fechamento do dia, Hora das transferências, Sábado, Campanha / Produtos foco, Reunião na sala (60 s por tela e sem som), Apresentação dos painéis, Visita (títulos escondidos) e Só o quadro. Os prontos não se apagam (só se desliga a regra); os criados pela equipe, sim.
+- **Quem pode:** trocar o modo da TV da sala, qualquer pessoa com PIN (fica no histórico). Criar, editar, duplicar, apagar e mexer nas regras: gestor e administradores. Pré-visualizar no próprio PC: qualquer pessoa.
+- **A TV nunca fica vazia:** se nenhuma tela do modo tiver o que mostrar, o Quadro aparece.
+- **Títulos escondidos de verdade:** no modo Visita, o servidor nem manda os títulos (como na demanda reservada); não é só a tela que esconde.
+- **Ninguém fica perdido:** o nome do modo aparece discreto no topo da TV, e a página TV da sala diz qual modo vale e por quê ("automático (nos 5 últimos dias úteis do mês)" ou "escolhido por Ana até 18:00").
+
+Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 14.1 a 14.6 do [plano da v3](plano-v3.md)).
