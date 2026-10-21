@@ -1,6 +1,7 @@
 // Tela "Prioridades do mês": a lista do início do mês como checklist, com quantas já foram feitas.
 // Só entra na rotação enquanto houver item em aberto (o servidor decide). Os em aberto aparecem em
 // destaque (os atrasados primeiro, em vermelho); os feitos levam o check e as iniciais de quem fez.
+// Com as pastas ligadas às pessoas, cada item mostra as pastas que já fizeram e as que faltam.
 // Tudo cabendo, uma coluna; senão, duas e, se ainda não couber, passa as páginas com fade no mesmo
 // tempo das colunas do Quadro (a TV nunca rola).
 (function () {
@@ -24,6 +25,22 @@
     texto.append(el("div", "prio-titulo", i.title));
     if (i.due_day && !i.done) texto.append(el("div", "prio-prazo", (i.late ? "atrasada · " : "") + "até dia " + i.due_day));
     card.append(texto);
+    if (i.folders && i.folders.length > 1) {
+      // por pasta (fase 16): cada pasta com o check e as iniciais de quem fez, ou apagada enquanto falta
+      const pastas = el("div", "prio-pastas");
+      for (const f of i.folders) {
+        const chip = el("span", "prio-pasta" + (f.done ? " feita" : ""));
+        chip.append(el("span", "letra pasta-" + f.folder, f.folder));
+        if (f.done && f.initials) {
+          const ini = el("span", "ini", f.initials);
+          ini.style.setProperty("--cor", f.color);
+          chip.append(ini);
+        }
+        pastas.append(chip);
+      }
+      card.append(pastas);
+      return card;
+    }
     if (i.folder) card.append(el("span", "letra pasta-" + i.folder, i.folder));
     if (i.done && i.initials) {
       const ini = el("span", "ini", i.initials);

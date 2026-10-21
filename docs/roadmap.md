@@ -20,9 +20,10 @@ flowchart LR
     F10 --> F14[14 · Modos da TV]
     F13 --> F14
     F14 --> F15[15 · PDF de uma tela]
+    F8 --> F16[16 · Prioridades por pasta e Assistente]
 ```
 
-As fases 10 a 15 são a **v3**, com as sugestões do gestor: o plano completo, com as regras e as escolhas de cada fase, está em [plano-v3.md](plano-v3.md).
+As fases 10 a 16 são a **v3**, com as sugestões do gestor: o plano completo, com as regras e as escolhas de cada fase, está em [plano-v3.md](plano-v3.md).
 
 | Fase | Entrega | Estado |
 |---|---|---|
@@ -42,6 +43,7 @@ As fases 10 a 15 são a **v3**, com as sugestões do gestor: o plano completo, c
 | 13 | **Calendário:** página **Calendário** (mês, semana e lista) com compromissos (equipe, "só eu" ou reservado; repetição semanal, mensal ou anual), feriados nacionais calculados e os da cidade, ausências da equipe, prazos das demandas, prazos das prioridades e rotinas. Os feriados saem da meta do dia dos painéis, das rotinas e do banco de horas. Na TV, a tela **Agenda** e "Ausente até dd/mm" na faixa de presença. | Pronto ([roteiro de teste](roteiros/fase-13-calendario.md)) |
 | 14 | **Modos da TV:** cada modo diz quais telas passam, em que ordem e por quanto tempo, com o som do aviso e os títulos ligados ou não. Vêm prontos o **Padrão** (o que estava em Configurações), **Início de mês** e **Fim de mês** (ligam sozinhos nos 5 primeiros e nos 5 últimos dias úteis) e, sem ligar sozinhos, Fechamento do dia, Hora das transferências, Sábado, Campanha, Reunião na sala, Apresentação dos painéis, Visita e Só o quadro. Qualquer pessoa troca o modo na página **TV da sala**; gestor e administradores criam e editam em **Modos da TV**, com pré-visualização no próprio PC. | Pronto ([roteiro de teste](roteiros/fase-14-modos.md)) |
 | 15 | **Exportar a TV em PDF:** na página **TV da sala**, "Exportar PDF" em cada tela, "a tela que está na TV agora" e "todas as telas da rotação" (uma folha por tela, e cada página do Quadro numa folha). Abre a janela de impressão do navegador (**Salvar como PDF**), com a mesma regra da TV, rodapé com data e as iniciais de quem exportou e uma versão clara para imprimir. Fica no histórico. | Pronto ([roteiro de teste](roteiros/fase-15-pdf.md)) |
+| 16 | **Prioridades por pasta e o papel Assistente:** cada pessoa é ligada às suas pastas (página **Pessoas**) e marca a prioridade do mês nas suas pastas; o item fica feito quando todas as pastas marcaram, e a página e a TV mostram quem de cada pasta já fez e quais faltam. O gestor e os administradores cobrem qualquer pasta. Papel **Assistente** (jovem aprendiz de meio período): pega demandas, tem jornada própria no banco de horas e fica fora das prioridades. | Pronto ([roteiro de teste](roteiros/fase-16-prioridades-por-pasta.md)) |
 
 ### Ideias para depois
 

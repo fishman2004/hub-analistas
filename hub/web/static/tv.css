@@ -298,6 +298,15 @@ body.exportar { height: auto; overflow: auto; display: block; padding: 0; }
 .prio-item.feita .prio-marca { background: var(--sala); border-color: var(--sala); color: #0e141a; }
 .prio-item.feita .prio-titulo { font-size: 1.75rem; color: var(--suave); text-decoration: line-through; text-decoration-thickness: .1rem; }
 .prio-item.feita .letra { opacity: .6; }
+/* por pasta (fase 16): a pasta que falta fica apagada e tracejada; a que fez ganha as iniciais de quem marcou */
+.prio-pastas { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; max-width: 55%; }
+.prio-pasta { display: flex; align-items: center; gap: .3rem; padding: .25rem; border-radius: .7rem; border: .15rem dashed var(--suave); }
+.prio-pasta .letra { width: 2.6rem; height: 2.6rem; font-size: 1.4rem; opacity: .4; }
+.prio-pasta .ini { min-width: 2.4rem; height: 2.4rem; font-size: 1.05rem; }
+.prio-pasta.feita { border: .15rem solid var(--sala); }
+.prio-pasta.feita .letra { opacity: 1; }
+.prio-item.atrasada .prio-pasta:not(.feita) { border-color: var(--atraso); }
+.prio-item.feita .prio-pasta .letra { opacity: .6; }
 
 /* ---------- envios do Pombo (fase 9): uma linha por rodada ---------- */
 .envios-bloco { flex: 1; }

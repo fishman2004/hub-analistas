@@ -239,6 +239,21 @@ fieldset.escolhas .check input { margin-top: 0; }
 .prio-texto { flex: 1; min-width: 200px; display: grid; gap: 2px; }
 .prio-titulo { font-weight: 600; overflow-wrap: anywhere; }
 .prio.feita .prio-titulo { color: var(--suave); text-decoration: line-through; }
+/* por pasta (fase 16): a letra com a cor da pasta, quem fez e quem falta */
+.letra-pasta { --lp: #6e7781; flex: none; display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 5px; border-radius: 6px; background: var(--lp); color: #fff; font-weight: 800; font-size: .85rem; }
+.letra-pasta.pasta-A { --lp: #e1251b; } .letra-pasta.pasta-B { --lp: #fe017e; } .letra-pasta.pasta-C { --lp: #6b2c91; }
+.letra-pasta.pasta-D { --lp: #5bb8ea; color: #0e141a; } .letra-pasta.pasta-E { --lp: #1e6b3a; } .letra-pasta.pasta-F { --lp: #1f3fa0; }
+.prio-pastas { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.prio-pastas li { display: flex; align-items: center; gap: 6px; padding: 3px 6px 3px 3px; border: 1px solid var(--linha); border-radius: 8px; font-size: .85rem; }
+.prio-pastas li.falta { border-style: dashed; color: var(--suave); }
+.prio-pastas li.falta .letra-pasta { opacity: .55; }
+.prio-pastas li.feita { border-color: var(--sala); }
+.prio-pastas form { margin: 0; }
+.prio.atrasada .prio-pastas li.falta { border-color: var(--atraso); color: var(--atraso); }
+button.mini { padding: 1px 8px; font-size: .8rem; min-height: 0; }
+.prio-por-pasta { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .9rem; }
+.prio-por-pasta li { display: flex; align-items: center; gap: 6px; }
+.prio-por-pasta li.completa { color: var(--sala); font-weight: 600; }
 .prio-padrao p, .prio-padrao ul { margin: 0; }
 .prio-padrao ul { padding-left: 20px; }
 .prio-padrao { margin-bottom: 16px; }

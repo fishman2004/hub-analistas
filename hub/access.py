@@ -9,7 +9,7 @@ from datetime import datetime, time, timedelta
 from .db import Database, log_event
 from .people import Person, ValidationError, get_person
 
-ROLES = {"analista": "Analista", "gestor": "Gestor"}
+ROLES = {"analista": "Analista", "assistente": "Assistente", "gestor": "Gestor"}
 MAX_ATTEMPTS = 5
 LOCK_MINUTES = 5
 PBKDF2_ROUNDS = 200_000
@@ -164,7 +164,10 @@ def has_admin(db: Database) -> bool:
 
 
 def set_access(db: Database, now: datetime, actor: Person, person_id: int, role: str, is_admin: bool) -> None:
-    """Muda o papel (analista ou gestor) e a marcação de administrador. Sempre sobra um administrador."""
+    """Muda o papel (analista, assistente ou gestor) e a marcação de administrador. Sempre sobra um administrador.
+
+    Assistente não tem pasta própria: ao virar assistente, a pessoa sai das pastas que tinha.
+    """
     require_admin(actor)
     if role not in ROLES:
         raise ValidationError("Papel inválido.")
@@ -180,6 +183,8 @@ def set_access(db: Database, now: datetime, actor: Person, person_id: int, role:
         if row["role"] != role:
             conn.execute("UPDATE people SET role = ? WHERE id = ?", (role, person_id))
             log_event(conn, now, actor.id, "papel_alterado", f"pessoa:{person_id}", ROLES[role])
+            if role == "assistente":
+                conn.execute("DELETE FROM person_folders WHERE person_id = ?", (person_id,))
         if bool(row["is_admin"]) != is_admin:
             conn.execute("UPDATE people SET is_admin = ? WHERE id = ?", (int(is_admin), person_id))
             log_event(conn, now, actor.id, "admin_alterado", f"pessoa:{person_id}", "sim" if is_admin else "não")

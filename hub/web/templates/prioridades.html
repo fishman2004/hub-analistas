@@ -13,7 +13,15 @@
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
 
 {% if editable %}
+{% if owners %}
+<p class="ajuda">A lista do início do mês fica na TV até tudo estar feito. Cada pessoa marca as suas pastas, e o item fica feito quando todas as pastas fizeram (item com pasta escolhida: só aquela pasta). O gestor e os administradores também marcam qualquer pasta, para cobrir uma falta. Remover: quem acrescentou o item ou um administrador.</p>
+{% if user.is_assistant %}<div class="aviso" role="status">Assistente não faz as prioridades do mês: a lista fica aqui só para consulta.</div>
+{% elif not mine %}<p class="ajuda">Você ainda não está ligado a nenhuma pasta. Um administrador escolhe as pastas de cada pessoa na página Pessoas.</p>{% endif %}
+{% else %}
 <p class="ajuda">A lista do início do mês fica na TV até tudo estar feito. Qualquer pessoa marca como feita, e fica guardado quem fez e quando. Remover: quem acrescentou o item ou um administrador.</p>
+{% if user.is_admin %}<p class="ajuda">Para cada pessoa marcar as suas pastas, ligue cada uma às pastas de que ela cuida na página <a href="/pessoas">Pessoas</a>.</p>{% endif %}
+{% if user.is_assistant %}<div class="aviso" role="status">Assistente não faz as prioridades do mês: a lista fica aqui só para consulta.</div>{% endif %}
+{% endif %}
 {% else %}
 <div class="aviso" role="status">Só consulta: a lista de {{ month_label(month) }} não muda mais. Só a lista do mês atual pode mudar.</div>
 {% endif %}
@@ -24,6 +32,13 @@
     {%- if late_count %} · <span class="atraso">{{ late_count }} atrasada{{ 's' if late_count != 1 else '' }}</span>{% endif %}
     {%- if editable %} · <span class="ajuda">{{ 'tudo feito: a tela saiu da TV' if done_count == items|length else 'na TV até tudo estar feito' }}</span>{% endif %}</p>
   <div class="prio-barra" aria-hidden="true"><span style="width: {{ (100 * done_count / items|length)|round(1) }}%"></span></div>
+  {% if folder_summary %}
+  <ul class="prio-por-pasta" aria-label="Por pasta">
+    {% for f, feitas, total in folder_summary %}
+    <li class="{{ 'completa' if feitas == total else '' }}"><span class="letra-pasta pasta-{{ f }}">{{ f }}</span> {{ feitas }} de {{ total }}{{ ' ✓' if feitas == total else '' }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </section>
 
 <ul class="prioridades">
@@ -38,16 +53,45 @@
       <p class="meta">
         {% if p.folder %}<span>Pasta {{ 'G (Canal Farma)' if p.folder == 'G' else p.folder }}</span>{% endif %}
         {% if p.due_day %}<span class="{{ 'atraso' if late else '' }}">{{ 'atrasada · ' if late else '' }}até dia {{ p.due_day }}</span>{% endif %}
-        {% if p.done %}<span>feita{{ ' por ' ~ quem.name if quem else '' }} em {{ p.done_at.strftime('%d/%m') }} às {{ p.done_at.strftime('%H:%M') }}</span>{% endif %}
+        {% if p.done_at %}<span>feita{{ ' por ' ~ quem.name if quem else '' }} em {{ p.done_at.strftime('%d/%m') }} às {{ p.done_at.strftime('%H:%M') }}{{ ' (para todas as pastas)' if p.required else '' }}</span>
+        {% elif p.required and p.done %}<span>feita por todas as pastas</span>{% endif %}
       </p>
+      {% endif %}
+      {% if p.required and not p.done_at %}
+      <ul class="prio-pastas">
+        {% for f in p.required %}
+        {% set m = p.mark(f) %}
+        <li class="{{ 'feita' if m else 'falta' }}">
+          <span class="letra-pasta pasta-{{ f }}">{{ f }}</span>
+          {% if m %}{% set q = people.get(m.done_by) %}
+          <span>✓ {{ q.name if q else 'alguém' }} · {{ m.done_at.strftime('%d/%m %H:%M') }}</span>
+          {% else %}
+          <span>falta{% if owners.get(f) %} · {{ owners[f]|map(attribute='name')|join(', ') }}{% endif %}</span>
+          {% endif %}
+          {% if editable and can_mark(f) and (f not in mine or p.required|select('in', mine)|list|length > 1 or m) %}
+          <form method="post" action="/prioridades/{{ p.id }}/{{ 'desfazer' if m else 'feita' }}?pasta={{ f }}"><button class="discreto mini" aria-label="{{ 'Desfazer' if m else 'Marcar' }} a pasta {{ f }}">{{ 'Desfazer' if m else 'Marcar' }}</button></form>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
       {% endif %}
     </div>
     {% if editable %}
+    {% set meus = p.required|select('in', mine)|list %}
+    {% set meus_falta = meus|reject('in', p.marks|map(attribute='folder')|list)|list %}
     <div class="cartao-acoes">
+      {% if not p.required %}
+      {% if not user.is_assistant %}
       {% if p.done %}
       <form method="post" action="/prioridades/{{ p.id }}/desfazer"><button class="discreto">Desfazer</button></form>
       {% else %}
       <form method="post" action="/prioridades/{{ p.id }}/feita"><button>Marcar como feita</button></form>
+      {% endif %}
+      {% endif %}
+      {% elif p.done_at %}
+      {% if not user.is_assistant %}<form method="post" action="/prioridades/{{ p.id }}/desfazer"><button class="discreto">Desfazer</button></form>{% endif %}
+      {% elif meus_falta %}
+      <form method="post" action="/prioridades/{{ p.id }}/feita"><button>Marcar como feita{{ ' (' ~ meus_falta|join(', ') ~ ')' if p.required|length > 1 else '' }}</button></form>
       {% endif %}
       {% if can_remove(p, user) %}
       {# o título vai num data-atributo: dentro do JS, um apóstrofo quebraria o confirm #}
@@ -64,7 +108,7 @@
 <p class="vazio">Nenhuma prioridade em {{ month_label(month) }}.</p>
 {% endif %}
 
-{% if editable %}
+{% if editable and not user.is_assistant %}
 {% if not items %}
 <form class="ficha cartao-form prio-padrao" method="post" action="/prioridades/padrao">
   <h2>Lista padrão do mês</h2>

@@ -3,7 +3,7 @@
 {% block title %}Pessoas · Hub dos Analistas{% endblock %}
 {% block main %}
 <h1>Pessoas</h1>
-<p class="ajuda">Só administradores veem esta página. <strong>Gestor</strong> terá a visão da equipe; <strong>Administrador</strong> pode gerenciar pessoas, papéis e PINs. Ninguém vê o PIN de ninguém: "Redefinir PIN" apaga o atual e a pessoa cria outro no próximo acesso.</p>
+<p class="ajuda">Só administradores veem esta página. <strong>Gestor</strong> terá a visão da equipe; <strong>Assistente</strong> (jovem aprendiz de meio período) pega as demandas mais simples, tem a jornada de assistente no banco de horas e não entra nas prioridades do mês; <strong>Administrador</strong> pode gerenciar pessoas, papéis, pastas e PINs. As <strong>pastas</strong> de cada pessoa dizem quem marca cada pasta nas prioridades do mês (uma pasta pode ter mais de uma pessoa). Ninguém vê o PIN de ninguém: "Redefinir PIN" apaga o atual e a pessoa cria outro no próximo acesso.</p>
 {% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
 
@@ -32,6 +32,15 @@
         <label class="check"><input type="checkbox" name="admin" {% if p.is_admin %}checked{% endif %}> Administrador</label>
         <button class="discreto">Salvar acesso</button>
       </form>
+      {% if p.is_assistant %}
+      <span class="ajuda">Assistente: sem pasta própria e fora das prioridades do mês.</span>
+      {% else %}
+      <form class="ficha-inline pastas-pessoa" method="post" action="/pessoas/{{ p.id }}/pastas" aria-label="Pastas de {{ p.name }}">
+        <span class="ajuda">Pastas:</span>
+        {% for f in FOLDERS %}<label class="check"><input type="checkbox" name="pasta" value="{{ f }}" {% if f in folders_of.get(p.id, ()) %}checked{% endif %}> {{ f }}</label>{% endfor %}
+        <button class="discreto">Salvar pastas</button>
+      </form>
+      {% endif %}
       {% if p.has_pin %}
       <form method="post" action="/pessoas/{{ p.id }}/pin" data-nome="{{ p.name }}" onsubmit="return confirm('Apagar o PIN de ' + this.dataset.nome + '? No próximo acesso a pessoa cria um novo.')">
         <button class="discreto">Redefinir PIN</button>

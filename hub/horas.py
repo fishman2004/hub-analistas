@@ -30,6 +30,10 @@ from .planilhas import EXTENSIONS, PlanilhaError, day as parse_day, normalize, r
 SETTING_WEEK = "horas.jornada.semana"
 SETTING_SATURDAY = "horas.jornada.sabado"
 WEEK_DEFAULT, SATURDAY_DEFAULT = 10 * 60, 0  # das 8h às 18h de segunda a sexta; sábado sem jornada
+# assistente (jovem aprendiz, meio período) tem jornada própria (fase 16)
+SETTING_ASSISTANT_WEEK = "horas.jornada.assistente.semana"
+SETTING_ASSISTANT_SATURDAY = "horas.jornada.assistente.sabado"
+ASSISTANT_WEEK_DEFAULT = 6 * 60
 MISSING_WINDOW = 31  # dias para trás na lista de dias sem lançamento
 DIAS = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 
@@ -93,16 +97,26 @@ def _setting(conn, key: str, default: int) -> int:
     return int(row[0]) if row else default
 
 
-def journey_from(conn) -> dict:
+def journey_from(conn, assistant: bool = False) -> dict:
     # feriados do calendário (fase 13): não pedem lançamento, e hora trabalhada neles é toda extra
+    if assistant:
+        return {"semana": _setting(conn, SETTING_ASSISTANT_WEEK, ASSISTANT_WEEK_DEFAULT),
+                "sabado": _setting(conn, SETTING_ASSISTANT_SATURDAY, SATURDAY_DEFAULT),
+                "feriados": load_holidays(conn)}
     return {"semana": _setting(conn, SETTING_WEEK, WEEK_DEFAULT),
             "sabado": _setting(conn, SETTING_SATURDAY, SATURDAY_DEFAULT),
             "feriados": load_holidays(conn)}
 
 
-def journey(db: Database) -> dict:
+def journey(db: Database, assistant: bool = False) -> dict:
+    """A jornada da equipe ou, com assistant=True, a dos assistentes."""
     with db.connect() as conn:
-        return journey_from(conn)
+        return journey_from(conn, assistant)
+
+
+def _is_assistant(conn, person_id: int) -> bool:
+    row = conn.execute("SELECT role FROM people WHERE id = ?", (person_id,)).fetchone()
+    return row is not None and row["role"] == "assistente"
 
 
 def planned_for(day: date, j: dict) -> int:
@@ -113,16 +127,19 @@ def planned_for(day: date, j: dict) -> int:
     return j["sabado"] if day.weekday() == 5 else 0
 
 
-def save_journey(db: Database, now: datetime, actor: Person, week: str, saturday: str) -> None:
+def save_journey(db: Database, now: datetime, actor: Person, week: str, saturday: str, assistant: bool = False) -> None:
     require_manager(actor)
-    values = {SETTING_WEEK: parse_hhmm(week, "Jornada de segunda a sexta"),
-              SETTING_SATURDAY: parse_hhmm(saturday or "00:00", "Jornada de sábado")}
+    week_key, saturday_key = ((SETTING_ASSISTANT_WEEK, SETTING_ASSISTANT_SATURDAY) if assistant
+                              else (SETTING_WEEK, SETTING_SATURDAY))
+    values = {week_key: parse_hhmm(week, "Jornada de segunda a sexta"),
+              saturday_key: parse_hhmm(saturday or "00:00", "Jornada de sábado")}
     with db.connect() as conn:
         for key, value in values.items():
             conn.execute("INSERT INTO settings(key, value) VALUES (?, ?) "
                          "ON CONFLICT(key) DO UPDATE SET value = excluded.value", (key, str(value)))
         log_event(conn, now, actor.id, "horas_jornada", "config:horas",
-                  f"{hhmm(values[SETTING_WEEK])} / sábado {hhmm(values[SETTING_SATURDAY])}")
+                  ("assistentes: " if assistant else "")
+                  + f"{hhmm(values[week_key])} / sábado {hhmm(values[saturday_key])}")
 
 
 # ---------- lançamentos ----------
@@ -219,7 +236,7 @@ class Summary:
 
 def summary(db: Database, person_id: int, today: date) -> Summary:
     with db.connect() as conn:
-        j = journey_from(conn)
+        j = journey_from(conn, _is_assistant(conn, person_id))
         base = _balance_row(conn, person_id)
         as_of = date.fromisoformat(base["as_of"]) if base else None
         rows = conn.execute("SELECT * FROM hours_entries WHERE person_id = ? AND day > ? ORDER BY day DESC",

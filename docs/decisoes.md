@@ -262,3 +262,16 @@ Pedido do gestor: exportar uma das telas da TV em PDF, para mandar a alguém.
 - **Sem imagem PNG** nesta fase: o PDF abre no celular.
 
 Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 15.1 a 15.4 do [plano da v3](plano-v3.md)).
+
+## Prioridades por pasta e o papel Assistente (fase 16)
+
+Pedido do Kayo: cada pessoa confirma que fez as prioridades do mês **nas suas pastas**, e a lista mostra quem de cada pasta já fez. E um papel novo, **Assistente**, para os jovens aprendizes de meio período, que pegam demandas mais simples, sem responsabilidade direta por uma pasta, e não fazem as prioridades.
+
+- **Cada pessoa é ligada às suas pastas** na página **Pessoas** (só administrador). Uma pessoa pode ter várias pastas, e uma pasta pode ter mais de uma pessoa: aí **qualquer uma delas** marca pela pasta (uma marca por pasta, com quem marcou).
+- **Quais pastas cada item pede:** as pastas que têm alguém ligado. Item com pasta escolhida pede só aquela pasta. O item fica feito quando todas as pastas marcaram, e a TV continua até tudo estar feito.
+- **Marcar:** "Marcar como feita" marca todas as pastas da pessoa naquele item de uma vez; cada pasta também tem o seu botão. O **gestor e os administradores** marcam (e desfazem) qualquer pasta, para cobrir uma falta ou férias.
+- **Enquanto ninguém estiver ligado a uma pasta,** a lista funciona como antes (uma marcação para o item todo), para a atualização não mudar nada até o administrador escolher as pastas. Um item marcado antes da mudança continua feito para todas as pastas.
+- **Na TV:** cada item mostra as letras das pastas; a que fez fica acesa com as iniciais de quem marcou, a que falta fica apagada e tracejada (em vermelho, se atrasada). Sem nomes, como sempre.
+- **Assistente:** sem pasta e fora das prioridades (vê a lista, mas não cria, marca nem remove). Pode ser responsável por demandas e por rotinas, aparece na presença da TV e usa o banco de horas com a **jornada dos assistentes** (padrão 6h de segunda a sexta, sábado sem jornada; o gestor muda no Banco de horas da equipe). Não vê a visão do gestor.
+
+Escolhas padrão, o Kayo confirma (21/10/2026): jornada do assistente (6h), assistente responsável por rotinas e o gestor/administradores cobrindo qualquer pasta.
