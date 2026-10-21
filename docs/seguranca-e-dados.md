@@ -11,6 +11,7 @@
 | Prazos da semana (tela da TV) | Sim, com a reservada mascarada como no Quadro | Não se aplica |
 | Painéis de vendas (metas, positivação, produtos foco) | **Só porcentagens e gráficos**, nunca valores, quantidades ou nomes | Página Painéis: só a situação das planilhas (lida, quantas linhas, quando). Enviar planilha: só administradores |
 | Banco de horas (saldo e entrada/saída de cada dia) | **Nunca** (o endereço da TV nem consulta essas tabelas) | Só a própria pessoa e o gestor. Administrador sozinho não vê |
+| Rotinas (nome, dias, horário, prazo, responsável, pastas) | O cartão de cada rotina no Quadro, com horário, prazo e pastas marcadas, e o aviso no horário (nome e horário). Cartão de rotina marcado como reservado: mascarado como qualquer reservada, e o aviso dele não vai | Página Rotinas: todos veem; cadastrar e mudar, só o gestor e os administradores. Marcar pasta: qualquer pessoa, com o nome no histórico |
 | Histórico | Não | Sim (as linhas do banco de horas só para a própria pessoa e o gestor) |
 | PIN | Não | Ninguém (só um resumo fica guardado) |
 

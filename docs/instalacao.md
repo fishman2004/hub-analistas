@@ -16,6 +16,7 @@ Dois cliques em **`iniciar.bat`**. O servidor sobe sem janela, e a TV abre no Ed
 
 - Para sair do modo quiosque: **Alt+F4**.
 - Abrir de novo não cria outra cópia: só reabre a TV.
+- A TV toca um aviso no horário de cada rotina. Se ela não tocar, libere o som do site uma vez no Edge ([passo a passo](roteiros/fase-7-rotinas.md#som-na-tv)) e confira se o som do PC sai pela TV.
 
 ## 4. Primeira configuração
 

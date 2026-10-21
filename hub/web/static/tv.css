@@ -217,3 +217,39 @@ body {
 .linha-foco .trilho { height: 1.8rem; border-radius: .45rem; }
 .linha-foco .cheio { border-radius: .45rem; }
 .linha-foco .pct { font-size: 2.1rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- rotinas (fase 7) ---------- */
+.cartao .rotina-hora { display: inline-flex; align-items: center; gap: .35rem; color: var(--texto); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cartao .rotina-hora svg { width: 1.25rem; height: 1.25rem; flex: none; color: var(--pausa); }
+.cartao .rotina-hora.atraso, .cartao .rotina-hora.atraso svg { color: var(--atraso); font-weight: 700; }
+.cartao .aguardando { color: var(--reuniao); font-weight: 600; }
+/* pastas da rotina: cheia com a cor da pasta quando marcou, apagada e tracejada quando falta */
+.pastas-rotina { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .3rem; }
+.pasta-chip { --pc: #c9d1d9; min-width: 2.2rem; height: 2.2rem; padding: 0 .3rem; border-radius: .45rem; display: inline-grid; place-items: center;
+  font-size: 1.25rem; font-weight: 800; color: var(--suave); border: .15rem dashed var(--suave); opacity: .7; }
+.pasta-chip.marcada { background: var(--pc); border: .15rem solid var(--pc); color: #fff; opacity: 1; }
+.pasta-chip[data-pasta="A"] { --pc: var(--pasta-A); } .pasta-chip[data-pasta="B"] { --pc: var(--pasta-B); }
+.pasta-chip[data-pasta="C"] { --pc: var(--pasta-C); } .pasta-chip[data-pasta="D"] { --pc: var(--pasta-D); }
+.pasta-chip[data-pasta="E"] { --pc: var(--pasta-E); } .pasta-chip[data-pasta="F"] { --pc: var(--pasta-F); }
+.pasta-chip.marcada[data-pasta="D"], .pasta-chip.marcada[data-pasta="G"] { color: #0e141a; }  /* fundos claros */
+.pastas-conta { font-size: 1.2rem; color: var(--suave); margin-left: .2rem; font-variant-numeric: tabular-nums; }
+.coluna[data-col="done"] .pasta-chip { opacity: 1; }
+
+/* aviso da rotina: por cima de qualquer tela, com o resto escurecido, por ~20 s */
+.aviso-rotina {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20;
+  width: min(84rem, 92vw); display: flex; align-items: center; gap: 2.2rem;
+  padding: 2.2rem 2.8rem; border-radius: 1.6rem; background: #12283c; border: .3rem solid var(--pausa);
+  box-shadow: 0 0 0 100vmax rgb(5 9 13 / 55%), 0 1.5rem 4rem rgb(0 0 0 / 60%);
+  animation: aviso-entra .45s ease-out;
+}
+.aviso-rotina[hidden] { display: none; }
+.aviso-icone svg { width: 6.5rem; height: 6.5rem; display: block; color: #f3c46b; transform-origin: 50% 12%; animation: aviso-sino .9s ease-in-out 4; }
+.aviso-textos { min-width: 0; display: grid; gap: .5rem; }
+.aviso-rotulo { font-size: 1.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: #f3c46b; }
+.aviso-linha { font-size: 3.2rem; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; }
+.aviso-linha b { margin-right: .4rem; font-variant-numeric: tabular-nums; color: var(--pausa); }
+.aviso-prazo { margin-left: 1rem; font-size: 2rem; font-weight: 600; color: var(--suave); white-space: nowrap; }
+.aviso-mudo { font-size: 1.3rem; color: var(--atraso); }
+@keyframes aviso-entra { from { opacity: 0; transform: translate(-50%, -46%) scale(.96); } }
+@keyframes aviso-sino { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 75% { transform: rotate(-14deg); } }

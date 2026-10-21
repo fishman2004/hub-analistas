@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% set active = 'rotinas' %}
+{% block title %}Rotinas · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>Rotinas</h1>
+  {% if can_manage %}
+  <form method="post" action="/rotinas/sugeridas" class="acoes">
+    <button class="discreto" title="PHD, transferências de pedidos, atualizações de positivações e comparativo de rotas">Criar rotinas sugeridas</button>
+  </form>
+  {% endif %}
+</div>
+<p class="ajuda">Nos dias marcados, quando chega o horário, a rotina aparece sozinha em <strong>A fazer</strong> do responsável e a TV toca um aviso. Depois do prazo, o cartão fica atrasado. Rotina com pastas conclui sozinha quando todas as pastas forem marcadas.{% if not can_manage %} Só o gestor e os administradores mudam as rotinas.{% endif %}</p>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+
+{% if routines %}
+<div class="tabela-rolagem">
+<table class="tabela tabela-rotinas">
+  <thead><tr><th>Horário</th><th>Rotina</th><th>Dias</th><th>Responsável</th><th>Pastas</th><th>Liberada depois de</th>{% if can_manage %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for r in routines %}
+  {% set dono = owners[r.owner_id] %}
+  <tr class="{{ '' if r.active else 'desativada' }}">
+    <td class="sem-quebra"><strong>{{ r.starts_at }}</strong>{% if r.deadline %}<br><span class="ajuda">até {{ r.deadline }}</span>{% endif %}</td>
+    <td>{{ r.name }}{% if not r.active %} <span class="etiqueta">Desativada</span>{% endif %}</td>
+    <td>{{ weekdays_label(r.weekdays) }}</td>
+    <td class="sem-quebra"><span class="bolinha" style="--cor: {{ dono.color }}">{{ dono.initials }}</span> {{ dono.name }}</td>
+    <td class="sem-quebra">{% for f in r.folders %}<span class="pasta-chip lista">{{ f }}</span>{% else %}<span class="ajuda">—</span>{% endfor %}</td>
+    <td>{% for w in r.waits_for if w in by_id %}{{ by_id[w].label }}{{ ', ' if not loop.last else '' }}{% else %}<span class="ajuda">—</span>{% endfor %}</td>
+    {% if can_manage %}
+    <td class="acoes-linha">
+      <a class="botao discreto" href="/rotinas/{{ r.id }}#form">Editar</a>
+      <form method="post" action="/rotinas/{{ r.id }}/ativa" data-nome="{{ r.label }}" {% if r.active %}onsubmit="return confirm('Desativar ' + this.dataset.nome + '? Ela sai do quadro e da TV a partir de agora.')"{% endif %}>
+        <input type="hidden" name="active" value="{{ '0' if r.active else '1' }}">
+        <button class="{{ 'perigo' if r.active else 'discreto' }}">{{ 'Desativar' if r.active else 'Reativar' }}</button>
+      </form>
+    </td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="vazio">Nenhuma rotina cadastrada ainda.{% if can_manage %} Use "Criar rotinas sugeridas" ou o formulário abaixo.{% endif %}</p>
+{% endif %}
+
+{% if can_manage %}
+<form class="ficha cartao-form" id="form" method="post" action="/rotinas{{ '/' ~ v.id if v.id else '' }}">
+  <h2>{{ 'Editar rotina' if v.id else 'Nova rotina' }}</h2>
+  <div>
+    <label for="name">Nome</label>
+    <input type="text" id="name" name="name" value="{{ v.name }}" maxlength="80" required placeholder="Transferência de pedidos">
+  </div>
+  <div class="linha">
+    <div>
+      <label for="starts_at">Aparece às</label>
+      <input type="time" id="starts_at" name="starts_at" value="{{ v.starts_at }}" required>
+    </div>
+    <div>
+      <label for="deadline">Prazo <span class="opcional">(opcional)</span></label>
+      <input type="time" id="deadline" name="deadline" value="{{ v.deadline }}">
+    </div>
+    <div>
+      <label for="owner_id">Responsável</label>
+      <select id="owner_id" name="owner_id">
+        {% for p in people %}<option value="{{ p.id }}" {% if p.id|string == v.owner_id|string %}selected{% endif %}>{{ p.name }}{{ ' (desativado)' if not p.active else '' }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  <fieldset class="escolhas">
+    <legend>Dias da semana</legend>
+    {% for label in WEEKDAY_LABELS %}
+    <label class="check"><input type="checkbox" name="weekdays" value="{{ loop.index0 }}" {% if loop.index0 in v.weekdays %}checked{% endif %}> {{ label }}</label>
+    {% endfor %}
+  </fieldset>
+  <fieldset class="escolhas">
+    <legend>Pastas que marcam <span class="opcional">(opcional: a rotina conclui quando todas marcarem)</span></legend>
+    {% for f in FOLDERS %}
+    <label class="check"><input type="checkbox" name="folders" value="{{ f }}" {% if f in v.folders %}checked{% endif %}> {{ 'G (Canal Farma)' if f == 'G' else f }}</label>
+    {% endfor %}
+  </fieldset>
+  {% set others = routines|rejectattr('id', 'equalto', v.id)|list %}
+  {% if others %}
+  <fieldset class="escolhas">
+    <legend>Liberada depois de <span class="opcional">(opcional: só começa quando estas terminarem)</span></legend>
+    {% for r in others %}
+    <label class="check"><input type="checkbox" name="waits_for" value="{{ r.id }}" {% if r.id in v.waits_for %}checked{% endif %}> {{ r.label }}</label>
+    {% endfor %}
+  </fieldset>
+  {% endif %}
+  <div class="acoes">
+    <button>Salvar</button>
+    {% if v.id %}<a class="botao discreto" href="/rotinas">Cancelar</a>{% endif %}
+  </div>
+</form>
+{% endif %}
+{% endblock %}

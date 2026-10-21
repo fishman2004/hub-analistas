@@ -187,3 +187,27 @@ h2.secao { margin-top: 28px; }
 td.cartao-acoes { display: table-cell; white-space: nowrap; }
 td.cartao-acoes form { display: inline; margin-left: 8px; }
 input[readonly] { opacity: .7; }
+/* ---------- rotinas (fase 7) ---------- */
+.rotina-etiqueta { background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 999px; padding: 0 8px; font-variant-numeric: tabular-nums; }
+.rotina-etiqueta.atraso { color: var(--atraso); border-color: var(--atraso); font-weight: 600; }
+.aguardando { margin: 0; font-size: .88rem; color: var(--reuniao); font-weight: 600; }
+.pastas-rotina { display: flex; flex-wrap: wrap; gap: 4px; }
+.pastas-rotina form { margin: 0; }
+.pasta-chip { min-width: 32px; padding: 2px 8px; font-size: .85rem; font-weight: 700; background: transparent; color: var(--suave); border: 1px dashed var(--suave); border-radius: 6px; }
+.pasta-chip.marcada { background: var(--sala); border: 1px solid var(--sala); color: var(--sobre-cor); }
+.pasta-chip.lista { display: inline-block; text-align: center; min-width: 26px; padding: 0 6px; margin-right: 3px; border-style: solid; cursor: default; }
+.rotinas-equipe { background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio); padding: 12px 16px; margin-bottom: 24px; display: grid; gap: 8px; }
+.rotinas-equipe .ajuda { margin: 0; }
+.rotina-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 10px; border-left: 5px solid var(--cor); border-radius: 8px; background: var(--fundo); }
+.rotina-linha.atrasada { box-shadow: inset 0 0 0 1px var(--atraso); }
+.rotina-nome { font-weight: 600; }
+.rotina-linha .pastas-rotina { margin-left: auto; }
+fieldset.escolhas { border: 1px solid var(--linha); border-radius: var(--raio); padding: 10px 14px; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+fieldset.escolhas legend { font-weight: 600; padding: 0 4px; }
+fieldset.escolhas .check { margin: 0; align-items: center; }
+fieldset.escolhas .check input { margin-top: 0; }
+.tabela-rotinas tr.desativada td { color: var(--suave); }
+.tabela-rotinas .sem-quebra { white-space: nowrap; }
+.acoes-linha { white-space: nowrap; }
+.acoes-linha form { display: inline; }
+.acoes-linha .botao, .acoes-linha button { padding: 4px 10px; font-size: .9rem; }

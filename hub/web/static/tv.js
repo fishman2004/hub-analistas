@@ -5,12 +5,21 @@
 // Telas são módulos: cada arquivo em static/tv-telas/ chama HubTV.registrar("id", { desenhar, aoMostrar })
 // e tem um <section class="tela" data-tela="id"> em tv.html. O servidor diz quais entram na rotação
 // e por quanto tempo (hub/telas.py). Uma tela nova não mexe nas outras.
+//
+// Aviso das rotinas (fase 7): o /api/tv manda as rotinas de hoje com o horário. Quando o horário
+// chega, a TV toca o som uma vez e mostra uma faixa por cima de qualquer tela por ~20 s. As rotinas
+// já tocadas ficam guardadas (na memória e no localStorage), para recarregar a página não tocar de novo.
 (function () {
   "use strict";
   const INTERVALO_MS = 5000;
   const DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
   const CLASSE_STATUS = { "Na sala": "st-sala", "Em reunião": "st-reuniao", "Pausa": "st-pausa", "Fora da empresa": "st-fora" };
   const CADEADO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3z"/></svg>';
+  const RELOGIO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm-1 3v5.4l4.3 2.6 1-1.7-3.3-2V7z"/></svg>';
+  const SINO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.4-2h-4.8a2.5 2.5 0 0 0 2.4 2zm7-6V11a7 7 0 0 0-5.5-6.8V3.5a1.5 1.5 0 0 0-3 0v.7A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>';
+  const AVISO_MS = 20000;  // quanto tempo a faixa do aviso fica na tela
+  const ATRASO_MAX_MS = 10 * 60 * 1000;  // TV ligada depois disso: o aviso não toca atrasado
+  const GUARDADOS = "hub.avisos.tocados";
   const modulos = {};
   let ultimaAtualizacao = null;
   let ultimoEstado = null;
@@ -32,7 +41,8 @@
   }
 
   function cartao(c) {
-    const card = el("div", "cartao" + (c.reserved ? " reservada" : "") + (c.overdue ? " atrasada" : ""));
+    const r = c.routine;  // rotina (fase 7): horário, prazo, pastas e espera; nunca vem em reservada
+    const card = el("div", "cartao" + (c.reserved ? " reservada" : "") + (c.overdue ? " atrasada" : "") + (r ? " rotina" : ""));
     card.style.setProperty("--cor", c.color);
     card.append(el("div", "ini", c.initials));
     const titulo = el("div", "titulo");
@@ -40,11 +50,32 @@
     titulo.append(document.createTextNode(c.title));
     card.append(titulo);
     const meta = el("div", "meta");
+    if (r) {
+      const atrasada = r.late && c.overdue;
+      const hora = el("span", "rotina-hora" + (atrasada ? " atraso" : ""));
+      hora.innerHTML = RELOGIO;
+      hora.append(document.createTextNode(atrasada ? "atrasada · até " + r.deadline
+        : "rotina " + r.time + (r.deadline ? " · até " + r.deadline : "")));
+      meta.append(hora);
+    }
     if (c.folder) meta.append(el("span", "", "Pasta " + (c.folder === "G" ? "G (Canal Farma)" : c.folder)));
     if (c.requested_by) meta.append(el("span", "", "Pedido por " + c.requested_by));
-    if (c.overdue) meta.append(el("span", "atraso", "atrasada · prazo " + dataCurta(c.due)));
-    else if (c.due) meta.append(el("span", "", "prazo " + dataCurta(c.due)));
+    // rotina de hoje: o prazo já está junto do horário; a data só aparece se ela ficou de outro dia
+    if (c.overdue && !(r && r.late)) meta.append(el("span", "atraso", "atrasada · prazo " + dataCurta(c.due)));
+    else if (c.due && !r) meta.append(el("span", "", "prazo " + dataCurta(c.due)));
+    if (r && r.waiting.length) meta.append(el("span", "aguardando", "Aguardando: " + r.waiting.join(", ")));
     if (meta.childElementCount) card.append(meta);
+    if (r && r.folders.length) {
+      // uma letra por pasta: cheia (com a cor da pasta) quando já marcou, apagada quando falta
+      const pastas = el("div", "pastas-rotina");
+      for (const f of r.folders) {
+        const chip = el("span", "pasta-chip" + (r.checked.includes(f) ? " marcada" : ""), f);
+        chip.dataset.pasta = f;
+        pastas.append(chip);
+      }
+      pastas.append(el("span", "pastas-conta", r.checked.length + "/" + r.folders.length));
+      card.append(pastas);
+    }
     return card;
   }
 
@@ -129,6 +160,66 @@
     aviso.hidden = false;
   }
 
+  // ---------- aviso sonoro das rotinas ----------
+
+  let avisos = [];
+  let desvio = 0;  // relógio do servidor menos o deste navegador (a TV pode estar em outro PC)
+  let hoje = "";
+  let timerAviso = null;
+  const som = new Audio("/static/aviso.wav");
+  const tocados = new Set(lerTocados());
+
+  function lerTocados() {
+    try { return JSON.parse(localStorage.getItem(GUARDADOS) || "[]"); } catch (e) { return []; }
+  }
+
+  function guardarTocados() {
+    // a chave termina com a data ("rotina-5-2026-10-20"): guarda só as de hoje, para não crescer
+    try { localStorage.setItem(GUARDADOS, JSON.stringify([...tocados].filter((k) => k.endsWith(hoje)))); } catch (e) { /* sem armazenamento: fica só na memória */ }
+  }
+
+  function mostrarAviso(lista) {
+    const faixa = document.getElementById("aviso-rotina");
+    faixa.replaceChildren();
+    const icone = el("div", "aviso-icone");
+    icone.innerHTML = SINO;
+    const textos = el("div", "aviso-textos");
+    textos.append(el("div", "aviso-rotulo", lista.length === 1 ? "Hora da rotina" : "Hora das rotinas"));
+    for (const a of lista) {
+      const linha = el("div", "aviso-linha");
+      linha.append(el("b", "", a.time), document.createTextNode(" " + a.name));
+      if (a.deadline) linha.append(el("span", "aviso-prazo", "até " + a.deadline));
+      textos.append(linha);
+    }
+    faixa.append(icone, textos);
+    faixa.hidden = false;
+    clearTimeout(timerAviso);
+    timerAviso = setTimeout(() => { faixa.hidden = true; }, AVISO_MS);
+    try {
+      som.currentTime = 0;
+      const tocando = som.play();
+      // o navegador bloqueou o som: a faixa aparece igual, com a dica (ver o roteiro da fase 7)
+      if (tocando) tocando.catch(() => textos.append(el("div", "aviso-mudo", "Som bloqueado pelo navegador: veja o roteiro da fase 7.")));
+    } catch (e) { /* sem som: fica só a faixa */ }
+  }
+
+  function conferirAvisos() {
+    if (!avisos.length) return;
+    const agora = Date.now() + desvio;
+    const novos = [];
+    let mudou = false;
+    for (const a of avisos) {
+      if (tocados.has(a.key)) continue;
+      const quando = new Date(a.at).getTime();
+      if (agora < quando) continue;
+      tocados.add(a.key);
+      mudou = true;
+      if (agora - quando <= ATRASO_MAX_MS) novos.push(a);  // TV desligada no horário: não toca atrasado
+    }
+    if (mudou) guardarTocados();
+    if (novos.length) mostrarAviso(novos);
+  }
+
   // ---------- rotação ----------
 
   function secao(id) {
@@ -189,6 +280,10 @@
       ultimaAtualizacao = new Date();
       document.getElementById("sem-conexao").hidden = true;
       ultimoEstado = dados;
+      desvio = new Date(dados.now).getTime() - Date.now();
+      hoje = dados.now.slice(0, 10);
+      avisos = dados.avisos || [];
+      conferirAvisos();
       desenharPresenca(dados.people);
       avisoAtrasadas(dados.overdue || 0);
       desenharTelas(dados);
@@ -208,5 +303,6 @@
     atualizar();
     setInterval(atualizar, INTERVALO_MS);
     setInterval(passo, 250);
+    setInterval(conferirAvisos, 1000);  // o aviso toca na hora, sem esperar a próxima busca
   });
 })();
