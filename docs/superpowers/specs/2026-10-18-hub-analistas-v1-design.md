@@ -2,7 +2,7 @@
 
 **Data:** 18/10/2026 · **Autor:** Kayo Ibiapino (analista de dados, Polybalas) · **Status:** aguardando aprovação
 
-> Legenda: o que o Kayo decidiu está escrito como decisão. O que foi escolha do Claude (assistente) está marcado com **[escolha do Claude]** e pode ser contestado.
+> Legenda: o que o Kayo decidiu está escrito como decisão. O que foi escolha técnica está marcado com **[escolha técnica]** e pode ser contestado.
 > Levantamento completo da equipe e das rotinas (para revisar com os analistas): documento "Hub dos Analistas: equipe e rotinas".
 
 ---
@@ -60,14 +60,14 @@ Esta é a **versão 1** de um projeto maior, o hub "API (Analistas da Polybalas 
                                                  └────────────────────────────────────────┘
 ```
 
-### 4.1 Escolhas de tecnologia **[escolha do Claude]**
+### 4.1 Escolhas de tecnologia **[escolha técnica]**
 - **Python 3.12+ + FastAPI + Jinja2**, como no Pombo. O Kayo já conhece a estrutura e o hub "API" de verdade terá uma API web.
 - **SQLite** num arquivo no PC reserva. Diferente do Pombo (CSV), aqui várias pessoas escrevem ao mesmo tempo e só um programa acessa o arquivo, então um banco de verdade é mais simples e seguro. Vem com o Python, sem instalar nada.
 - **Atualização ao vivo:** a TV e o app consultam o servidor a cada poucos segundos (*polling*). É mais simples e robusto que WebSocket. Atraso de alguns segundos é aceitável.
 - **TV:** Edge ou Chrome em **modo quiosque** (tela cheia, sem barras), aberto sozinho quando o Windows inicia, sem precisar de admin.
 - Framework de interface, biblioteca de componentes e estilo visual ficam com o construtor, respeitando: sem etapa de build de JavaScript, legível de longe, em português.
 
-### 4.2 Quem é quem **[escolha do Claude]**
+### 4.2 Quem é quem **[escolha técnica]**
 - Sem senha: na primeira vez, o analista escolhe o próprio nome numa lista, e o navegador lembra. É uma equipe pequena, numa rede interna, e senha seria atrito sem ganho real na v1.
 - **Todos podem lançar e mover qualquer demanda** (ex.: o Kayo lança uma para a Elisa). O histórico registra **quem** fez cada mudança.
 - A lista de pessoas, com nome, iniciais e cor, é cadastrada numa tela simples de configuração.
@@ -88,16 +88,16 @@ Situação: **A fazer → Fazendo → Concluído**. Pode voltar uma coluna, por 
 ### 5.2 O que a TV mostra
 - **Topo:** data e hora; uma faixa com cada pessoa, sua cor, o status e **desde quando** (ex.: "Em reunião · desde 10:15").
 - **Três colunas:** A fazer, Fazendo, Concluído hoje. Cada cartão mostra as iniciais e a cor do dono, o título e, se houver, a pasta, quem pediu e o prazo. Uma demanda **reservada** mostra só "Demanda reservada" (seção 5.1). A TV **nunca recebe** o título dela: o servidor nem envia esse texto para a página da TV.
-- **Ordem nas colunas** **[escolha do Claude]**: atrasados primeiro, depois por prazo e depois pelos mais antigos. Em "Concluído hoje", os mais recentes primeiro.
-- **Excesso de cartões** **[escolha do Claude]**: a coluna mostra o que cabe na tela e termina com "+ N demandas". A TV **nunca rola nem diminui a letra** para caber tudo.
+- **Ordem nas colunas** **[escolha técnica]**: atrasados primeiro, depois por prazo e depois pelos mais antigos. Em "Concluído hoje", os mais recentes primeiro.
+- **Excesso de cartões** **[escolha técnica]**: a coluna mostra o que cabe na tela e termina com "+ N demandas". A TV **nunca rola nem diminui a letra** para caber tudo.
 - **Concluído hoje** zera à meia-noite. Concluídos antigos saem da TV e ficam no histórico do app.
-- **Legibilidade:** projetada para TV Full HD vista a ~4 m: título do cartão ≥ 28 px, nomes da faixa ≥ 32 px, contraste alto. O tema escuro é o padrão da TV **[escolha do Claude]**.
+- **Legibilidade:** projetada para TV Full HD vista a ~4 m: título do cartão ≥ 28 px, nomes da faixa ≥ 32 px, contraste alto. O tema escuro é o padrão da TV **[escolha técnica]**.
 - **Sem conexão:** se o servidor parar, a TV mantém a última tela e mostra um aviso discreto "sem atualização desde HH:MM". Ela volta sozinha quando o servidor voltar.
 
 ### 5.3 Presença
 - Status (decididos pelo Kayo): **Na sala**, **Em reunião**, **Pausa** (banheiro, café), **Fora da empresa**.
 - Marcada **só pela própria pessoa** no app, com um toque.
-- **Todo dia, à meia-noite, todos voltam para "Fora da empresa"** **[escolha do Claude]**. Assim, quem não veio não aparece "Na sala" por engano. Ao chegar, a pessoa marca "Na sala".
+- **Todo dia, à meia-noite, todos voltam para "Fora da empresa"** **[escolha técnica]**. Assim, quem não veio não aparece "Na sala" por engano. Ao chegar, a pessoa marca "Na sala".
 
 ### 5.4 App do analista
 - **Minha presença:** quatro botões grandes.
@@ -115,7 +115,7 @@ Toda mudança é registrada: demanda criada, editada, movida, concluída, exclu�
 |---|---|---|
 | Código, documentação, testes | pasta do projeto | Sim |
 | Banco (pessoas, demandas, presença, histórico) | PC reserva, pasta de dados do usuário (`%LOCALAPPDATA%\Hub`) | Não |
-| Cópia de segurança diária do banco **[escolha do Claude]** | mesma pasta, últimos 14 dias; opcionalmente uma pasta de rede | Não |
+| Cópia de segurança diária do banco **[escolha técnica]** | mesma pasta, últimos 14 dias; opcionalmente uma pasta de rede | Não |
 | Dados de exemplo (pessoas e demandas fictícias) | `exemplos/` | Sim |
 
 Os nomes reais da equipe ficam só no banco do PC reserva, nunca no repositório.
