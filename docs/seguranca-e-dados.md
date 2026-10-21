@@ -15,6 +15,7 @@
 | Rotinas (nome, dias, horário, prazo, responsável, pastas) | O cartão de cada rotina no Quadro, com horário, prazo e pastas marcadas, e o aviso no horário (nome e horário). Cartão de rotina marcado como reservado: mascarado como qualquer reservada, e o aviso dele não vai | Página Rotinas: todos veem; cadastrar e mudar, só o gestor e os administradores. Marcar pasta: qualquer pessoa, com o nome no histórico |
 | Envios do Pombo (tela Envios do dia) | Horário, nome do envio, analista, canal, situação e "N de M enviados". **Nunca** destinatários, motivo das falhas nem nomes de arquivo | Página Envios: tudo isso mais os destinatários, o motivo de cada falha e a situação de cada arquivo |
 | Pausa da TV (fase 10) | O selo "Pausada", com as iniciais de quem pausou pelo app | Página **TV da sala**: qual tela está na TV, quem pausou e até quando; pausar, trocar e retomar com PIN, tudo no histórico. "Abrir no meu PC" mostra o mesmo que a TV |
+| Detalhes e arquivos das demandas (fase 11) | **Nunca** (nem o 📎; o endereço da TV nem consulta a tabela dos anexos) | Quem vê a demanda lê os detalhes, anexa e baixa; reservada, só o dono, quem criou, o gestor e os administradores. Remover: quem anexou, o dono, gestor e administradores. Lixeira e pasta: administradores |
 | Histórico | Não | Sim (as linhas do banco de horas só para a própria pessoa e o gestor) |
 | PIN | Não | Ninguém (só um resumo fica guardado) |
 
@@ -35,6 +36,7 @@ Marcada **sempre pela própria pessoa**. O Hub não detecta nada sozinho: não o
 | Código, documentação, testes | pasta do projeto | Sim |
 | Equipe, demandas, presença, histórico | `%LOCALAPPDATA%\Hub\hub.db` no PC reserva | **Não** |
 | Planilhas dos painéis (metas, vendas da 8081 etc.) | pasta dos painéis (padrão `%LOCALAPPDATA%\Hub\Painéis`, ou a pasta de rede escolhida) | **Não**. No repositório só há exemplos com dados fictícios (`tools/exemplos/`) |
+| Anexos das demandas | pasta Anexos (padrão `%LOCALAPPDATA%\Hub\Anexos`, ou a pasta de rede escolhida), com nomes aleatórios; o nome original fica no `hub.db` | **Não** |
 | Banco de horas | dentro do `hub.db` (a planilha do RH é lida e descartada, não fica guardada) | **Não** |
 | Histórico de envios do Pombo | a pasta do histórico de cada Pombo (em geral na rede). O Hub só lê e guarda na memória o mês atual | **Não** |
 | Cópias diárias (14 dias) | `%LOCALAPPDATA%\Hub\copias` | **Não** |

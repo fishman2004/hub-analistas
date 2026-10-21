@@ -54,6 +54,7 @@ flowchart LR
 
 - **Regras do dia calculadas, não agendadas:** "Concluído hoje", "Fora da empresa" depois da meia-noite, "atrasada" e o cartão de cada rotina no horário dela são calculados toda vez. Não há tarefa agendada que possa falhar.
 - **A TV passa de uma tela para a outra sozinha:** o Quadro, a tela **Prazos da semana** (quando há prazos), as **Prioridades do mês** (até tudo estar feito) e os **painéis de metas** (do mês, do dia e produtos foco), que o Hub calcula das planilhas de vendas guardadas na pasta dos painéis e mostra **só em porcentagem** ([paineis.md](docs/paineis.md)), e os **Envios do dia** do Pombo. Os tempos ficam em **Configurações**. Se houver demanda atrasada, um aviso fica no topo em todas as telas.
+- **Detalhes e arquivos nas demandas:** cada demanda tem um campo de detalhes e aceita arquivos (Excel, PDF...). Para mexer num arquivo, baixe, edite e use **Enviar nova versão**. A página **Demandas** acha qualquer demanda, inclusive as concluídas há tempo. Nada disso aparece na TV.
 - **Pausar a TV:** um clique (ou Espaço) na própria TV pausa na tela atual. Pelo app, a página **TV da sala** pausa a TV da sala numa tela, troca de tela e retoma, ou abre qualquer tela só no seu PC. A pausa volta sozinha depois de 15 minutos.
 - **A TV nunca rola:** uma coluna com mais demandas do que cabem passa as páginas sozinha, com um fade. Se o servidor cair, a TV mantém a última tela e avisa "sem atualização desde HH:MM".
 - Detalhes em [docs/arquitetura.md](docs/arquitetura.md).

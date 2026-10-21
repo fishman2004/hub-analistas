@@ -2,6 +2,7 @@
 {% set active = 'quadro' %}
 {% block main %}
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if concluida %}<div class="sucesso" role="status">“{{ concluida.title }}” concluída. <a href="/demandas/{{ concluida.id }}#arquivos">Anexar o arquivo final?</a></div>{% endif %}
 {# tudo dentro de #quadro se atualiza a cada 10 s, inclusive a presença #}
 <div id="quadro" data-parcial="/parcial/quadro{{ '?todas=1' if show_all else '' }}">
   {% include "_quadro.html" %}

@@ -5,7 +5,7 @@ import socket
 import sys
 import threading
 import time
-from datetime import date
+from datetime import date, datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -47,6 +47,13 @@ def _backup_loop(db_path: Path) -> None:
             make_backup(db_path, data_dir() / "copias", date.today())
         except Exception:
             log.exception("falha na cópia de segurança")
+        try:
+            from . import anexos
+            from .db import Database
+
+            anexos.purge(Database(db_path), datetime.now())  # lixeira dos anexos: some depois de 30 dias
+        except Exception:
+            log.exception("falha na limpeza da lixeira dos anexos")
         time.sleep(BACKUP_EVERY_SECONDS)
 
 

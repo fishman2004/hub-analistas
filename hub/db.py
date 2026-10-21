@@ -138,6 +138,27 @@ MIGRATIONS: list[tuple[int, str]] = [
         );
         CREATE INDEX priorities_month ON priorities(month);
     """),
+    (7, """
+        -- v3 · demandas com detalhes e anexos. O arquivo fica na pasta Anexos (%LOCALAPPDATA%\\Hub\\Anexos),
+        -- nunca no banco; aqui só o nome original, onde está, o tamanho e quem enviou. Remover só marca.
+        ALTER TABLE demands ADD COLUMN details TEXT;
+        CREATE TABLE attachments (
+            id INTEGER PRIMARY KEY,
+            kind TEXT NOT NULL,                           -- 'demanda' (e 'nota', na fase 12)
+            parent_id INTEGER NOT NULL,                   -- id da demanda (ou da nota)
+            name TEXT NOT NULL,                           -- nome original, para mostrar e baixar
+            stored TEXT NOT NULL UNIQUE,                  -- caminho dentro da pasta Anexos ("2026-10/ab12...")
+            size INTEGER NOT NULL,
+            sha256 TEXT NOT NULL,
+            uploaded_by INTEGER REFERENCES people(id),
+            uploaded_at TEXT NOT NULL,
+            replaces INTEGER REFERENCES attachments(id),  -- nova versão de outro arquivo
+            deleted_at TEXT,
+            deleted_by INTEGER REFERENCES people(id),
+            purged INTEGER NOT NULL DEFAULT 0             -- 1: o arquivo saiu da lixeira e foi apagado do disco
+        );
+        CREATE INDEX attachments_parent ON attachments(kind, parent_id);
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

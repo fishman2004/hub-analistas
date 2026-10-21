@@ -69,6 +69,7 @@
         {% if d.reserved %}<span class="reservada">Reservada</span>{% endif %}
         {% if d.folder %}<span>Pasta {{ d.folder }}</span>{% endif %}
         {% if d.requested_by %}<span>Pedido por {{ d.requested_by }}</span>{% endif %}
+        {% if d.id in clips %}<span title="Arquivos anexados">📎 {{ clips[d.id] }}</span>{% endif %}
         {# rotina: o prazo de hoje já está na etiqueta; a data só aparece se ficou de outro dia #}
         {% if d.due and (not d.routine or d.due != today) %}<span class="{{ 'atraso' if is_overdue(d, today) else '' }}">{{ 'atrasada · ' if is_overdue(d, today) else '' }}prazo {{ d.due.strftime('%d/%m') }}</span>{% endif %}
       </p>

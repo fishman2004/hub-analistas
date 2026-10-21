@@ -29,6 +29,32 @@
   <div><button>Salvar</button></div>
 </form>
 
+<section class="ficha cartao-form" id="anexos">
+  <h2>Anexos das demandas</h2>
+  {% if error_anexos %}<div class="erro" role="alert">{{ error_anexos }}</div>{% endif %}
+  {% if ok_anexos %}<div class="sucesso" role="status">{{ ok_anexos if ok_anexos is string else 'Salvo.' }}</div>{% endif %}
+  <p>Os anexos ocupam <strong>{{ anexos_cfg.usage.used }}</strong> ({{ anexos_cfg.usage.files }} arquivos, contando versões anteriores e a lixeira). Livre no disco: <strong>{{ anexos_cfg.usage.free }}</strong>.</p>
+  {% if anexos_cfg.usage.low %}<p class="erro">O disco está com menos de 2 GB livres: o Hub não está recebendo arquivos até liberar espaço.</p>{% endif %}
+  <form method="post" action="/configuracoes/anexos" class="ficha">
+    <div>
+      <label for="pasta-anexos">Pasta dos anexos</label>
+      <input type="text" id="pasta-anexos" name="pasta" value="{{ anexos_cfg.folder }}" placeholder="{{ anexos_cfg.default_folder }}">
+      <p class="ajuda">Em branco, o Hub usa a pasta padrão ({{ anexos_cfg.default_folder }}). Pode ser uma pasta da rede. <strong>Ao trocar,</strong> copie antes o conteúdo da pasta antiga para a nova, senão os arquivos já anexados deixam de abrir.</p>
+    </div>
+    <div><button>Salvar</button></div>
+  </form>
+  <h3>Lixeira (últimos {{ anexos_cfg.trash_days }} dias)</h3>
+  {% if anexos_cfg.trash %}
+  <ul class="lista-anexos">
+    {% for a, d in anexos_cfg.trash %}
+    <li><div class="anexo-info"><span>{{ a.name }}</span><span class="ajuda">{{ a.size_text }} · de “{{ (d.title if can_see(d, user) else RESERVED_TEXT) if d else 'demanda excluída' }}” · removido em {{ a.deleted_at.strftime('%d/%m às %H:%M') }}</span></div>
+      <form method="post" action="/configuracoes/anexos/{{ a.id }}/restaurar"><button class="discreto">Restaurar</button></form></li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="ajuda">Nada na lixeira.</p>{% endif %}
+  <p class="ajuda">Depois de {{ anexos_cfg.trash_days }} dias o arquivo é apagado do disco na limpeza diária.</p>
+</section>
+
 <form class="ficha cartao-form" method="post" action="/configuracoes/paineis" id="paineis">
   <h2>Painéis de dados</h2>
   {% if error_paineis %}<div class="erro" role="alert">{{ error_paineis }}</div>{% endif %}

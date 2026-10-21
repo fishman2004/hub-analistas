@@ -14,6 +14,7 @@
     {% if user %}
     <nav aria-label="Menu principal">
       <a href="/" {% if active == 'quadro' %}aria-current="page"{% endif %}>Quadro</a>
+      <a href="/demandas" {% if active == 'demandas' %}aria-current="page"{% endif %}>Demandas</a>
       {% if can_open_gestor(user) %}<a href="/gestor" {% if active == 'gestor' %}aria-current="page"{% endif %}>Gestor</a>{% endif %}
       <a href="/rotinas" {% if active == 'rotinas' %}aria-current="page"{% endif %}>Rotinas</a>
       <a href="/prioridades" {% if active == 'prioridades' %}aria-current="page"{% endif %}>Prioridades</a>
