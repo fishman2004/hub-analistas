@@ -1,6 +1,15 @@
 {% extends "base.html" %}
 {% set active = 'tv' %}
-{% block title %}TV da sala · Hub dos Analistas{% endblock %}
+{% block title %}TV da sala · Hub dos Analistas<section class="cartao-form">
+  <h2>Exportar em PDF</h2>
+  <p class="ajuda">Para mandar a alguém: abre a tela pronta para salvar em PDF, igual à TV (painéis só em porcentagem, reservadas mascaradas). Na janela de impressão, escolha <strong>Salvar como PDF</strong>. Fica no histórico quem exportou.</p>
+  <div class="acoes">
+    <a class="botao" href="/tv/exportar?tela=agora" target="_blank" rel="noopener">Exportar a tela que está na TV agora</a>
+    <a class="botao discreto" href="/tv/exportar?tela=todas" target="_blank" rel="noopener">Exportar todas as telas da rotação</a>
+    <a class="botao discreto" href="/tv/exportar?tela=todas&amp;clara=1" target="_blank" rel="noopener">Todas, versão clara para imprimir</a>
+  </div>
+</section>
+{% endblock %}
 {% block main %}
 <div class="barra">
   <h1>TV da sala</h1>
@@ -78,9 +87,19 @@
   <p class="ajuda">Abre a tela numa aba só sua, já parada, sem mexer na TV da sala. Use as setas ← → do teclado para trocar de tela e ↑ ↓ para as páginas do Quadro.</p>
   <ul class="lista-telas">
     {% for s in screens %}
-    <li><span>{{ s.label }}</span> <a class="botao discreto" href="/tv?tela={{ s.id }}&amp;fixa=1" target="_blank" rel="noopener">Abrir no meu PC</a></li>
+    <li><span>{{ s.label }}</span> <a class="botao discreto" href="/tv?tela={{ s.id }}&amp;fixa=1" target="_blank" rel="noopener">Abrir no meu PC</a>
+      <a class="botao discreto" href="/tv/exportar?tela={{ s.id }}" target="_blank" rel="noopener">Exportar PDF</a></li>
     {% endfor %}
   </ul>
   <p class="ajuda">Aparecem só as telas que estão na rotação agora (uma tela sem dados, como um painel sem planilha, fica de fora).</p>
+</section>
+<section class="cartao-form">
+  <h2>Exportar em PDF</h2>
+  <p class="ajuda">Para mandar a alguém: abre a tela pronta para salvar em PDF, igual à TV (painéis só em porcentagem, reservadas mascaradas). Na janela de impressão, escolha <strong>Salvar como PDF</strong>. Fica no histórico quem exportou.</p>
+  <div class="acoes">
+    <a class="botao" href="/tv/exportar?tela=agora" target="_blank" rel="noopener">Exportar a tela que está na TV agora</a>
+    <a class="botao discreto" href="/tv/exportar?tela=todas" target="_blank" rel="noopener">Exportar todas as telas da rotação</a>
+    <a class="botao discreto" href="/tv/exportar?tela=todas&amp;clara=1" target="_blank" rel="noopener">Todas, versão clara para imprimir</a>
+  </div>
 </section>
 {% endblock %}

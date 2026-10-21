@@ -58,6 +58,7 @@ flowchart LR
 - **Calendário:** a página **Calendário** junta compromissos, feriados, ausências, prazos das demandas e das prioridades e rotinas. Os feriados saem da meta do dia dos painéis, das rotinas e do banco de horas. Na TV, a tela **Agenda** mostra hoje e os próximos dias.
 - **Notas pessoais:** a página **Notas** é um bloco de notas só seu (nem o gestor vê), com arquivos, busca e "Transformar em demanda".
 - **Modos da TV:** cada modo é uma receita da rotação (quais telas, ordem e tempos). **Início de mês** foca nas demandas e **Fim de mês** nos números, e os dois ligam sozinhos; há outros prontos (Reunião na sala sem som, Visita com os títulos escondidos...). Troque na página **TV da sala** e crie os seus em **Modos da TV**.
+- **Exportar em PDF:** na página **TV da sala**, qualquer tela (ou todas) sai num PDF igual à TV, para mandar a alguém, com a mesma regra da TV (painéis só em %).
 - **Pausar a TV:** um clique (ou Espaço) na própria TV pausa na tela atual. Pelo app, a página **TV da sala** pausa a TV da sala numa tela, troca de tela e retoma, ou abre qualquer tela só no seu PC. A pausa volta sozinha depois de 15 minutos.
 - **A TV nunca rola:** uma coluna com mais demandas do que cabem passa as páginas sozinha, com um fade. Se o servidor cair, a TV mantém a última tela e avisa "sem atualização desde HH:MM".
 - Detalhes em [docs/arquitetura.md](docs/arquitetura.md).

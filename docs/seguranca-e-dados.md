@@ -19,6 +19,7 @@
 | Calendário (fase 13) | Tela Agenda: título, horário, tipo e iniciais dos compromissos **da equipe** (reservado como "Compromisso reservado"), feriados e quem está ausente ("Ausente até dd/mm"). **Nunca** a descrição, o local, os compromissos "só eu" nem o motivo da ausência | Compromisso da equipe: todos veem; reservado, só os participantes, quem criou, o gestor e os administradores. "Só eu": só quem criou (nem o histórico registra). Motivo da ausência: só a pessoa e o gestor; o histórico grava só as datas |
 | Notas pessoais (fase 12) | **Nunca** | **Só a dona**: nem o gestor, nem os administradores. Não entram no histórico. Para quem saiu da equipe, o administrador vê só a quantidade e pode apagar de vez |
 | Modos da TV (fase 14) | O nome do modo no topo (o Padrão não aparece). No modo com títulos escondidos (Visita), o servidor manda só "Demanda" com a cor e as iniciais, e tira os textos das outras telas | Trocar o modo: qualquer pessoa com PIN, no histórico. Criar, editar, apagar e as regras: gestor e administradores. Pré-visualizar: qualquer pessoa, só no próprio PC |
+| Exportar em PDF (fase 15) | O PDF é a TV: os mesmos dados do `/api/tv` (painéis só em %, reservadas mascaradas, modo com títulos escondidos vale também), com o rodapé "gerado em … por (iniciais)" | Qualquer pessoa com PIN exporta; fica no histórico quem exportou qual tela e quando, porque o PDF sai da sala |
 | Histórico | Não | Sim (as linhas do banco de horas só para a própria pessoa e o gestor) |
 | PIN | Não | Ninguém (só um resumo fica guardado) |
 

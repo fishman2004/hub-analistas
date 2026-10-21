@@ -12,20 +12,23 @@
     const caixa = sec.querySelector(".cartoes");
     caixa.replaceChildren();
     const pagina = estado.paginas[estado.pagina] || [];
-    if (!pagina.length) caixa.append(HubTV.el("div", "vazio", "Nada aqui."));
+    const acabou = estado.pagina >= estado.paginas.length && estado.paginas.length > 0;  // PDF: coluna já terminou
+    if (!pagina.length) caixa.append(HubTV.el("div", "vazio", acabou ? "Fim da coluna." : "Nada aqui."));
     for (const c of pagina) caixa.append(HubTV.cartao(c));
     sec.querySelector(".pagina").textContent =
-      estado.paginas.length > 1 ? (estado.pagina + 1) + "/" + estado.paginas.length : "";
+      estado.paginas.length > 1 && !acabou ? (estado.pagina + 1) + "/" + estado.paginas.length : "";
   }
 
   function trocarPaginas(secaoTela, direcao = 1) {
     for (const sec of secaoTela.querySelectorAll(".coluna")) {
       const estado = colunas[sec.dataset.col];
-      if (!estado || estado.paginas.length < 2) continue;
+      if (!estado || (HubTV.exportando ? estado.pagina >= estado.paginas.length : estado.paginas.length < 2)) continue;
       const caixa = sec.querySelector(".cartoes");
       caixa.classList.add("trocando");
       setTimeout(() => {
-        estado.pagina = (estado.pagina + direcao + estado.paginas.length) % estado.paginas.length;
+        // no PDF, cada página sai uma vez: a coluna que acabou fica vazia em vez de voltar à primeira
+        estado.pagina = HubTV.exportando ? estado.pagina + direcao
+          : (estado.pagina + direcao + estado.paginas.length) % estado.paginas.length;
         desenharColuna(sec, sec.dataset.col);
         caixa.classList.remove("trocando");
       }, FADE_MS);

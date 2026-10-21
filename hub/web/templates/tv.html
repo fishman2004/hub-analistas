@@ -1,13 +1,29 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR"{% if exportar %} class="exportar"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hub dos Analistas · TV</title>
+  <title>{{ exportar.titulo if exportar else "Hub dos Analistas · TV" }}</title>
   <link rel="icon" href="/static/hub.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/tv.css?v={{ version }}">
 </head>
+{% if exportar %}
+<body class="exportar{{ ' clara' if exportar.clara else '' }}" data-exportar="{{ exportar.tela }}" data-rodape="{{ exportar.rodape }}">
+  <div class="exportar-barra">
+    <div>
+      <strong>Exportar em PDF · {{ exportar.rotulo }}</strong>
+      <p>Na janela de impressão, em <b>Destino</b>, escolha <b>Salvar como PDF</b> e clique em <b>Salvar</b>. O PDF segue a mesma regra da TV (painéis só em %).</p>
+      <p id="exportar-aviso" role="status">Preparando as folhas…</p>
+    </div>
+    <div class="exportar-acoes">
+      <button type="button" id="imprimir">Salvar em PDF</button>
+      <a href="{{ exportar.outra_versao }}">{{ 'Versão escura (como a TV)' if exportar.clara else 'Versão clara para imprimir' }}</a>
+    </div>
+  </div>
+  <div class="folha" id="ao-vivo">
+{% else %}
 <body>
+{% endif %}
   <header class="topo">
     <div class="marca"><img src="/static/hub.svg" alt="" width="44" height="44"> Hub dos Analistas</div>
     <div id="rotacao" class="rotacao" aria-hidden="true"></div>
@@ -77,6 +93,10 @@
       </div>
     </section>
   </main>
+{% if exportar %}
+  </div>
+  <div id="folhas" class="folhas"></div>
+{% endif %}
   <script src="/static/tv.js?v={{ version }}"></script>
   <script src="/static/tv-telas/quadro.js?v={{ version }}"></script>
   <script src="/static/tv-telas/prazos.js?v={{ version }}"></script>

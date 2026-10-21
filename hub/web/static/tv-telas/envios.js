@@ -70,7 +70,7 @@
   }
 
   setInterval(() => {
-    if (!secao || !secao.classList.contains("ativa") || estado.paginas.length < 2) return;
+    if (!secao || !secao.classList.contains("ativa") || estado.paginas.length < 2 || HubTV.pausada()) return;
     if (Date.now() - ultimaTroca < segundosPagina * 1000) return;
     ultimaTroca = Date.now();
     const caixa = secao.querySelector(".envios");
@@ -91,6 +91,12 @@
       if (caixa.classList.contains("trocando")) return;  // no meio do fade: atualiza no próximo ciclo
       estado.paginas = paginar(caixa, dados.rodadas);
       estado.pagina = Math.min(estado.pagina, estado.paginas.length - 1);
+      desenharPagina();
+    },
+    pagina(sec, direcao) {  // pausada: seta ↑ ↓ na TV; na exportação em PDF, cada página vira uma folha
+      ultimaTroca = Date.now();
+      if (estado.paginas.length < 2) return;
+      estado.pagina = (estado.pagina + direcao + estado.paginas.length) % estado.paginas.length;
       desenharPagina();
     },
     aoMostrar() {

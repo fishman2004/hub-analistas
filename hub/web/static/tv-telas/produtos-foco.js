@@ -35,7 +35,7 @@
   }
 
   setInterval(() => {
-    if (!secao || !secao.classList.contains("ativa") || estado.paginas.length < 2) return;
+    if (!secao || !secao.classList.contains("ativa") || estado.paginas.length < 2 || HubTV.pausada()) return;
     if (Date.now() - ultimaTroca < segundosPagina * 1000) return;
     ultimaTroca = Date.now();
     const caixa = secao.querySelector(".focos");
@@ -66,6 +66,12 @@
       for (let i = 0; i < dados.focos.length; i += cabem) paginas.push(dados.focos.slice(i, i + cabem));
       estado.paginas = paginas;
       estado.pagina = Math.min(estado.pagina, paginas.length - 1);
+      desenharPagina();
+    },
+    pagina(sec, direcao) {  // pausada: seta ↑ ↓ na TV; na exportação em PDF, cada página vira uma folha
+      ultimaTroca = Date.now();
+      if (estado.paginas.length < 2) return;
+      estado.pagina = (estado.pagina + direcao + estado.paginas.length) % estado.paginas.length;
       desenharPagina();
     },
     aoMostrar() {

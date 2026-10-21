@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 from .. import __version__
 from ..access import (ROLES, change_pin, create_pin, end_session, has_admin, reset_pin, session_end, session_person,
                       set_access, start_session, verify_pin)
-from ..db import Database, events, first_event_day
+from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
@@ -66,6 +66,32 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         return templates.TemplateResponse(request, "tv.html", {})
 
     seen = tvcontrole.Seen()  # qual tela está na TV agora (só na memória)
+
+    @app.get("/tv/exportar", response_class=HTMLResponse)
+    def tv_exportar(request: Request, tela: str = "todas", clara: str = ""):
+        """Exportar em PDF (fase 15): a TV desenhada em folhas, com os mesmos dados do /api/tv, e a janela
+        de impressão do navegador ("Salvar como PDF"). Pede PIN e fica no histórico: o PDF sai da sala."""
+        user = me(request)
+        if user is None:
+            return to_login()
+        now = clock()
+        if tela == "agora":
+            current = seen.get(now)
+            if current is None:
+                return tv_room_page(request, user, 422, error="A TV da sala não está conectada agora: escolha "
+                                    "uma tela da lista para exportar.")
+            tela = current["tela"]
+        if tela != "todas" and tela not in tvcontrole.LABELS:
+            return Response(status_code=404)
+        label = "Todas as telas" if tela == "todas" else tvcontrole.LABELS[tela]
+        with db.connect() as conn:
+            log_event(conn, now, user.id, "tv_exportada", "tv", label)
+        light = clara == "1"
+        other = {"tela": tela, **({} if light else {"clara": "1"})}
+        return templates.TemplateResponse(request, "tv.html", {"exportar": {
+            "tela": tela, "rotulo": label, "clara": light, "outra_versao": f"/tv/exportar?{urlencode(other)}",
+            "titulo": f"Hub - {label} - {now:%Y-%m-%d %Hh%M}",  # o Edge sugere o título como nome do PDF
+            "rodape": f"Hub dos Analistas · {{tela}} · gerado em {now:%d/%m/%Y} às {now:%H:%M} por {user.initials}"}})
 
     @app.get("/api/tv")
     def api_tv(tela: str = "", pausada: str = "", espiar: str = "", modo: str = ""):
@@ -1755,6 +1781,7 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "aviso_teste": f"{who} testou o aviso da TV",
         "tv_pausa": f"{who} pausou a TV da sala em “{detail}”",
         "tv_retomada": f"{who} fez a TV da sala voltar a passar as telas",
+        "tv_exportada": f"{who} exportou em PDF a tela “{detail}” da TV",
         "tv_modo": f"{who} pôs a TV da sala no modo “{detail}”",
         "tv_modo_automatico": f"{who} fez a TV da sala voltar ao modo automático",
         "modo_criado": f"{who} criou o modo da TV “{detail}”",
