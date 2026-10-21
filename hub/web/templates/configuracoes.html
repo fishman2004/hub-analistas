@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% set active = 'config' %}
+{% block title %}Configurações · Hub dos Analistas{% endblock %}
+{% block main %}
+<h1>Configurações</h1>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">Salvo. A TV usa os novos tempos na próxima atualização (em até 5 segundos).</div>{% endif %}
+
+<form class="ficha cartao-form" method="post" action="/configuracoes">
+  <h2>Telas da TV</h2>
+  <p class="ajuda">A TV passa de uma tela para a outra sozinha. Uma tela sem nada para mostrar sai da rotação até ter de novo. O Quadro está sempre na rotação.</p>
+  <table class="tabela">
+    <thead><tr><th>Tela</th><th>Na rotação</th><th>Tempo (segundos)</th></tr></thead>
+    <tbody>
+    {% for s in config.screens %}
+    <tr>
+      <td>{{ s.label }}</td>
+      <td>{% if s.always %}<span class="ajuda">Sempre</span>{% else %}<label class="check"><input type="checkbox" name="ligada_{{ s.id }}" {% if s.enabled %}checked{% endif %}> Ligada</label>{% endif %}</td>
+      <td><input class="curto" type="number" name="segundos_{{ s.id }}" value="{{ s.seconds }}" min="{{ limits.min }}" max="{{ limits.max }}" required aria-label="Tempo de {{ s.label }} em segundos"> <span class="ajuda">padrão {{ s.default_seconds }}</span></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div>
+    <label for="pagina">Tempo de cada página das colunas (segundos)</label>
+    <input class="curto" type="number" id="pagina" name="pagina" value="{{ config.page_seconds }}" min="{{ limits.page_min }}" max="{{ limits.page_max }}" required>
+    <p class="ajuda">Quando uma coluna do Quadro tem mais demandas do que cabem, ela passa as páginas sozinha nesse ritmo.</p>
+  </div>
+  <div><button>Salvar</button></div>
+</form>
+{% endblock %}

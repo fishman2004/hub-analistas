@@ -49,7 +49,8 @@ flowchart LR
 ```
 
 - **Regras do dia calculadas, não agendadas:** "Concluído hoje", "Fora da empresa" depois da meia-noite e "atrasada" são calculados das datas toda vez. Não há tarefa de meia-noite que possa falhar.
-- **A TV nunca rola:** o que não cabe vira "+ N demandas". Se o servidor cair, a TV mantém a última tela e avisa "sem atualização desde HH:MM".
+- **A TV passa de uma tela para a outra sozinha:** o Quadro e, quando há prazos na semana, a tela **Prazos da semana**. Os tempos ficam em **Configurações**. Se houver demanda atrasada, um aviso fica no topo em todas as telas.
+- **A TV nunca rola:** uma coluna com mais demandas do que cabem passa as páginas sozinha, com um fade. Se o servidor cair, a TV mantém a última tela e avisa "sem atualização desde HH:MM".
 - Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 
 ## Instalação (PC reserva, sem administrador)

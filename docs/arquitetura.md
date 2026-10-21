@@ -30,7 +30,10 @@ flowchart TB
 - **Demanda reservada é mascarada no servidor** (`demands.tv_card`): a resposta da TV não contém o título, a pasta nem quem pediu. Não é só a tela escondendo. No app, `demands.can_see` decide quem vê o título (o dono, quem criou, o gestor e os administradores); para os demais, o quadro, o histórico e as rotas da demanda mascaram ou recusam (403).
 - **Histórico de tudo** (`db.log_event`): cada mudança grava quem, quando e o quê. Ele alimenta a tela de histórico e a visão do gestor e as próximas versões (banco de horas).
 - **SQLite em modo WAL**, uma conexão por operação, com espera de até 5 s: dois PCs mexendo no mesmo cartão ao mesmo tempo não dão erro, e vale a última mudança (as duas ficam no histórico).
-- **A TV nunca rola:** `tv.js` acrescenta cartões enquanto cabem e troca o que sobra por "+ N demandas". O tamanho das letras acompanha a largura da tela (`html { font-size: 100vw / 120 }`), então funciona em qualquer TV.
+- **A TV nunca rola:** cada coluna do Quadro é dividida em páginas que cabem (medindo de verdade no navegador) e passa as páginas com um fade no tempo configurado. Nas outras telas, o que não cabe vira "+ N demandas". O tamanho das letras acompanha a largura da tela (`html { font-size: 100vw / 120 }`), então funciona em qualquer TV.
+- **TV em rotação, com telas registráveis** (fase 4): `hub/telas.py` lista as telas (`SCREENS`), cada uma com um tempo padrão e uma função que monta os dados dela, ou devolve `None` quando não há o que mostrar (aí ela sai da rotação). O `/api/tv` manda as telas que entram agora, com o tempo de cada uma. No navegador, `tv.js` cuida do que é comum (busca a cada 5 s, presença, relógio, aviso de atrasadas, "sem atualização", rotação e indicador) e cada tela é um arquivo em `static/tv-telas/` que chama `HubTV.registrar(id, { desenhar, aoMostrar })`. As telas ficam empilhadas na mesma área; só a ativa aparece, com um fade, sem recarregar a página.
+
+  **Para plugar uma tela nova:** (1) escreva a função de dados e registre em `SCREENS`; (2) crie `static/tv-telas/<id>.js`; (3) acrescente `<section class="tela" data-tela="<id>">` e o `<script>` em `tv.html`. O teste `test_every_registered_screen_has_a_drawing` confere que as três partes existem. Os tempos e o liga/desliga aparecem sozinhos em Configurações.
 - **Tema do app no navegador, não no servidor** (`static/tema.js`): cada pessoa escolhe automático, claro ou escuro, e a escolha fica no `localStorage` daquele navegador. As cores são variáveis CSS em `app.css`; `data-tema` no `<html>` força claro ou escuro, e sem ele vale o modo do Windows. O script carrega no `<head>` para a página já nascer no tema certo. A TV usa `tv.css` e não carrega esse script, então não muda com a escolha de ninguém.
 - **Entrar com nome + PIN** (`hub/access.py`, fase 2): o PIN é guardado só como resumo PBKDF2 com sal próprio. Ao acertar, o servidor cria uma sessão (tabela `sessions`, com o resumo do token) que acaba à meia-noite; o cookie `hub_sessao` só carrega o token. Cinco PINs errados seguidos bloqueiam aquele nome por 5 minutos. A TV e o `/api/tv` continuam sem login e não leem nada disso.
 - **Papéis:** cada pessoa é `analista` ou `gestor` (coluna `role`) e pode ter a marcação `is_admin`. Só administrador abre Pessoas, muda papéis e redefine PIN. Sempre sobra pelo menos um administrador; sem nenhum (instalação nova ou logo depois de atualizar da v1), quem cria o primeiro PIN vira administrador.
@@ -45,11 +48,12 @@ flowchart TB
 | `hub/db.py` | Banco, esquema, migrações e histórico |
 | `hub/access.py` | PIN, bloqueio, sessões do dia, papéis e administradores |
 | `hub/gestor.py` | Visão do gestor: resumo do dia por pessoa e filtros das demandas |
+| `hub/telas.py` | Telas da TV, rotação e as configurações (tempos) |
 | `hub/people.py` | Equipe: nome, iniciais, cor |
 | `hub/demands.py` | Demandas, quadro, ordem, atrasadas, cartão da TV |
 | `hub/presence.py` | Presença e a virada do dia |
 | `hub/backup.py` | Cópia de segurança diária (14 dias) |
 | `hub/winsys.py` | Abrir com o Windows, não dormir, TV em tela cheia |
-| `hub/web/` | Rotas, páginas, o JavaScript da TV e o do tema do app (`static/tema.js`) |
+| `hub/web/` | Rotas, páginas, o JavaScript da TV (`static/tv.js` e uma tela por arquivo em `static/tv-telas/`) e o do tema do app (`static/tema.js`) |
 | `tools/` | Teste de rede e dados de demonstração |
 | `tests/` | Testes automáticos (pytest) |

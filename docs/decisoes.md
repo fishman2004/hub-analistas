@@ -49,3 +49,15 @@ Para saber quem criou, a migração 2 acrescenta `created_by` às demandas e pre
 ## A visão do gestor também abre para administradores (fase 3)
 
 O plano dizia "só para gestor". Os administradores já gerenciam pessoas, papéis e PINs e veem as reservadas, então também abrem a visão do gestor. Analistas não abrem.
+
+## TV em rotação no navegador (fase 4)
+
+A rotação acontece no JavaScript da TV, sem recarregar a página: o servidor só diz quais telas entram e por quanto tempo, e os dados continuam chegando a cada 5 s. Se o servidor cair, a rotação segue com o último estado e o aviso "sem atualização". Tempos padrão do plano: Quadro 30 s e as demais 15 s, mudáveis por um administrador em **Configurações** (de 5 a 300 s). As configurações ficam numa tabela `settings` (migração 3), guardando só o que mudou do padrão.
+
+**Presença e relógio ficam fixos** em todas as telas: são o motivo da TV existir ("quem está na sala"), então não saem de vista na rotação.
+
+**Primeira tela extra: Prazos da semana.** Para a rotação ser útil já nesta fase (e provar que uma tela "pluga" sem mexer nas outras), entrou uma tela com as atrasadas e o que vence hoje, amanhã e nos próximos dias. Ela usa os mesmos dados públicos do Quadro (reservada continua mascarada) e só aparece quando há prazo na semana.
+
+## Paginação das colunas em vez de "+ N" (fase 4, ideia do Kayo)
+
+Com muitas demandas, "+ N demandas" escondia justamente o que a sala precisava ver. Agora cada coluna do Quadro se divide em páginas que cabem na tela e passa de uma para outra com um fade (padrão 10 s por página, configurável). O número da página aparece no título da coluna ("2/3"). Ao voltar para o Quadro na rotação, as colunas recomeçam da primeira página. A TV continua sem rolar.

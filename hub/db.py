@@ -69,6 +69,13 @@ MIGRATIONS: list[tuple[int, str]] = [
             ORDER BY id LIMIT 1
         );
     """),
+    (3, """
+        -- v2 · TV em rotação: configurações do Hub (tempo de cada tela etc.), só o que mudou do padrão
+        CREATE TABLE settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 
