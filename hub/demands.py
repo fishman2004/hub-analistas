@@ -153,7 +153,7 @@ def _resolve(conn, now: datetime, actor_id: int | None, ref: int | str) -> int:
 def _clean_details(details: str | None) -> str | None:
     text = (details or "").replace("\r\n", "\n").strip()
     if len(text) > MAX_DETAILS:
-        raise ValidationError(f"Detalhes muito longos (máximo {MAX_DETAILS} caracteres).")
+        raise ValidationError(f"Descrição muito longa (máximo {MAX_DETAILS} caracteres).")
     return text or None
 
 
@@ -201,7 +201,7 @@ def _changes(conn, current, title, owner_id, folder, requested_by, due, reserved
     if bool(current["reserved"]) != reserved:
         out.append("marcada como reservada" if reserved else "deixou de ser reservada")
     if (current["details"] or None) != details:
-        out.append("detalhes")
+        out.append("descrição")
     return ", ".join(out)
 
 

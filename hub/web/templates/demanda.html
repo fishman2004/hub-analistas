@@ -39,9 +39,9 @@
     </div>
   </div>
   <div>
-    <label for="details">Detalhes <span class="opcional">(opcional)</span></label>
-    <textarea id="details" name="details" rows="5" maxlength="{{ max_details }}" placeholder="O que precisa ser feito, links, observações…">{{ v.details }}</textarea>
-    <p class="ajuda">Só aparece aqui no app, nunca na TV.</p>
+    <label for="details">Descrição <span class="opcional">(opcional)</span></label>
+    <textarea id="details" name="details" rows="6" maxlength="{{ max_details }}" placeholder="Explique a demanda: o que precisa ser feito, de onde vêm os dados, links, observações…">{{ v.details }}</textarea>
+    <p class="ajuda">Para pedidos extensos. No quadro, o cartão mostra “📝 Descrição” e um clique abre o texto. Só aparece no app, nunca na TV.</p>
   </div>
   {% if not v.id %}
   <div>
