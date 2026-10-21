@@ -14,6 +14,7 @@ from .db import Database, log_event
 from .demands import Demand, board, is_overdue, tv_card
 from .paineis import tv_focos, tv_fornecedores, tv_metas_dia, tv_metas_mes
 from .people import Person, ValidationError, list_people
+from .prioridades import tv_prioridades
 
 @dataclass(frozen=True)
 class Screen:
@@ -64,6 +65,8 @@ def _day_label(d: Demand, today: date) -> str:
 SCREENS: list[Screen] = [
     Screen("quadro", "Quadro", 30, _quadro, always=True),
     Screen("prazos", "Prazos da semana", 15, _prazos),
+    # prioridades do início do mês (fase 8): fica na rotação até tudo estar feito
+    Screen("prioridades", "Prioridades do mês", 15, tv_prioridades),
     # painéis de dados (fase 5): só porcentagens, e só entram quando as planilhas estão na pasta
     Screen("metas-mes", "Metas do mês", 20, tv_metas_mes),
     Screen("metas-dia", "Metas do dia", 15, tv_metas_dia),

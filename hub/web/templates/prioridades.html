@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% set active = 'prioridades' %}
+{% block title %}Prioridades · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>Prioridades de {{ month_label(month) }}</h1>
+  {% if months|length > 1 %}
+  <nav class="meses" aria-label="Outros meses">
+    {% for m in months %}<a href="/prioridades{{ '' if m == current else '?mes=' ~ m }}" {% if m == month %}aria-current="page"{% endif %}>{{ month_label(m) }}</a>{% endfor %}
+  </nav>
+  {% endif %}
+</div>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+
+{% if editable %}
+<p class="ajuda">A lista do início do mês fica na TV até tudo estar feito. Qualquer pessoa marca como feita, e fica guardado quem fez e quando. Remover: quem acrescentou o item ou um administrador.</p>
+{% else %}
+<div class="aviso" role="status">Só consulta: a lista de {{ month_label(month) }} não muda mais. Só a lista do mês atual pode mudar.</div>
+{% endif %}
+
+{% if items %}
+<section class="prio-resumo" aria-label="Progresso">
+  <p><strong>{{ done_count }} de {{ items|length }} feitas</strong>
+    {%- if late_count %} · <span class="atraso">{{ late_count }} atrasada{{ 's' if late_count != 1 else '' }}</span>{% endif %}
+    {%- if editable %} · <span class="ajuda">{{ 'tudo feito: a tela saiu da TV' if done_count == items|length else 'na TV até tudo estar feito' }}</span>{% endif %}</p>
+  <div class="prio-barra" aria-hidden="true"><span style="width: {{ (100 * done_count / items|length)|round(1) }}%"></span></div>
+</section>
+
+<ul class="prioridades">
+  {% for p in items %}
+  {% set late = is_late(p, today) %}
+  {% set quem = people.get(p.done_by) %}
+  <li class="prio{{ ' feita' if p.done else '' }}{{ ' atrasada' if late else '' }}">
+    <span class="prio-marca" aria-hidden="true">{{ '✓' if p.done else '' }}</span>
+    <div class="prio-texto">
+      <span class="prio-titulo">{{ p.title }}</span>
+      {% if p.folder or p.due_day or p.done %}
+      <p class="meta">
+        {% if p.folder %}<span>Pasta {{ 'G (Canal Farma)' if p.folder == 'G' else p.folder }}</span>{% endif %}
+        {% if p.due_day %}<span class="{{ 'atraso' if late else '' }}">{{ 'atrasada · ' if late else '' }}até dia {{ p.due_day }}</span>{% endif %}
+        {% if p.done %}<span>feita{{ ' por ' ~ quem.name if quem else '' }} em {{ p.done_at.strftime('%d/%m') }} às {{ p.done_at.strftime('%H:%M') }}</span>{% endif %}
+      </p>
+      {% endif %}
+    </div>
+    {% if editable %}
+    <div class="cartao-acoes">
+      {% if p.done %}
+      <form method="post" action="/prioridades/{{ p.id }}/desfazer"><button class="discreto">Desfazer</button></form>
+      {% else %}
+      <form method="post" action="/prioridades/{{ p.id }}/feita"><button>Marcar como feita</button></form>
+      {% endif %}
+      {% if can_remove(p, user) %}
+      {# o título vai num data-atributo: dentro do JS, um apóstrofo quebraria o confirm #}
+      <form method="post" action="/prioridades/{{ p.id }}/remover" data-titulo="{{ p.title }}" onsubmit="return confirm('Remover “' + this.dataset.titulo + '” das prioridades do mês?')">
+        <button class="perigo">Remover</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% elif not editable %}
+<p class="vazio">Nenhuma prioridade em {{ month_label(month) }}.</p>
+{% endif %}
+
+{% if editable %}
+{% if not items %}
+<form class="ficha cartao-form prio-padrao" method="post" action="/prioridades/padrao">
+  <h2>Lista padrão do mês</h2>
+  <p class="ajuda">O mês ainda não tem lista. Crie a lista de sempre e depois acrescente ou remova o que precisar:</p>
+  <ul>
+    {% for title, folder, due in DEFAULT_LIST %}<li>{{ title }}{% if due %} <span class="ajuda">· até dia {{ due }}</span>{% endif %}</li>{% endfor %}
+  </ul>
+  <div><button>Criar lista padrão do mês</button></div>
+</form>
+{% endif %}
+
+<form class="ficha cartao-form" method="post" action="/prioridades">
+  <h2>Acrescentar item</h2>
+  <div>
+    <label for="title">Item</label>
+    <input type="text" id="title" name="title" value="{{ v.title }}" maxlength="120" required placeholder="Conferir as bonificações">
+  </div>
+  <div class="linha">
+    <div>
+      <label for="folder">Pasta <span class="opcional">(opcional)</span></label>
+      <select id="folder" name="folder">
+        <option value="">Nenhuma</option>
+        {% for f in FOLDERS %}<option value="{{ f }}" {% if f == v.folder %}selected{% endif %}>{{ 'G (Canal Farma)' if f == 'G' else f }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="prazo">Prazo: até o dia <span class="opcional">(opcional)</span></label>
+      <input class="curto" type="number" id="prazo" name="prazo" value="{{ v.prazo }}" min="1" max="{{ last_day }}" placeholder="10">
+      <p class="ajuda">Dia de {{ month_label(month) }}. Passou do dia e continua em aberto: aparece como atrasada, aqui e na TV.</p>
+    </div>
+  </div>
+  <div><button>Acrescentar</button></div>
+</form>
+{% endif %}
+{% endblock %}

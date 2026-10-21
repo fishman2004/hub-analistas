@@ -12,10 +12,12 @@ flowchart TB
         W --> P[hub/presence.py<br>presença]
         W --> PE[hub/people.py<br>equipe]
         D --> R[hub/rotinas.py<br>rotinas e horários]
-        D --> DB[(SQLite · hub/db.py<br>pessoas, demandas, presença, histórico)]
+        W --> PR[hub/prioridades.py<br>prioridades do mês]
+        D --> DB[(SQLite · hub/db.py<br>pessoas, demandas, presença, prioridades, histórico)]
         R --> DB
         P --> DB
         PE --> DB
+        PR --> DB
         B[hub/backup.py<br>cópia diária] --> DB
     end
     TV[TV · tv.js] -- GET /api/tv a cada 5 s --> W
@@ -45,6 +47,7 @@ flowchart TB
 - **Migrações automáticas** (`db.MIGRATIONS`): cada mudança no banco depois da v1 tem um número, guardado no `PRAGMA user_version`. Ao iniciar, o Hub copia o banco para `copias/antes-da-vN-....db` e aplica as que faltam, cada uma inteira ou nada. Elas só acrescentam colunas e tabelas.
 - **Painéis de dados** (fase 5, `hub/paineis.py` e `hub/planilhas.py`): o Hub lê as planilhas da pasta dos painéis (CSV ou XLSX), calcula meta x realizado por pasta e entrega à TV **só porcentagens**. Cada arquivo é relido apenas quando muda (data e tamanho), numa linha separada, para a TV nunca esperar a leitura da 8081. Arquivo ausente ou quebrado tira da rotação só as telas que dependem dele. Contratos e regras em [paineis.md](paineis.md).
 - **Banco de horas** (fase 6, `hub/horas.py`): tabelas `hours_balance` (saldo base de cada pessoa, até uma data) e `hours_entries` (entrada e saída de cada dia, um dia por pessoa). O saldo é calculado, não guardado: saldo base + (horas do dia − jornada) de cada dia lançado depois da data do saldo base. Só a própria pessoa e o gestor veem (`horas.can_see`); as linhas do histórico sobre horas seguem a mesma regra. A TV não importa o módulo, e um teste confere que o `/api/tv` não executa nenhum comando nessas tabelas.
+- **Prioridades do mês** (fase 8, `hub/prioridades.py`, tabela `priorities` da migração 6): cada item guarda o mês (`AAAA-MM`), o título, a pasta e o prazo (dia do mês) opcionais, quem criou, quem fez e quando. O mês vem da data, sem tarefa agendada: no dia 1º a lista nova começa vazia, e a dos meses anteriores só abre para consulta (o servidor recusa mudar). "Atrasada" também é calculada (`is_late`): em aberto e já passou do dia do prazo. A lista padrão (`DEFAULT_LIST`) só entra num mês sem nenhum item, travando a escrita antes de conferir, então dois cliques não criam duas listas. Remover só marca `deleted = 1`. A tela `prioridades` da TV (`tv_prioridades`) devolve `None` sem lista ou com tudo feito, e manda só o título, a pasta, o prazo, se está atrasada e as iniciais e a cor de quem fez (sem nomes nem horários). No navegador, `tv-telas/prioridades.js` usa uma coluna quando tudo cabe, duas quando não, e passa páginas com fade se ainda não couber.
 - Formulários vindos de outro site são recusados (mesma origem).
 
 ## Onde está cada coisa
@@ -59,6 +62,7 @@ flowchart TB
 | `hub/paineis.py` | Painéis de dados: pasta, os arquivos, cálculo das metas, cache e o que vai para a TV |
 | `hub/horas.py` | Banco de horas: saldo base, lançamentos, saldo calculado, importação da planilha do RH e exportação |
 | `hub/planilhas.py` | Leitura de CSV e XLSX (cabeçalho sem acento, número e data em formato brasileiro) |
+| `hub/prioridades.py` | Prioridades do mês: a lista, quem fez, prazo e atrasadas, a lista padrão e o que vai para a TV |
 | `hub/people.py` | Equipe: nome, iniciais, cor |
 | `hub/demands.py` | Demandas, quadro, ordem, atrasadas, cartão da TV, e o cartão de cada rotina (calculado, vira demanda na primeira ação, pastas e espera) |
 | `hub/rotinas.py` | Cadastro das rotinas, quando cada uma vale, as rotinas sugeridas e os avisos da TV |

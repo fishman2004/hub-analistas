@@ -128,3 +128,25 @@ Padrões escolhidos sem resposta do Kayo; todos mudam pela página Rotinas ou co
 5. **Rotina com pastas só conclui quando todas marcarem** (o Concluir à mão é recusado) e a primeira pasta marcada leva o cartão para Fazendo.
 6. **Um aviso só, no horário em que o cartão aparece**, com a faixa por 20 s. Não há um segundo aviso no prazo; se ajudar, dá para tocar de novo no "até HH:MM".
 7. **Feriado não é descontado:** a rotina aparece mesmo em feriado; dispensar o cartão do dia resolve.
+
+## Prioridades do mês (fase 8)
+
+Uma lista por mês, guardada pelo mês da data (`2026-10`). Nada é agendado: no dia 1º a lista nova começa vazia e a do mês anterior fica só para consulta (dá para abrir pelos links no topo da página, sem botões). Assim o histórico de cada mês continua igual ao que foi.
+
+- **Lista padrão do Kayo**, criada com um clique em "Criar lista padrão do mês": lançar a meta no sistema e confirmar o recebimento da meta com o gerente (sem prazo), entregar as comissões (até o dia 10) e entregar as campanhas (até o dia 15). O botão só aparece com o mês vazio, e o servidor confere de novo antes de criar: dois cliques (ou dois PCs) não criam duas listas. Qualquer outro item entra pelo "Acrescentar item", com pasta e prazo opcionais.
+- **Prazo é um dia do mês** ("até dia 10"). No dia 10 ainda está no prazo; a partir do dia 11, se continuar em aberto, aparece como **atrasada**, no app e na TV (com o mesmo destaque vermelho das demandas atrasadas do Quadro). Como "Concluído hoje", isso é calculado na hora, não agendado.
+- **Qualquer pessoa marca como feita** (confirmado pelo Kayo: não há dono por item) e qualquer pessoa desfaz. Fica guardado quem fez e quando, e tudo vai para o histórico. Se dois PCs marcam ao mesmo tempo, vale quem marcou primeiro.
+- **Remover:** quem acrescentou o item ou um administrador. O item não é apagado do banco (só marcado), como as demandas.
+- **Na TV**, a tela "Prioridades do mês" (15 s, mudável em Configurações) mostra o mês, "N de M feitas" com uma barra, e a lista: atrasadas primeiro, depois as outras em aberto, em destaque, e por fim as feitas, apagadas, com o check e as iniciais de quem fez na cor da pessoa. A letra da pasta usa as cores das pastas dos painéis. Quando tudo estiver feito (ou o mês não tiver lista), a tela sai da rotação sozinha. O servidor manda só o que a tela desenha: nada de nomes, horários ou quem criou.
+- **Sem editar o texto** de um item: para corrigir, remova e acrescente de novo. Fica mais simples e o histórico mostra as duas coisas.
+- Com mais uma tela, os nomes no indicador da rotação não cabiam lado a lado numa TV de 1366 px e se sobrepunham. Agora os nomes das outras telas encurtam com "…" e o da tela no ar fica inteiro. No app, o menu ganhou o link Prioridades e ficou um pouco mais justo para continuar numa linha só.
+
+### Em aberto (confirmar com o Kayo)
+
+Escolhas padrão desta fase, fáceis de mudar se ele preferir outra coisa:
+
+1. **O que ficou em aberto no mês passado não passa para o mês novo.** Hoje a lista do mês anterior só fica para consulta. Alternativa: levar os pendentes para o mês novo ao criar a lista.
+2. **A lista padrão é criada por um clique**, não sozinha no dia 1º. Alternativa: aparecer sozinha no primeiro dia útil, como as rotinas da fase 7.
+3. **Quem pode remover:** quem acrescentou o item ou um administrador. Criar a lista padrão e acrescentar itens: qualquer pessoa.
+4. **Prazo em dia corrido:** "até dia 10" não muda se o dia 10 cair num sábado, domingo ou feriado.
+5. **Tempo da tela na TV:** 15 segundos, como as outras telas extras.
