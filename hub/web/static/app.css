@@ -304,6 +304,61 @@ a.nota-item:hover { background: var(--fundo); border-radius: 8px; }
 .nota-acoes form { margin: 0; }
 .nota-aberta .anexos { max-width: none; }
 #salvo.atraso { color: var(--atraso); }
+
+/* calendário (fase 13): cada tipo com uma cor, ligada ao filtro */
+.cal-compromissos, .cal-compromisso { --tipo: var(--azul); }
+.cal-feriados, .cal-feriado { --tipo: var(--atraso); }
+.cal-ausencias, .cal-ausencia { --tipo: var(--fora); }
+.cal-prazos, .cal-prazo { --tipo: var(--reuniao); }
+.cal-prioridades, .cal-prioridade { --tipo: var(--sala); }
+.cal-rotinas, .cal-rotina { --tipo: var(--pausa); }
+.cal-controles { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin-bottom: 12px; }
+.cal-setas { display: flex; gap: 4px; }
+.cal-setas .botao { padding: 4px 12px; }
+.cal-filtros { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.cal-filtros .check { margin: 0; align-items: center; font-size: .9rem; }
+.cal-filtros .check::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--tipo); order: 2; }
+.cal-grade { background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio); overflow: hidden; }
+.cal-cabeca, .cal-semana { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.cal-cabeca div { padding: 6px 8px; font-size: .8rem; font-weight: 600; color: var(--suave); text-transform: capitalize; border-bottom: 1px solid var(--linha); }
+.cal-dia { min-height: 112px; padding: 4px 6px; border-right: 1px solid var(--linha); border-bottom: 1px solid var(--linha); min-width: 0; }
+.cal-semana .cal-dia:nth-child(7) { border-right: none; }
+.cal-semana:last-child .cal-dia { border-bottom: none; }
+.cal-dia.fora { background: var(--fundo); }
+.cal-dia.fora .cal-num { color: var(--suave); }
+.cal-dia.feriado { background: color-mix(in srgb, var(--atraso) 7%, var(--cartao)); }
+.cal-num { display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 50%; font-weight: 700; font-size: .9rem; text-decoration: none; color: var(--texto); }
+.cal-num:hover { background: var(--fundo); }
+.cal-dia.hoje .cal-num { background: var(--azul); color: var(--sobre-cor); }
+.cal-dia ul, .cal-dia-linha ul { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 2px; }
+.cal-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; font-size: .82rem; line-height: 1.3; padding: 1px 4px 1px 6px; border-left: 3px solid var(--tipo); border-radius: 3px; background: color-mix(in srgb, var(--tipo) 9%, transparent); min-width: 0; }
+.cal-item > a, .cal-item > span:not(.cal-hora):not(.cal-ini):not(.cal-nota) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cal-item a { color: var(--texto); text-decoration: none; }
+.cal-item a:hover { text-decoration: underline; }
+.cal-hora { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cal-ini { font-size: .72rem; font-weight: 800; padding: 0 4px; border-radius: 4px; background: var(--cor, var(--linha)); color: #10161d; }
+.cal-nota { color: var(--suave); font-size: .75rem; }
+.cal-item.atrasada { border-left-color: var(--atraso); }
+.cal-item.atrasada .cal-nota { color: var(--atraso); font-weight: 600; }
+.cal-grade .cal-nota { display: none; }  /* no mês, só o essencial; a semana e a lista mostram tudo */
+.cal-mais { font-size: .8rem; }
+.cal-lista { display: grid; gap: 8px; }
+.cal-dia-linha { background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio); padding: 8px 14px; }
+.cal-dia-linha.hoje { border-color: var(--azul); }
+.cal-dia-linha h2 { font-size: 1rem; margin: 0 0 4px; }
+.cal-dia-linha h2 a { color: var(--texto); text-decoration: none; }
+.cal-dia-linha .cal-item { font-size: .95rem; padding: 3px 8px; }
+.cal-rodape { margin-top: 20px; }
+.cal-lista-ausencias { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cal-lista-ausencias li { display: flex; align-items: center; gap: 10px; }
+.cal-lista-ausencias form { margin-left: auto; }
+.cal-campos { border: none; margin: 0; padding: 0; display: grid; gap: 16px; min-width: 0; }
+.cal-excluir { margin-top: 16px; }
+@media (max-width: 760px) {
+  .cal-dia { min-height: 70px; padding: 2px; }
+  .cal-item { font-size: .7rem; padding: 0 2px 0 4px; }
+  .cal-item .cal-hora, .cal-item .cal-ini { display: none; }
+}
 /* descrição da demanda no cartão do quadro: abre com um clique */
 .cartao-descricao { margin-top: 6px; font-size: .9rem; }
 .cartao-descricao summary { cursor: pointer; color: var(--azul); width: max-content; }

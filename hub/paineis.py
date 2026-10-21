@@ -19,6 +19,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import BinaryIO
 
+from .calendario import NO_HOLIDAYS, holidays
 from .db import Database, get_setting, log_event, put_setting
 from .people import Person, ValidationError
 from .planilhas import EXTENSIONS, PlanilhaError, code, day, normalize, number, read_rows
@@ -213,14 +214,15 @@ def seller_pasta(rca: object, supervisor: object) -> str:
 
 # ---------- cálculo ----------
 
-def workdays(year: int, month: int) -> list[date]:
-    """Dias de venda do mês: segunda a sábado (sábado é dia de venda até meio-dia). Feriados não são descontados."""
+def workdays(year: int, month: int, hol=NO_HOLIDAYS) -> list[date]:
+    """Dias de venda do mês: segunda a sábado (sábado é dia de venda até meio-dia), sem os feriados
+    ativos do calendário (fase 13)."""
     last = calendar.monthrange(year, month)[1]
-    return [d for d in (date(year, month, n) for n in range(1, last + 1)) if is_sales_day(d)]
+    return [d for d in (date(year, month, n) for n in range(1, last + 1)) if is_sales_day(d, hol)]
 
 
-def is_sales_day(d: date) -> bool:
-    return d.weekday() < 6  # domingo não tem meta
+def is_sales_day(d: date, hol=NO_HOLIDAYS) -> bool:
+    return d.weekday() < 6 and d not in hol  # domingo e feriado não têm meta
 
 
 def pct(real: float, meta: float) -> int | None:
@@ -240,15 +242,15 @@ def _pace_tier(real_pct: int | None, expected: int) -> str:
     return tier(round(real_pct / expected * 100) if expected else real_pct)
 
 
-def _month(vendas: list[Venda]) -> tuple[date, list[Venda], list[date], int]:
+def _month(vendas: list[Venda], hol=NO_HOLIDAYS) -> tuple[date, list[Venda], list[date], int]:
     """O mês da venda mais recente: último dia, vendas do mês, dias de venda e % esperado até o último dia."""
     last = max(v.dia for v in vendas)
     month = [v for v in vendas if (v.dia.year, v.dia.month) == (last.year, last.month)]
-    days = workdays(last.year, last.month)
+    days = workdays(last.year, last.month, hol)
     return last, month, days, round(sum(d <= last for d in days) / len(days) * 100)
 
 
-def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict:
+def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda], hol=NO_HOLIDAYS) -> dict:
     """Meta x realizado por pasta e no total, no mês da venda mais recente do arquivo.
 
     As metas vêm da planilha Totais: META (financeiro) e CARTEIRA (positivação) de cada pasta, e a
@@ -260,8 +262,8 @@ def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict
     2 fornecedores da pasta é 1 positivação para a pasta e 1 para o total, sem acumular. No dia, contam
     os clientes positivados pela primeira vez no mês naquele dia (na pasta ou no total).
     """
-    last, month, days, expected = _month(vendas)
-    sales_day = is_sales_day(last)
+    last, month, days, expected = _month(vendas, hol)
+    sales_day = is_sales_day(last, hol)
 
     pastas = sorted(p for p in totais if p != TOTAL)
     meta_fin = {p: totais[p][0] for p in pastas}
@@ -321,14 +323,14 @@ def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict
     daily_meta = meta_fin[TOTAL] * share
     for n in range(1, len(daily_total)):
         d = date(last.year, last.month, n)
-        passed += is_sales_day(d)
+        passed += is_sales_day(d, hol)
         accumulated += daily_total[n]
         target = round(passed / len(days) * 100)
         done = d <= last
-        day_pct = pct(daily_total[n], daily_meta) if done and is_sales_day(d) else None
+        day_pct = pct(daily_total[n], daily_meta) if done and is_sales_day(d, hol) else None
         month_pct = pct(accumulated, meta_fin[TOTAL]) if done else None
         pace = round(month_pct / target * 100) if month_pct is not None and target else None
-        evolution.append({"dia": n, "util": is_sales_day(d), "real": day_pct, "tier": tier(day_pct) if done else "futuro",
+        evolution.append({"dia": n, "util": is_sales_day(d, hol), "real": day_pct, "tier": tier(day_pct) if done else "futuro",
                           "acumulado": month_pct, "esperado": target, "ritmo": pace})
 
     warnings = []
@@ -344,12 +346,12 @@ def compute_metas(fornecedores: dict, totais: dict, vendas: list[Venda]) -> dict
     }
 
 
-def compute_fornecedores(fornecedores: dict, metas_forn: dict, vendas: list[Venda]) -> dict:
+def compute_fornecedores(fornecedores: dict, metas_forn: dict, vendas: list[Venda], hol=NO_HOLIDAYS) -> dict:
     """Tudo o que saiu dos fornecedores de cada pasta, vendido por qualquer equipe (Televendas e
     outras pastas incluídas), contra a soma das metas desses fornecedores. Só financeiro: a meta de
     positivação por fornecedor ainda não existe na planilha."""
-    last, month, days, expected = _month(vendas)
-    sales_day = is_sales_day(last)
+    last, month, days, expected = _month(vendas, hol)
+    sales_day = is_sales_day(last, hol)
     meta: dict[str, float] = {}
     for supplier, value in metas_forn.items():
         info = fornecedores.get(supplier)
@@ -377,10 +379,10 @@ def compute_fornecedores(fornecedores: dict, metas_forn: dict, vendas: list[Vend
             "is_workday": sales_day, "pastas": rows if pastas else []}
 
 
-def compute_focos(focos: dict, metas_kpi: list, vendas: list[Venda]) -> dict:
+def compute_focos(focos: dict, metas_kpi: list, vendas: list[Venda], hol=NO_HOLIDAYS) -> dict:
     """Produtos foco: META é positivação (clientes distintos que compraram algum produto do foco)
     e META II é financeiro (soma de VALOR dos produtos do foco)."""
-    last, month, _, expected = _month(vendas)
+    last, month, _, expected = _month(vendas, hol)
     goals: dict[str, dict] = {}
     for _, name, klass, meta, meta2 in metas_kpi:
         g = goals.setdefault(normalize(name), {"nome": name, "classe": klass, "meta": 0.0, "meta2": 0.0})
@@ -473,7 +475,8 @@ class PanelStore:
                 path, st = None, None
             files.append((f.key, str(path) if path else None, st.st_mtime_ns if st else None,
                           st.st_size if st else None))
-        return folder, tuple(files)
+        # feriados do calendário (fase 13): mudar um feriado refaz o cálculo, sem reler as planilhas
+        return folder, (tuple(files), holidays(self.db))
 
     def get(self, wait: bool = False) -> Snapshot | None:
         """A última leitura. Se algum arquivo mudou, relê: em segundo plano para a TV (que não pode
@@ -503,7 +506,8 @@ class PanelStore:
 
     def _refresh(self, folder: Path, signature) -> Snapshot:
         files, data = [], {}
-        for f, (key, path, mtime_ns, size) in zip(FILES, signature):
+        file_signatures, hol = signature
+        for f, (key, path, mtime_ns, size) in zip(FILES, file_signatures):
             status = FileStatus(f.key, f.label, f.base, f.optional)
             files.append(status)
             if path is None:
@@ -529,12 +533,12 @@ class PanelStore:
             _, data[key], status.error, status.rows = cached
         snap = Snapshot(folder, files)
         if all(data.get(k) is not None for k in METAS_NEEDS):
-            snap.metas = self._safe(compute_metas, data["fornecedores"], data["totais"], data["vendas"], snap)
+            snap.metas = self._safe(compute_metas, data["fornecedores"], data["totais"], data["vendas"], hol, snap)
         if all(data.get(k) is not None for k in FOCOS_NEEDS):
-            snap.focos = self._safe(compute_focos, data["focos"], data["metas_kpi"], data["vendas"], snap)
+            snap.focos = self._safe(compute_focos, data["focos"], data["metas_kpi"], data["vendas"], hol, snap)
         if all(data.get(k) is not None for k in FORN_NEEDS):
             snap.fornecedores = self._safe(compute_fornecedores, data["fornecedores"], data["metas_forn"],
-                                           data["vendas"], snap)
+                                           data["vendas"], hol, snap)
         return snap
 
     @staticmethod

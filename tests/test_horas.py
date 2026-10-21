@@ -83,14 +83,21 @@ def test_base_balance_and_missing_days(db, team):
     set_balance(db, at(9, day=13), gestor, ana.id, 600, date(2026, 10, 9))  # +10h até sexta 09/10
     with pytest.raises(ValidationError, match="já está no saldo base"):
         save_entry(db, at(9, day=20), ana, date(2026, 10, 9), "08:00", "18:00")
-    save_entry(db, at(9, day=20), ana, date(2026, 10, 12), "08:00", "17:00")  # -1h
+    save_entry(db, at(9, day=20), ana, date(2026, 10, 13), "08:00", "17:00")  # -1h
     s = summary(db, ana.id, date(2026, 10, 20))
     assert s.base == 600 and s.balance == 540
-    # 13 a 19/10 sem lançamento, sem contar sábado e domingo (sem jornada); hoje (20) ainda não conta
-    assert s.missing == [date(2026, 10, 19), date(2026, 10, 16), date(2026, 10, 15), date(2026, 10, 14),
-                         date(2026, 10, 13)]
+    # 14 a 19/10 sem lançamento, sem contar sábado e domingo (sem jornada) nem o feriado de 12/10;
+    # hoje (20) ainda não conta
+    assert s.missing == [date(2026, 10, 19), date(2026, 10, 16), date(2026, 10, 15), date(2026, 10, 14)]
     with pytest.raises(PermissionError):
         set_balance(db, at(9), ana, bia.id, 60, date(2026, 10, 9))  # analista não mexe no saldo de ninguém
+
+
+def test_holiday_has_no_planned_hours(db, team):
+    _, ana, _ = team
+    save_entry(db, at(9, day=13), ana, date(2026, 10, 12), "08:00", "12:00")  # 12/10: feriado nacional
+    s = summary(db, ana.id, date(2026, 10, 13))
+    assert s.balance == 4 * 60 and date(2026, 10, 12) not in s.missing
 
 
 def test_journey_is_configurable_and_saturday_can_count(db, team):

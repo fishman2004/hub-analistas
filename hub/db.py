@@ -175,6 +175,49 @@ MIGRATIONS: list[tuple[int, str]] = [
         );
         CREATE INDEX notes_person ON notes(person_id, updated_at);
     """),
+    (9, """
+        -- v3 · calendário: compromissos (com repetição simples, calculada na hora), quem participa,
+        -- feriados (os nacionais são calculados; aqui ficam os da cidade e o liga/desliga dos nacionais)
+        -- e ausências da equipe. Rotinas podem rodar também em feriado.
+        CREATE TABLE events_cal (
+            id INTEGER PRIMARY KEY,
+            title TEXT NOT NULL,
+            kind TEXT NOT NULL,                          -- reuniao, entrega, treinamento, evento
+            starts_on TEXT NOT NULL,                     -- AAAA-MM-DD
+            ends_on TEXT,                                -- último dia, se durar mais de um
+            starts_at TEXT, ends_at TEXT,                -- HH:MM; vazio = dia todo
+            place TEXT, description TEXT,
+            visibility TEXT NOT NULL DEFAULT 'equipe',   -- 'equipe' ou 'pessoal' (só quem criou)
+            reserved INTEGER NOT NULL DEFAULT 0,
+            repeat TEXT NOT NULL DEFAULT '',             -- '', semanal, mensal, anual
+            created_by INTEGER REFERENCES people(id),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE event_people (
+            event_id INTEGER NOT NULL REFERENCES events_cal(id),
+            person_id INTEGER NOT NULL REFERENCES people(id),
+            PRIMARY KEY (event_id, person_id)
+        );
+        CREATE TABLE holidays (
+            day TEXT PRIMARY KEY,                        -- AAAA-MM-DD
+            name TEXT NOT NULL,
+            source TEXT NOT NULL,                        -- 'local' (cadastrado) ou 'nacional' (liga/desliga)
+            active INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE TABLE absences (
+            id INTEGER PRIMARY KEY,
+            person_id INTEGER NOT NULL REFERENCES people(id),
+            starts_on TEXT NOT NULL,
+            ends_on TEXT NOT NULL,
+            reason TEXT,                                 -- só a pessoa e o gestor veem
+            created_by INTEGER REFERENCES people(id),
+            created_at TEXT NOT NULL,
+            deleted INTEGER NOT NULL DEFAULT 0
+        );
+        ALTER TABLE routines ADD COLUMN on_holidays INTEGER NOT NULL DEFAULT 0;
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

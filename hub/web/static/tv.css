@@ -323,3 +323,24 @@ body {
   border-radius: 999px; padding: .2rem 1rem; white-space: nowrap; }
 .selo-pausa.piscar { animation: piscar .3s 2; }
 @keyframes piscar { 50% { opacity: .2; } }
+
+/* agenda (fase 13): hoje e os próximos dias úteis */
+.agenda { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--grupos, 4), minmax(0, 1fr)); gap: 1rem; }
+.agenda .grupo-hoje { box-shadow: inset 0 .3rem 0 var(--pausa); }
+.ag-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .9rem; align-items: center;
+  background: var(--cartao); border-radius: .75rem; padding: .85rem 1rem; border-left: .4rem solid var(--pausa); flex: none; }
+.ag-hora { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--suave); white-space: nowrap; }
+.ag-titulo { font-size: 1.65rem; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ag-rotulo { font-size: 1.15rem; color: var(--suave); }
+.ag-quem { display: flex; flex-wrap: wrap; gap: .3rem; justify-content: flex-end; max-width: 9rem; }
+.ag-quem .ini { min-width: 2.2rem; height: 2.2rem; padding: 0 .35rem; border-radius: .5rem; display: grid; place-items: center;
+  background: var(--cor); color: #0e141a; font-weight: 800; font-size: 1rem; }
+.ag-feriado { border-left-color: var(--atraso); }
+.ag-feriado .ag-hora { color: var(--atraso); }
+.ag-ausencia { border-left-color: var(--fora); }
+.ag-ausencia .ag-titulo { color: var(--suave); }
+.ag-item.reservada .ag-titulo { font-style: italic; color: var(--suave); }
+/* ausência na faixa de presença: só "Ausente" e a data de volta */
+.pessoa.st-ausente { --st: var(--fora); }
+.pessoa.st-ausente .nome, .pessoa.st-ausente .ini { opacity: .55; }

@@ -129,7 +129,7 @@ Padrões escolhidos sem resposta do Kayo; todos mudam pela página Rotinas ou co
 4. **Qualquer pessoa marca qualquer pasta** (o Hub não sabe de quem é cada pasta). O histórico guarda quem marcou. Se cada um só puder marcar a própria pasta, é preciso cadastrar a pasta de cada pessoa.
 5. **Rotina com pastas só conclui quando todas marcarem** (o Concluir à mão é recusado) e a primeira pasta marcada leva o cartão para Fazendo.
 6. **Um aviso só, no horário em que o cartão aparece**, com a faixa por 20 s. Não há um segundo aviso no prazo; se ajudar, dá para tocar de novo no "até HH:MM".
-7. **Feriado não é descontado:** a rotina aparece mesmo em feriado; dispensar o cartão do dia resolve.
+7. **Feriado:** desde a fase 13, a rotina não aparece em feriado ligado no calendário, salvo se marcar "roda também em feriado".
 
 ## Prioridades do mês (fase 8)
 
@@ -218,3 +218,18 @@ Pedido do gestor: um bloco de notas pessoal que também guarde arquivos.
 - **Privacidade de verdade tem limite:** o banco e a pasta Anexos não são cifrados. A página avisa para não guardar senhas.
 
 Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 12.1 a 12.4 do [plano da v3](plano-v3.md)): só pessoais, ninguém mais vê, notas de quem saiu ficam guardadas e os mesmos limites dos anexos.
+
+## Calendário (fase 13)
+
+Pedido do gestor: "calendário". O Hub já sabia muita coisa com data (prazos, prioridades, rotinas); o calendário junta isso e acrescenta compromissos, feriados e ausências.
+
+- **Três visões:** mês, semana e lista (30 dias), com filtros por tipo. As rotinas começam desligadas no filtro, porque lotariam o mês.
+- **Compromisso:** reunião, entrega, treinamento ou evento, com dia (ou vários dias), horário ou dia todo, local, descrição e participantes. **Equipe** (todos veem) ou **só eu** (só quem criou; nem o histórico registra). Um da equipe pode ser **reservado**: quem não participa vê "Compromisso reservado", como a demanda reservada. Muda e apaga quem criou, o gestor e os administradores ("só eu": só quem criou).
+- **Repetição simples,** calculada na hora: toda semana, todo mês ou todo ano. Mudar ou apagar vale para a série inteira.
+- **Feriados:** os nacionais são calculados todo ano (inclusive Sexta-feira Santa); Carnaval e Corpus Christi são ponto facultativo e começam desligados. O gestor e os administradores ligam e desligam qualquer feriado e acrescentam os da cidade.
+- **O que o feriado muda:** não conta como dia de venda na meta do dia e no "esperado" dos painéis, a rotina não aparece (salvo "roda também em feriado") e o banco de horas não pede lançamento. Os prazos das prioridades continuam em dia corrido.
+- **Ausências:** cada pessoa marca a sua; o gestor marca a de qualquer um. O motivo é opcional e só a pessoa e o gestor veem; o histórico grava só as datas.
+- **Na TV:** a tela **Agenda** (hoje e os próximos dias úteis) com compromissos da equipe, feriados e quem está ausente, sem descrição nem local; sai da rotação quando não há nada. Na faixa de presença, quem está ausente aparece como "Ausente até dd/mm", nunca o motivo; se a pessoa marcar presença no dia, vale a presença.
+- **Sem Outlook:** o calendário é só do Hub (exportar `.ics` fica como ideia futura). Aniversários não entram sozinhos (dado pessoal); dá para criar como compromisso anual.
+
+Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 13.1 a 13.5 do [plano da v3](plano-v3.md)).

@@ -147,11 +147,13 @@
     const faixa = document.getElementById("presenca");
     faixa.replaceChildren();
     for (const p of pessoas) {
-      const card = el("div", "pessoa " + (CLASSE_STATUS[p.status] || "st-fora"));
+      // ausência marcada no calendário (fase 13): só "Ausente" e a data de volta, nunca o motivo
+      const card = el("div", "pessoa " + (p.ausente_ate ? "st-ausente" : CLASSE_STATUS[p.status] || "st-fora"));
       card.style.setProperty("--cor", p.color);
       card.append(el("div", "ini", p.initials), el("div", "nome", p.name));
       const st = el("div", "status");
-      st.append(el("b", "", p.status), el("span", "", "desde " + p.since));
+      if (p.ausente_ate) st.append(el("b", "", "Ausente"), el("span", "", "até " + p.ausente_ate));
+      else st.append(el("b", "", p.status), el("span", "", "desde " + p.since));
       card.append(st);
       faixa.append(card);
     }

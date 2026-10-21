@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% set active = 'calendario' %}
+{% block title %}Feriados de {{ year }} · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>Feriados de {{ year }}</h1>
+  <nav class="cal-setas" aria-label="Ano">
+    <a class="botao discreto" href="/calendario/feriados?ano={{ year - 1 }}">◀ {{ year - 1 }}</a>
+    <a class="botao discreto" href="/calendario">Voltar ao calendário</a>
+    <a class="botao discreto" href="/calendario/feriados?ano={{ year + 1 }}">{{ year + 1 }} ▶</a>
+  </nav>
+</div>
+<p class="ajuda">Os nacionais são calculados sozinhos, todo ano. Feriado ligado não conta como dia de venda na meta do dia dos painéis, não pede lançamento no banco de horas e não faz as rotinas aparecerem (salvo as marcadas "roda também em feriado"). Carnaval e Corpus Christi são ponto facultativo e começam desligados.{% if not can_manage %} Só o gestor e os administradores mudam os feriados.{% endif %}</p>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+
+<div class="tabela-rolagem">
+<table class="tabela">
+  <thead><tr><th>Dia</th><th>Feriado</th><th>Tipo</th><th>Situação</th>{% if can_manage %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for h in rows %}
+  <tr class="{{ '' if h.active else 'desativada' }}">
+    <td class="sem-quebra"><strong>{{ h.day.strftime('%d/%m') }}</strong> <span class="ajuda">{{ WEEKDAYS[h.day.weekday()] }}</span></td>
+    <td>{{ h.name }}</td>
+    <td>{{ 'Nacional' if h.source == 'nacional' else 'Da cidade' }}</td>
+    <td>{% if h.active %}Ligado{% else %}<span class="etiqueta">Desligado: dia útil</span>{% endif %}</td>
+    {% if can_manage %}
+    <td class="acoes-linha">
+      <form method="post" action="/calendario/feriados/{{ h.day.isoformat() }}/{{ 'desligar' if h.active else 'ligar' }}"><button class="discreto">{{ 'Desligar' if h.active else 'Ligar' }}</button></form>
+      {% if h.source == 'local' %}
+      <form method="post" action="/calendario/feriados/{{ h.day.isoformat() }}/remover" onsubmit="return confirm('Remover este feriado?')"><button class="perigo">Remover</button></form>
+      {% endif %}
+    </td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if can_manage %}
+<form class="ficha cartao-form" method="post" action="/calendario/feriados">
+  <h2>Acrescentar feriado da cidade ou do estado</h2>
+  <div class="linha">
+    <div><label for="dia">Dia</label><input type="date" id="dia" name="dia" value="{{ v.dia if v else '' }}" required></div>
+    <div><label for="nome">Nome</label><input type="text" id="nome" name="nome" value="{{ v.nome if v else '' }}" maxlength="80" required placeholder="Aniversário da cidade"></div>
+  </div>
+  <p class="ajuda">Vale só para o ano escolhido. Para repetir no ano seguinte, acrescente de novo.</p>
+  <div class="acoes"><button>Acrescentar</button></div>
+</form>
+{% endif %}
+{% endblock %}

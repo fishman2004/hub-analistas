@@ -43,7 +43,7 @@ Cada arquivo pode ser `.xlsx`, `.xlsm` ou `.csv`. O Hub usa a **primeira aba** e
 - **Financeiro:** soma de `VALOR` dividida pela `META`, na pasta (vendas da equipe dela) e no total (todas).
 - **Positivação** é a contagem distinta de `ID CLIENTE` do mês, como a empresa conta: o cliente que comprou de 2 fornecedores da pasta é **1 positivação para a pasta e 1 para o total**, sem acumular. Pedidos repetidos e vendedores diferentes não contam de novo. Dividido pela `CARTEIRA`.
 - **Positivação do dia:** clientes positivados pela primeira vez no mês naquele dia (na pasta ou no total).
-- **Dias de venda:** segunda a sábado (sábado é dia de venda até meio-dia); domingo não tem meta e feriados não são descontados. A meta do dia é a meta do mês dividida pelos dias de venda do mês.
+- **Dias de venda:** segunda a sábado (sábado é dia de venda até meio-dia); domingo não tem meta e os feriados ligados no calendário (fase 13) também não contam como dia de venda. A meta do dia é a meta do mês dividida pelos dias de venda do mês.
 - **Esperado até hoje:** a parte do mês já passada em dias de venda, até o último dia com venda. Ex.: 15 de 26 dias = 58%.
 - **Fornecedores das pastas:** tudo o que saiu dos fornecedores de cada pasta, vendido por **qualquer** equipe (outras pastas e Televendas incluídos), dividido pela soma das metas desses fornecedores. O total dessa tela soma os fornecedores com meta. Só financeiro: a meta de positivação por fornecedor ainda não existe. Fornecedor sem pasta ou sem meta fica fora dessa tela.
 - **Total (T):** é a Polybalas inteira (a linha `PLB`, o "PB" do painel do Excel).

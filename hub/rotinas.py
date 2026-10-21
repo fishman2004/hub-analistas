@@ -8,9 +8,10 @@ Só o gestor e os administradores cadastram e mudam rotinas; todo mundo vê a li
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 
+from .calendario import load_holidays
 from .db import Database, log_event, put_setting
 from .people import Person, ValidationError
 
@@ -35,6 +36,8 @@ class Routine:
     folders: tuple[str, ...]
     waits_for: tuple[int, ...]
     active: bool
+    on_holidays: bool = False  # roda também em feriado (fase 13)
+    holidays: object = field(default=(), repr=False, compare=False)  # calendario.Holidays (os feriados ativos)
 
     @property
     def label(self) -> str:
@@ -42,7 +45,8 @@ class Routine:
         return f"{self.name} {self.starts_at}"
 
     def runs_on(self, day: date) -> bool:
-        return self.active and day.weekday() in self.weekdays
+        """Ativa, no dia da semana e, num feriado, só se roda também em feriado."""
+        return self.active and day.weekday() in self.weekdays and (self.on_holidays or day not in self.holidays)
 
     def is_due(self, now: datetime) -> bool:
         """Vale hoje e o horário já chegou: o cartão aparece no quadro."""
@@ -55,16 +59,19 @@ class Routine:
         return datetime.combine(day, time.fromisoformat(self.deadline)) if self.deadline else None
 
 
-def _row(r) -> Routine:
+def _row(r, hol) -> Routine:
     return Routine(
         r["id"], r["name"], tuple(int(x) for x in r["weekdays"].split(",") if x), r["starts_at"], r["deadline"],
         r["owner_id"], tuple(r["folders"]), tuple(int(x) for x in r["waits_for"].split(",") if x), bool(r["active"]),
+        bool(r["on_holidays"]), hol,
     )
 
 
 def load_routines(conn) -> dict[int, Routine]:
-    """Todas as rotinas (inclusive as desativadas), por número. Para quem já tem uma conexão aberta."""
-    return {r["id"]: _row(r) for r in conn.execute("SELECT * FROM routines")}
+    """Todas as rotinas (inclusive as desativadas), por número. Para quem já tem uma conexão aberta.
+    Cada uma já sabe os feriados do calendário: num feriado, só aparece a que roda também em feriado."""
+    hol = load_holidays(conn)
+    return {r["id"]: _row(r, hol) for r in conn.execute("SELECT * FROM routines")}
 
 
 def list_routines(db: Database) -> list[Routine]:
@@ -112,7 +119,7 @@ def _check_cycle(routines: dict[int, Routine], routine_id: int, waits_for: tuple
 
 def save_routine(db: Database, now: datetime, actor: Person, routine_id: int | None, *, name: str,
                  weekdays: list[int], starts_at: str, deadline: str | None, owner_id: int, folders: list[str],
-                 waits_for: list[int]) -> Routine:
+                 waits_for: list[int], on_holidays: bool = False) -> Routine:
     """Cria (routine_id None) ou muda uma rotina. Vale a partir do próximo cálculo do quadro."""
     if not can_manage(actor):
         raise PermissionError("Só o gestor e os administradores mudam as rotinas.")
@@ -156,14 +163,14 @@ def save_routine(db: Database, now: datetime, actor: Person, routine_id: int | N
         if clash:
             raise ValidationError(f"Já existe a rotina “{name}” às {starts_at}.")
         values = (name, ",".join(map(str, days)), starts_at, deadline, owner_id, chosen_folders,
-                  ",".join(map(str, waits)))
+                  ",".join(map(str, waits)), int(on_holidays))
         if current is None:
-            cur = conn.execute("INSERT INTO routines(name, weekdays, starts_at, deadline, owner_id, folders, waits_for) "
-                               "VALUES (?, ?, ?, ?, ?, ?, ?)", values)
+            cur = conn.execute("INSERT INTO routines(name, weekdays, starts_at, deadline, owner_id, folders, waits_for, "
+                               "on_holidays) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", values)
             routine_id, kind = cur.lastrowid, "rotina_criada"
         else:
             conn.execute("UPDATE routines SET name = ?, weekdays = ?, starts_at = ?, deadline = ?, owner_id = ?, "
-                         "folders = ?, waits_for = ? WHERE id = ?", (*values, routine_id))
+                         "folders = ?, waits_for = ?, on_holidays = ? WHERE id = ?", (*values, routine_id))
             kind = "rotina_editada"
         log_event(conn, now, actor.id, kind, f"rotina:{routine_id}", f"{name} {starts_at}")
         return load_routines(conn)[routine_id]
