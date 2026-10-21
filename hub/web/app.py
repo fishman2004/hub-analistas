@@ -18,7 +18,7 @@ from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, calendario, modos, notas
+from .. import anexos, calendario, modos, notas, pastas
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -30,9 +30,10 @@ from ..paineis import STALE_MAX, STALE_MIN, panel_config, save_panel_config, sav
 from ..presence import STATUSES, presence_board, set_status
 from ..rotinas import (WEEKDAY_LABELS, alerts_today, can_manage, create_suggested, get_routine, list_routines,
                        save_routine, set_routine_active, start_test_alert, tv_alerts, weekdays_label)
-from ..prioridades import (DEFAULT_LIST, add_priority, can_remove, create_default_list, is_late, is_month, last_day,
-                           list_month, mark_done, month_label, month_of, parse_due_day, past_months, remove_priority,
-                           undo_done)
+from ..prioridades import (DEFAULT_LIST, add_priority, by_folder, can_mark, can_remove, create_default_list, is_late,
+                           is_month, last_day, list_month, mark_done, month_label, month_of, parse_due_day, parse_steps,
+                           past_months,
+                           remove_priority, undo_done)
 from ..telas import MAX_SECONDS, MIN_SECONDS, PAGE_MAX, PAGE_MIN, rotation, save_screen_config, screen_config
 from .. import tvcontrole
 
@@ -1272,8 +1273,11 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         # um mês anterior abre só para consulta; mês inválido ou futuro volta para o atual
         month = month if is_month(month) and month <= current else current
         items = list_month(db, month)
-        ctx.setdefault("v", {"title": "", "folder": "", "prazo": ""})
+        mine = pastas.folders_of(db, user.id)
+        ctx.setdefault("v", {"title": "", "folder": "", "prazo": "", "etapas": ""})
         return page(request, "prioridades.html", user, status_code, month=month, current=current, items=items,
+                    mine=mine, owners=pastas.owners(db), folder_summary=by_folder(items),
+                    can_mark=lambda folder: can_mark(user, folder, mine),
                     editable=month == current, months=[current] + past_months(db, now), today=now.date(),
                     done_count=sum(p.done for p in items), late_count=sum(is_late(p, now.date()) for p in items),
                     people={p.id: p for p in list_people(db, active_only=False)}, last_day=last_day(month),
@@ -1288,15 +1292,18 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         return to_login() if user is None else priorities_page(request, user, mes)
 
     @app.post("/prioridades")
-    def prioridades_acrescentar(request: Request, title: str = Form(""), folder: str = Form(""), prazo: str = Form("")):
+    def prioridades_acrescentar(request: Request, title: str = Form(""), folder: str = Form(""), prazo: str = Form(""),
+                                etapas: str = Form("")):
         user = me(request)
         if user is None:
             return to_login()
         try:
-            add_priority(db, clock(), user, title, folder or None, parse_due_day(prazo))
+            add_priority(db, clock(), user, title, folder or None, parse_due_day(prazo), parse_steps(etapas))
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
         except ValidationError as exc:
             return priorities_page(request, user, status_code=422, error=str(exc),
-                                   v={"title": title, "folder": folder, "prazo": prazo})
+                                   v={"title": title, "folder": folder, "prazo": prazo, "etapas": etapas})
         return back_to_priorities()
 
     @app.post("/prioridades/padrao")
@@ -1304,11 +1311,14 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         user = me(request)
         if user is None:
             return to_login()
-        create_default_list(db, clock(), user)  # o mês já tem lista (outro PC criou antes): não muda nada
+        try:
+            create_default_list(db, clock(), user)  # o mês já tem lista (outro PC criou antes): não muda nada
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
         return back_to_priorities()
 
     @app.post("/prioridades/{item_id}/{action}")
-    def prioridades_item(request: Request, item_id: int, action: str):
+    def prioridades_item(request: Request, item_id: int, action: str, pasta: str = "", etapa: str = ""):
         user = me(request)
         if user is None:
             return to_login()
@@ -1316,7 +1326,10 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         if action not in actions:
             return Response(status_code=404)
         try:
-            actions[action](db, clock(), user, item_id)
+            if action == "remover":
+                remove_priority(db, clock(), user, item_id)
+            else:  # sem pasta: as pastas de quem clicou
+                actions[action](db, clock(), user, item_id, pasta or None, int(etapa) if etapa.isdigit() else None)
         except PermissionError as exc:
             return forbidden(request, user, str(exc))
         except ValidationError as exc:
@@ -1475,7 +1488,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         s = horas.summary(db, person.id, today)
         default_day = s.missing[0] if s.missing else today - timedelta(days=1)
         return page(request, "horas.html", user, status_code, person=person, s=s, today=today,
-                    own=person.id == user.id, default_day=default_day, journey=horas.journey(db), h=horas, **ctx)
+                    own=person.id == user.id, default_day=default_day,
+                    journey=horas.journey(db, person.is_assistant), h=horas, **ctx)
 
     @app.get("/horas", response_class=HTMLResponse)
     def horas_minhas(request: Request, corrigir: str = ""):
@@ -1530,7 +1544,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
     def team_hours_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
         today = clock().date()
         return page(request, "horas-equipe.html", user, status_code, rows=horas.team(db, today), today=today,
-                    journey=horas.journey(db), h=horas, people=list_people(db), **ctx)
+                    journey=horas.journey(db), assistant_journey=horas.journey(db, assistant=True), h=horas,
+                    people=list_people(db), **ctx)
 
     @app.get("/horas/equipe", response_class=HTMLResponse)
     def horas_equipe(request: Request):
@@ -1576,15 +1591,16 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         return team_hours_page(request, user, ok="Saldo base salvo.")
 
     @app.post("/horas/equipe/jornada")
-    def horas_jornada(request: Request, semana: str = Form(""), sabado: str = Form("")):
+    def horas_jornada(request: Request, semana: str = Form(""), sabado: str = Form(""), quem: str = Form("")):
         user, stop = hours_manager_only(request)
         if stop:
             return stop
+        assistant = quem == "assistente"
         try:
-            horas.save_journey(db, clock(), user, semana, sabado)
+            horas.save_journey(db, clock(), user, semana, sabado, assistant)
         except ValidationError as exc:
             return team_hours_page(request, user, 422, error=str(exc))
-        return team_hours_page(request, user, ok="Jornada salva.")
+        return team_hours_page(request, user, ok="Jornada dos assistentes salva." if assistant else "Jornada salva.")
 
     @app.get("/horas/exportar")
     def horas_exportar(request: Request, tipo: str = "saldos", formato: str = "xlsx", de: str = "", ate: str = ""):
@@ -1646,6 +1662,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         # quem saiu da equipe e deixou notas: o administrador só vê quantas são e pode apagar de vez
         left = [(p, notas.count_for(db, p.id)) for p in list_people(db, active_only=False) if not p.active]
         return page(request, "pessoas.html", user, status_code, people=list_people(db), palette=PALETTE,
+                    folders_of=pastas.folders_by_person(db),
                     left_notes=[(p, n) for p, n in left if n], **ctx)
 
     @app.get("/pessoas", response_class=HTMLResponse)
@@ -1686,6 +1703,18 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             return stop
         try:
             set_access(db, clock(), user, person_id, role, admin == "on")
+        except ValidationError as exc:
+            return people_page(request, user, 422, error=str(exc))
+        return RedirectResponse("/pessoas", status_code=303)
+
+    @app.post("/pessoas/{person_id}/pastas")
+    async def pessoas_pastas(request: Request, person_id: int):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        form = await request.form()
+        try:
+            pastas.set_folders(db, clock(), user, person_id, form.getlist("pasta"))
         except ValidationError as exc:
             return people_page(request, user, 422, error=str(exc))
         return RedirectResponse("/pessoas", status_code=303)
@@ -1746,6 +1775,12 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
     file_name = f"“{detail}”" if visible else "um arquivo"  # nome de arquivo de reservada também é escondido
     name = people[ref_id].name if subject.startswith("pessoa:") and ref_id in people else detail
     name_of = lambda pid: people[pid].name if pid in people else "alguém"
+    # prioridade por pasta: "B,C|título"
+    folder_list, _, folder_title = detail.partition("|") if kind.startswith("prioridade_pasta_") else ("", "", "")
+    folder_list = folder_list.split(",") if folder_list else []
+    folder_text = (("na pasta " if len(folder_list) == 1 else "nas pastas ")
+                   + ", ".join(folder_list[:-1]) + (" e " if len(folder_list) > 1 else "") + folder_list[-1]
+                   if folder_list else "")
     return {
         "demanda_criada": f"{who} criou “{title}”",
         "demanda_editada": f"{who} editou “{title}”" + (f": {changes}" if changes and visible else ""),
@@ -1807,6 +1842,9 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "feriado_removido": f"{who} removeu o feriado {detail}",
         "prioridade_criada": f"{who} acrescentou “{detail}” às prioridades do mês",
         "prioridade_feita": f"{who} marcou como feita a prioridade “{detail}”",
+        "prioridade_pasta_feita": f"{who} marcou “{folder_title}” como feita {folder_text}",
+        "prioridade_pasta_desfeita": f"{who} desmarcou “{folder_title}” {folder_text}",
+        "pastas_alteradas": f"{who} mudou as pastas de {detail}",
         "prioridade_desfeita": f"{who} desmarcou a prioridade “{detail}”",
         "prioridade_removida": f"{who} removeu “{detail}” das prioridades do mês",
         "prioridades_padrao": f"{who} criou a lista padrão de prioridades de {month_label(detail) if is_month(detail) else detail}",

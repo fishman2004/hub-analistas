@@ -29,6 +29,11 @@ class Person:
     def is_manager(self) -> bool:
         return self.role == "gestor"
 
+    @property
+    def is_assistant(self) -> bool:
+        """Assistente: jovem aprendiz de meio período, sem pasta própria (fase 16)."""
+        return self.role == "assistente"
+
 
 def _row(r) -> Person:
     return Person(r["id"], r["name"], r["initials"], r["color"], bool(r["active"]),

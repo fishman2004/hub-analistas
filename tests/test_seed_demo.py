@@ -37,7 +37,9 @@ def test_seeds_empty_folder(tmp_path, monkeypatch):
     assert all(p.has_pin for p in people.values())
     assert people["Ana Souza"].is_admin and people["Bianca Lima"].is_manager
     items = list_month(db, month_of(at(10)))
-    assert len(items) == 5 and sum(p.done for p in items) == 2
+    assert len(items) == 4 and sum(p.done for p in items) == 1  # as comissões, feitas pelas 4 pastas
+    metas = items[0]
+    assert metas.steps and metas.missing == ("C", "D", "E", "F", "G") and metas.folder_done("A")
     envios = tv_envios(db, at(10))  # o histórico fictício do Pombo entra na TV
     assert envios and {"ok", "falha", "andamento"} == {r["grupo"] for r in envios["rodadas"]}
     assert all(r["hora"] <= "10:00" for r in envios["rodadas"])  # só o que já aconteceu

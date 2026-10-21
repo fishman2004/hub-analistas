@@ -239,6 +239,51 @@ fieldset.escolhas .check input { margin-top: 0; }
 .prio-texto { flex: 1; min-width: 200px; display: grid; gap: 2px; }
 .prio-titulo { font-weight: 600; overflow-wrap: anywhere; }
 .prio.feita .prio-titulo { color: var(--suave); text-decoration: line-through; }
+/* por pasta (fase 16): a letra com a cor da pasta, quem fez e quem falta */
+.letra-pasta { --lp: #6e7781; flex: none; display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 5px; border-radius: 6px; background: var(--lp); color: #fff; font-weight: 800; font-size: .85rem; }
+.letra-pasta.pasta-A { --lp: #e1251b; } .letra-pasta.pasta-B { --lp: #fe017e; } .letra-pasta.pasta-C { --lp: #6b2c91; }
+.letra-pasta.pasta-D { --lp: #5bb8ea; color: #0e141a; } .letra-pasta.pasta-E { --lp: #1e6b3a; } .letra-pasta.pasta-F { --lp: #1f3fa0; }
+.prio-pastas { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.prio-pastas li { display: flex; align-items: center; gap: 6px; padding: 3px 6px 3px 3px; border: 1px solid var(--linha); border-radius: 8px; font-size: .85rem; }
+.prio-pastas li.falta { border-style: dashed; color: var(--suave); }
+.prio-pastas li.falta .letra-pasta { opacity: .55; }
+.prio-pastas li.feita { border-color: var(--sala); }
+.prio-pastas form { margin: 0; }
+.prio.atrasada .prio-pastas li.falta { border-color: var(--atraso); color: var(--atraso); }
+button.mini { padding: 1px 8px; font-size: .8rem; min-height: 0; }
+.prio-por-pasta { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .9rem; }
+.prio-por-pasta li { display: flex; align-items: center; gap: 6px; }
+.prio-por-pasta li.completa { color: var(--sala); font-weight: 600; }
+/* item com etapas (Metas do mês): etapas nas linhas, pastas nas colunas; a pasta que concluiu fica destacada */
+.prio-etapas { max-width: 900px; margin: 0 0 16px; background: var(--cartao); border: 1px solid var(--linha); border-left: 5px solid var(--reuniao); border-radius: var(--raio); padding: 12px; }
+.prio-etapas.atrasada { border-color: var(--atraso); border-left-color: var(--atraso); }
+.prio-etapas.feita { border-left-color: var(--sala); }
+.etapas-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.etapas-topo h2 { margin: 0; font-size: 1.1rem; text-transform: none; letter-spacing: 0; color: var(--texto, inherit); }
+.etapas-topo .meta { margin: 2px 0 0; }
+.etapas-topo form { margin: 0; }
+.etapas-rolagem { overflow-x: auto; margin-top: 10px; }
+.etapas { border-collapse: separate; border-spacing: 0 6px; width: 100%; }
+.etapas th, .etapas td { padding: 6px 8px; text-align: center; }
+.etapas thead th { font-weight: 600; vertical-align: bottom; }
+.etapas .etapa-nome { text-align: left; font-weight: 500; min-width: 200px; }
+.etapas tbody th, .etapas tbody td { background: color-mix(in srgb, var(--azul) 6%, var(--cartao)); border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha); }
+.etapas tbody th { border-left: 1px solid var(--linha); border-radius: 8px 0 0 8px; }
+.etapas tbody td:last-child { border-right: 1px solid var(--linha); border-radius: 0 8px 8px 0; }
+.etapa-num { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 8px; border-radius: 50%; background: var(--linha); font-size: .8rem; font-weight: 700; }
+.etapas .col { min-width: 52px; }
+.etapas .col.concluida { background: color-mix(in srgb, var(--sala) 16%, var(--cartao)); }
+.etapas thead .col.concluida { border-radius: 8px 8px 0 0; }
+.etapas .col-estado { display: block; margin-top: 3px; font-size: .75rem; font-weight: 600; color: var(--suave); }
+.etapas .col.concluida .col-estado { color: var(--sala); }
+.etapas thead .col.minha .letra-pasta { outline: 2px solid var(--azul); outline-offset: 2px; }
+.etapas form { margin: 0; }
+.celula { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border-radius: 8px; font-size: 1.1rem; font-weight: 700; background: transparent; border: 1px solid transparent; min-height: 0; }
+.celula.sim { color: var(--sala); }
+.celula.nao { color: var(--suave); }
+.prio-etapas.atrasada .celula.nao { color: var(--atraso); }
+button.celula { cursor: pointer; }
+button.celula:hover, button.celula:focus-visible { border-color: var(--azul); }
 .prio-padrao p, .prio-padrao ul { margin: 0; }
 .prio-padrao ul { padding-left: 20px; }
 .prio-padrao { margin-bottom: 16px; }

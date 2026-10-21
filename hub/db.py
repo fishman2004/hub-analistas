@@ -244,6 +244,25 @@ MIGRATIONS: list[tuple[int, str]] = [
             PRIMARY KEY (mode_id, screen)
         );
     """),
+    (11, """
+        -- v3 · prioridades por pasta: cada analista cuida das suas pastas e marca a prioridade do mês
+        -- por pasta (e, num item com etapas, etapa por etapa). As marcas antigas (priorities.done_by/
+        -- done_at) continuam valendo para o item todo.
+        CREATE TABLE person_folders (
+            person_id INTEGER NOT NULL REFERENCES people(id),
+            folder TEXT NOT NULL,                        -- A a G
+            PRIMARY KEY (person_id, folder)
+        );
+        CREATE TABLE priority_marks (
+            priority_id INTEGER NOT NULL REFERENCES priorities(id),
+            folder TEXT NOT NULL,
+            step INTEGER NOT NULL DEFAULT 0,             -- a etapa (item sem etapas: sempre 0)
+            done_by INTEGER REFERENCES people(id),
+            done_at TEXT NOT NULL,
+            PRIMARY KEY (priority_id, folder, step)
+        );
+        ALTER TABLE priorities ADD COLUMN steps TEXT NOT NULL DEFAULT '';  -- as etapas, uma por linha
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

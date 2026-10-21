@@ -262,3 +262,18 @@ Pedido do gestor: exportar uma das telas da TV em PDF, para mandar a alguém.
 - **Sem imagem PNG** nesta fase: o PDF abre no celular.
 
 Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 15.1 a 15.4 do [plano da v3](plano-v3.md)).
+
+## Prioridades por pasta e o papel Assistente (fase 16)
+
+Pedido do Kayo: cada pessoa confirma que fez as prioridades do mês **nas suas pastas**, e a lista mostra quem de cada pasta já fez. E um papel novo, **Assistente**, para os jovens aprendizes de meio período, que pegam demandas mais simples, sem responsabilidade direta por uma pasta, e não fazem as prioridades.
+
+- **Cada pessoa é ligada às suas pastas** na página **Pessoas** (só administrador). Uma pessoa pode ter várias pastas, e uma pasta pode ter mais de uma pessoa: aí **qualquer uma delas** marca pela pasta (uma marca por pasta). O Canal Farma é a pasta G.
+- **Quais pastas cada item pede:** as pastas que têm alguém ligado. Item com pasta escolhida pede só aquela pasta. O item fica feito quando todas as pastas concluíram, e a TV continua até tudo estar feito.
+- **Mostra a pasta, não a pessoa** (pedido do Kayo): cada item mostra quais pastas já concluíram e quais faltam. Quem marcou e quando fica no histórico e na dica do mouse.
+- **Quem tem mais de uma pasta escolhe qual concluiu** (pedido do Kayo): um botão por pasta, sem "marcar todas". Quem tem uma pasta só usa "Marcar como feita". O **gestor e os administradores** marcam (e desfazem) qualquer pasta, para cobrir uma falta ou férias.
+- **Metas do mês com etapas, à parte** (pedido do Kayo): 1. enviar o arquivo ao gerente; 2. o gerente fazendo ajustes com a supervisão; 3. o gerente devolve a planilha; 4. upload no sistema (375, 353 e 399). Fica em cima da lista, numa tabela de comparação: etapas nas linhas, pastas nas colunas, ✓ ou ✕ em cada uma, e a coluna da pasta que concluiu todas as etapas fica destacada (página e TV). O analista da pasta marca também as etapas do gerente (o gerente não usa o Hub). As etapas podem ser marcadas em qualquer ordem. A lista padrão do mês passou a ter "Metas do mês" no lugar de "Lançar a meta no sistema" e "Confirmar o recebimento da meta com o gerente"; qualquer item novo também pode ter etapas (uma por linha).
+- **Enquanto ninguém estiver ligado a uma pasta,** a lista funciona como antes (uma marcação para o item todo), para a atualização não mudar nada até o administrador escolher as pastas. Um item marcado antes da mudança continua feito para todas as pastas.
+- **Na TV:** cada item mostra as letras das pastas; a que concluiu fica acesa com um ✓, a que falta fica apagada e tracejada (em vermelho, se atrasada). As Metas do mês aparecem como a tabela, sempre no topo.
+- **Assistente:** sem pasta e fora das prioridades (vê a lista, mas não cria, marca nem remove). Pode ser responsável por demandas e por rotinas, aparece na presença da TV e usa o banco de horas com a **jornada dos assistentes** (padrão 6h de segunda a sexta, sábado sem jornada; o gestor muda no Banco de horas da equipe). Não vê a visão do gestor.
+
+Escolhas padrão, o Kayo confirma (21/10/2026): jornada do assistente (6h), assistente responsável por rotinas, gestor/administradores cobrindo qualquer pasta, etapas em qualquer ordem e o upload (375, 353 e 399) como uma etapa só.

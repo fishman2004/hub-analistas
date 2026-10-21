@@ -67,5 +67,16 @@
   <p class="ajuda">É o tempo entre a entrada e a saída esperadas, com o almoço dentro (das 8h às 18h = 10:00). A diferença de cada dia é o tempo entre a entrada e a saída lançadas menos a jornada. Domingo nunca tem jornada. Mudar a jornada recalcula todos os dias lançados.</p>
   <div><button>Salvar jornada</button></div>
 </form>
+
+<form class="ficha cartao-form" method="post" action="/horas/equipe/jornada">
+  <h2>Jornada dos assistentes</h2>
+  <input type="hidden" name="quem" value="assistente">
+  <div class="linha">
+    <div><label for="a-semana">Segunda a sexta (horas)</label><input type="text" id="a-semana" name="semana" value="{{ h.hhmm(assistant_journey.semana) }}" pattern="\d{1,2}:\d{2}" placeholder="06:00" required></div>
+    <div><label for="a-sabado">Sábado <span class="opcional">(00:00 = sem jornada)</span></label><input type="text" id="a-sabado" name="sabado" value="{{ h.hhmm(assistant_journey.sabado) }}" pattern="\d{1,2}:\d{2}" placeholder="00:00"></div>
+  </div>
+  <p class="ajuda">Vale para quem tem o papel Assistente (jovem aprendiz de meio período), no lugar da jornada acima.</p>
+  <div><button>Salvar jornada dos assistentes</button></div>
+</form>
 </div>
 {% endblock %}

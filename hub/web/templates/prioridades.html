@@ -13,7 +13,15 @@
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
 
 {% if editable %}
+{% if owners %}
+<p class="ajuda">A lista do início do mês fica na TV até tudo estar feito. Cada pessoa marca as suas pastas (quem tem mais de uma escolhe qual pasta concluiu), e o item fica feito quando todas as pastas concluíram (item com pasta escolhida: só aquela pasta). O gestor e os administradores também marcam qualquer pasta, para cobrir uma falta. Remover: quem acrescentou o item ou um administrador.</p>
+{% if user.is_assistant %}<div class="aviso" role="status">Assistente não faz as prioridades do mês: a lista fica aqui só para consulta.</div>
+{% elif not mine %}<p class="ajuda">Você ainda não está ligado a nenhuma pasta. Um administrador escolhe as pastas de cada pessoa na página Pessoas.</p>{% endif %}
+{% else %}
 <p class="ajuda">A lista do início do mês fica na TV até tudo estar feito. Qualquer pessoa marca como feita, e fica guardado quem fez e quando. Remover: quem acrescentou o item ou um administrador.</p>
+{% if user.is_admin %}<p class="ajuda">Para cada pessoa marcar as suas pastas, ligue cada uma às pastas de que ela cuida na página <a href="/pessoas">Pessoas</a>.</p>{% endif %}
+{% if user.is_assistant %}<div class="aviso" role="status">Assistente não faz as prioridades do mês: a lista fica aqui só para consulta.</div>{% endif %}
+{% endif %}
 {% else %}
 <div class="aviso" role="status">Só consulta: a lista de {{ month_label(month) }} não muda mais. Só a lista do mês atual pode mudar.</div>
 {% endif %}
@@ -24,30 +32,124 @@
     {%- if late_count %} · <span class="atraso">{{ late_count }} atrasada{{ 's' if late_count != 1 else '' }}</span>{% endif %}
     {%- if editable %} · <span class="ajuda">{{ 'tudo feito: a tela saiu da TV' if done_count == items|length else 'na TV até tudo estar feito' }}</span>{% endif %}</p>
   <div class="prio-barra" aria-hidden="true"><span style="width: {{ (100 * done_count / items|length)|round(1) }}%"></span></div>
+  {% if folder_summary %}
+  <ul class="prio-por-pasta" aria-label="Por pasta">
+    {% for f, feitas, total in folder_summary %}
+    <li class="{{ 'completa' if feitas == total else '' }}"><span class="letra-pasta pasta-{{ f }}">{{ f }}</span> {{ feitas }} de {{ total }}{{ ' ✓' if feitas == total else '' }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </section>
 
+{% for p in items if p.steps and p.required and not p.done_at %}
+{# item com etapas (as Metas do mês): à parte, numa tabela com as etapas nas linhas e as pastas nas colunas #}
+{% set late = is_late(p, today) %}
+<section class="prio-etapas{{ ' feita' if p.done else '' }}{{ ' atrasada' if late else '' }}" aria-label="{{ p.title }}">
+  <div class="etapas-topo">
+    <div>
+      <h2>{{ p.title }}</h2>
+      <p class="meta">
+        <span>{{ p.required|length - p.missing|length }} de {{ p.required|length }} pasta{{ 's' if p.required|length != 1 else '' }} concluíram</span>
+        {% if p.due_day %}<span class="{{ 'atraso' if late else '' }}">{{ 'atrasada · ' if late else '' }}até dia {{ p.due_day }}</span>{% endif %}
+      </p>
+    </div>
+    {% if editable and can_remove(p, user) %}
+    <form method="post" action="/prioridades/{{ p.id }}/remover" data-titulo="{{ p.title }}" onsubmit="return confirm('Remover “' + this.dataset.titulo + '” das prioridades do mês?')">
+      <button class="perigo">Remover</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="etapas-rolagem">
+    <table class="etapas">
+      <thead>
+        <tr>
+          <th scope="col" class="etapa-nome">Etapa</th>
+          {% for f in p.required %}
+          <th scope="col" class="col{{ ' concluida' if p.folder_done(f) else '' }}{{ ' minha' if f in mine else '' }}">
+            <span class="letra-pasta pasta-{{ f }}" title="{{ 'Canal Farma' if f == 'G' else 'Pasta ' ~ f }}">{{ f }}</span>
+            <span class="col-estado">{{ 'concluída' if p.folder_done(f) else p.steps_done(f) ~ '/' ~ p.steps|length }}</span>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for step in p.steps %}
+        {% set i = loop.index0 %}
+        <tr>
+          <th scope="row" class="etapa-nome"><span class="etapa-num">{{ loop.index }}</span>{{ step }}</th>
+          {% for f in p.required %}
+          {% set m = p.mark(f, i) %}
+          {% set q = people.get(m.done_by) if m else None %}
+          {% set dica = ('feita em ' ~ m.done_at.strftime('%d/%m às %H:%M') ~ (' por ' ~ q.name if q else '')) if m else 'falta' %}
+          <td class="col{{ ' concluida' if p.folder_done(f) else '' }}{{ ' minha' if f in mine else '' }}">
+            {% if editable and can_mark(f) %}
+            <form method="post" action="/prioridades/{{ p.id }}/{{ 'desfazer' if m else 'feita' }}?pasta={{ f }}&etapa={{ i }}">
+              <button class="celula {{ 'sim' if m else 'nao' }}" title="{{ dica }}" aria-label="Pasta {{ f }}, {{ step }}: {{ dica }}. {{ 'Desfazer' if m else 'Marcar como feita' }}">{{ '✓' if m else '✗' }}</button>
+            </form>
+            {% else %}
+            <span class="celula {{ 'sim' if m else 'nao' }}" title="{{ dica }}" aria-label="Pasta {{ f }}, {{ step }}: {{ dica }}">{{ '✓' if m else '✗' }}</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if editable and not user.is_assistant %}<p class="ajuda">Clique no ✗ da sua pasta quando a etapa estiver feita (e no ✓ para desfazer). As etapas do gerente também são marcadas pelo analista da pasta.</p>{% endif %}
+</section>
+{% endfor %}
+
 <ul class="prioridades">
-  {% for p in items %}
+  {% for p in items if not (p.steps and p.required and not p.done_at) %}
   {% set late = is_late(p, today) %}
   {% set quem = people.get(p.done_by) %}
   <li class="prio{{ ' feita' if p.done else '' }}{{ ' atrasada' if late else '' }}">
     <span class="prio-marca" aria-hidden="true">{{ '✓' if p.done else '' }}</span>
     <div class="prio-texto">
       <span class="prio-titulo">{{ p.title }}</span>
-      {% if p.folder or p.due_day or p.done %}
+      {% if p.folder or p.due_day or p.done or p.steps %}
       <p class="meta">
         {% if p.folder %}<span>Pasta {{ 'G (Canal Farma)' if p.folder == 'G' else p.folder }}</span>{% endif %}
         {% if p.due_day %}<span class="{{ 'atraso' if late else '' }}">{{ 'atrasada · ' if late else '' }}até dia {{ p.due_day }}</span>{% endif %}
-        {% if p.done %}<span>feita{{ ' por ' ~ quem.name if quem else '' }} em {{ p.done_at.strftime('%d/%m') }} às {{ p.done_at.strftime('%H:%M') }}</span>{% endif %}
+        {% if p.steps %}<span>etapas: {{ p.steps|join(' → ') }}</span>{% endif %}
+        {% if p.done_at %}<span>feita{{ ' por ' ~ quem.name if quem else '' }} em {{ p.done_at.strftime('%d/%m') }} às {{ p.done_at.strftime('%H:%M') }}{{ ' (para todas as pastas)' if p.required else '' }}</span>
+        {% elif p.required and p.done %}<span>concluída por todas as pastas</span>{% endif %}
       </p>
+      {% endif %}
+      {% set meus = p.required|select('in', mine)|list %}
+      {% if p.required and not p.done_at %}
+      <ul class="prio-pastas">
+        {% for f in p.required %}
+        {% set m = p.mark(f) %}
+        {% set q = people.get(m.done_by) if m else None %}
+        <li class="{{ 'feita' if m else 'falta' }}" {% if m %}title="feita em {{ m.done_at.strftime('%d/%m às %H:%M') }}{{ ' por ' ~ q.name if q else '' }}"{% endif %}>
+          <span class="letra-pasta pasta-{{ f }}">{{ f }}</span>
+          <span>{{ '✓ concluída' if m else 'falta' }}</span>
+          {# quem tem várias pastas no item escolhe pasta por pasta; com uma só, o botão do lado basta #}
+          {% if editable and can_mark(f) and (f not in mine or meus|length > 1 or m) %}
+          <form method="post" action="/prioridades/{{ p.id }}/{{ 'desfazer' if m else 'feita' }}?pasta={{ f }}"><button class="discreto mini" aria-label="{{ 'Desfazer' if m else 'Marcar' }} a pasta {{ f }}">{{ 'Desfazer' if m else 'Marcar' }}</button></form>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
       {% endif %}
     </div>
     {% if editable %}
+    {% set meus_falta = meus|reject('in', p.marks|map(attribute='folder')|list)|list %}
     <div class="cartao-acoes">
+      {% if not p.required %}
+      {% if not user.is_assistant %}
       {% if p.done %}
       <form method="post" action="/prioridades/{{ p.id }}/desfazer"><button class="discreto">Desfazer</button></form>
       {% else %}
       <form method="post" action="/prioridades/{{ p.id }}/feita"><button>Marcar como feita</button></form>
+      {% endif %}
+      {% endif %}
+      {% elif p.done_at %}
+      {% if not user.is_assistant %}<form method="post" action="/prioridades/{{ p.id }}/desfazer"><button class="discreto">Desfazer</button></form>{% endif %}
+      {% elif meus|length == 1 and meus_falta %}
+      <form method="post" action="/prioridades/{{ p.id }}/feita?pasta={{ meus[0] }}"><button>Marcar como feita{{ ' (pasta ' ~ meus[0] ~ ')' if p.required|length > 1 else '' }}</button></form>
       {% endif %}
       {% if can_remove(p, user) %}
       {# o título vai num data-atributo: dentro do JS, um apóstrofo quebraria o confirm #}
@@ -64,13 +166,13 @@
 <p class="vazio">Nenhuma prioridade em {{ month_label(month) }}.</p>
 {% endif %}
 
-{% if editable %}
+{% if editable and not user.is_assistant %}
 {% if not items %}
 <form class="ficha cartao-form prio-padrao" method="post" action="/prioridades/padrao">
   <h2>Lista padrão do mês</h2>
   <p class="ajuda">O mês ainda não tem lista. Crie a lista de sempre e depois acrescente ou remova o que precisar:</p>
   <ul>
-    {% for title, folder, due in DEFAULT_LIST %}<li>{{ title }}{% if due %} <span class="ajuda">· até dia {{ due }}</span>{% endif %}</li>{% endfor %}
+    {% for title, folder, due, steps in DEFAULT_LIST %}<li>{{ title }}{% if due %} <span class="ajuda">· até dia {{ due }}</span>{% endif %}{% if steps %} <span class="ajuda">· {{ steps|length }} etapas: {{ steps|join(' → ') }}</span>{% endif %}</li>{% endfor %}
   </ul>
   <div><button>Criar lista padrão do mês</button></div>
 </form>
@@ -95,6 +197,11 @@
       <input class="curto" type="number" id="prazo" name="prazo" value="{{ v.prazo }}" min="1" max="{{ last_day }}" placeholder="10">
       <p class="ajuda">Dia de {{ month_label(month) }}. Passou do dia e continua em aberto: aparece como atrasada, aqui e na TV.</p>
     </div>
+  </div>
+  <div>
+    <label for="etapas">Etapas <span class="opcional">(opcional, uma por linha)</span></label>
+    <textarea id="etapas" name="etapas" rows="3" placeholder="Enviar o arquivo ao gerente&#10;Gerente devolve a planilha&#10;Upload no sistema">{{ v.etapas }}</textarea>
+    <p class="ajuda">Com etapas, o item fica à parte, numa tabela: cada pasta marca etapa por etapa e só conclui com todas feitas.</p>
   </div>
   <div><button>Acrescentar</button></div>
 </form>
