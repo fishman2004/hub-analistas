@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% set active = 'tv' %}
+{% block title %}Modos da TV · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>Modos da TV</h1>
+  <div class="acoes">
+    {% if can_manage %}<a class="botao" href="/modos/novo">+ Novo modo</a>{% endif %}
+    <a class="botao discreto" href="/tv-da-sala">TV da sala</a>
+  </div>
+</div>
+<p class="ajuda">Cada modo diz quais telas a TV passa, em que ordem e por quanto tempo. Um modo com regra ligada entra sozinho quando a regra vale (com duas valendo, vence o de cima na lista). Sem nenhuma, fica o Padrão. Na página <a href="/tv-da-sala">TV da sala</a>, qualquer pessoa troca o modo à mão.{% if not can_manage %} Só o gestor e os administradores criam e mudam os modos.{% endif %}</p>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+
+<div class="tabela-rolagem">
+<table class="tabela tabela-modos">
+  <thead><tr><th>Modo</th><th>Telas, na ordem</th><th>Liga sozinho</th><th></th></tr></thead>
+  <tbody>
+  {% for m in modes %}
+  <tr class="{{ 'modo-agora' if m.id == mode_now.mode.id else '' }}">
+    <td><strong>{{ m.name }}</strong>
+      {% if m.id == mode_now.mode.id %}<span class="etiqueta etiqueta-agora">na TV agora</span>{% endif %}
+      {% if not m.sound %}<br><span class="ajuda">sem som do aviso</span>{% endif %}
+      {% if m.hide_titles %}<br><span class="ajuda">títulos escondidos</span>{% endif %}</td>
+    <td>{% for s in m.screens if s.enabled %}{{ s.label }} <span class="ajuda">{{ s.seconds }} s</span>{{ ' · ' if not loop.last else '' }}{% endfor %}</td>
+    <td>{% if m.is_default %}<span class="ajuda">quando nenhum outro vale</span>
+      {% elif m.rule %}{{ m.rule_text|capitalize }}{% if not m.rule_on %} <span class="etiqueta">desligada</span>{% endif %}
+      {% else %}<span class="ajuda">só à mão</span>{% endif %}</td>
+    <td class="acoes-linha">
+      <a class="botao discreto" href="/tv?modo={{ m.id }}" target="_blank" rel="noopener" title="Abre a TV no seu PC já neste modo, sem mexer na sala">Pré-visualizar</a>
+      {% if can_manage %}
+      <a class="botao discreto" href="/modos/{{ m.id }}">Editar</a>
+      <form method="post" action="/modos/{{ m.id }}/duplicar"><button class="discreto">Duplicar</button></form>
+      {% if m.rule and not m.is_default %}
+      <form method="post" action="/modos/{{ m.id }}/{{ 'desligar-regra' if m.rule_on else 'ligar-regra' }}"><button class="discreto">{{ 'Desligar regra' if m.rule_on else 'Ligar regra' }}</button></form>
+      {% endif %}
+      <form method="post" action="/modos/{{ m.id }}/subir"><button class="discreto" title="Subir na lista" {% if loop.first %}disabled{% endif %}>↑</button></form>
+      <form method="post" action="/modos/{{ m.id }}/descer"><button class="discreto" title="Descer na lista" {% if loop.last %}disabled{% endif %}>↓</button></form>
+      {% if not m.builtin %}
+      <form method="post" action="/modos/{{ m.id }}/excluir" data-nome="{{ m.name }}" onsubmit="return confirm('Apagar o modo ' + this.dataset.nome + '?')"><button class="perigo">Apagar</button></form>
+      {% endif %}
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="ajuda">Dia útil, nas regras, é de segunda a sexta, sem os feriados do <a href="/calendario/feriados">calendário</a>. Se nenhuma tela de um modo tiver o que mostrar (por exemplo, só painéis e as planilhas não chegaram), a TV mostra o Quadro.</p>
+{% endblock %}

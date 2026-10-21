@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% set active = 'tv' %}
+{% block title %}{{ v.name or 'Novo modo' }} · Modos da TV · Hub dos Analistas{% endblock %}
+{% block main %}
+<h1>{{ 'Editar modo' if v.id else 'Novo modo' }}</h1>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+<form class="ficha" method="post" action="/modos{{ '/' ~ v.id if v.id else '' }}">
+  <div>
+    <label for="name">Nome</label>
+    <input type="text" id="name" name="name" value="{{ v.name }}" maxlength="40" required placeholder="Fechamento da pasta B" {% if not v.id %}autofocus{% endif %}>
+  </div>
+
+  <fieldset class="escolhas modo-telas">
+    <legend>Telas, na ordem da rotação</legend>
+    <p class="ajuda">Ligue as telas do modo e use ↑ ↓ para mudar a ordem. Uma tela sem nada para mostrar (prazos, painéis sem planilha) fica de fora sozinha.</p>
+    <table class="tabela">
+      <thead><tr><th>Ligada</th><th>Tela</th><th>Segundos</th><th>Ordem</th></tr></thead>
+      <tbody id="telas">
+      {% for s in v.screens %}
+      <tr>
+        <td><input type="hidden" name="tela" value="{{ s.id }}">
+          <input type="checkbox" id="ligada_{{ s.id }}" name="ligada" value="{{ s.id }}" {% if s.enabled %}checked{% endif %} {% if v.is_default and s.id == 'quadro' %}checked onclick="return false" title="No Padrão, o Quadro fica sempre ligado"{% endif %}></td>
+        <td><label for="ligada_{{ s.id }}">{{ s.label }}</label></td>
+        <td><input type="number" name="segundos_{{ s.id }}" value="{{ s.seconds }}" min="{{ MIN }}" max="{{ MAX }}" required class="curto" aria-label="Segundos de {{ s.label }}"></td>
+        <td class="sem-quebra"><button type="button" class="discreto mover" data-d="-1" aria-label="Subir {{ s.label }}">↑</button><button type="button" class="discreto mover" data-d="1" aria-label="Descer {{ s.label }}">↓</button></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </fieldset>
+
+  <div class="linha">
+    <div>
+      <label for="page_seconds">Tempo de cada página das colunas (s)</label>
+      <input type="number" id="page_seconds" name="page_seconds" value="{{ v.page_seconds }}" min="{{ PAGE_MIN }}" max="{{ PAGE_MAX }}" required>
+    </div>
+  </div>
+  <label class="check"><input type="checkbox" name="sound" value="1" {% if v.sound %}checked{% endif %}> <span><strong>Som do aviso das rotinas</strong> · desligado, a faixa aparece sem tocar (bom para reunião na sala)</span></label>
+  <label class="check"><input type="checkbox" name="hide_titles" value="1" {% if v.hide_titles %}checked{% endif %}> <span><strong>Esconder os títulos</strong> · cada cartão aparece só como “Demanda”, com a cor e as iniciais (bom para visita de fora)</span></label>
+
+  {% if v.is_default %}
+  <p class="ajuda">O Padrão não tem regra: ele vale sempre que nenhum outro modo vale.</p>
+  {% else %}
+  <fieldset class="escolhas modo-regra">
+    <legend>Liga sozinho</legend>
+    <div class="linha">
+      <div>
+        <label for="tipo">Quando</label>
+        <select id="tipo" name="tipo">{% for k, label in RULES.items() %}<option value="{{ k }}" {% if k == v.tipo %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      </div>
+      <div data-para="primeiros_dias_uteis ultimos_dias_uteis"><label for="n">Quantos dias úteis</label><input type="number" id="n" name="n" value="{{ v.n }}" min="1" max="15"></div>
+      <div data-para="dias_do_mes"><label for="de">Do dia</label><input type="number" id="de" name="de" value="{{ v.de }}" min="1" max="31"></div>
+      <div data-para="dias_do_mes"><label for="ate">Até o dia</label><input type="number" id="ate" name="ate" value="{{ v.ate }}" min="1" max="31"></div>
+    </div>
+    <div data-para="dias_da_semana" class="escolhas-dias">
+      {% for d in WEEKDAYS %}<label class="check"><input type="checkbox" name="dias" value="{{ loop.index0 }}" {% if loop.index0 in v.dias %}checked{% endif %}> {{ d }}</label>{% endfor %}
+    </div>
+    <div data-para="primeiros_dias_uteis ultimos_dias_uteis dias_do_mes dias_da_semana">
+      <label for="janelas">Só nestes horários <span class="opcional">(opcional, ex.: 14:40-15:10, 16:40-17:10)</span></label>
+      <input type="text" id="janelas" name="janelas" value="{{ v.janelas }}" placeholder="16:30-18:00">
+    </div>
+    <label class="check" data-para="primeiros_dias_uteis ultimos_dias_uteis dias_do_mes dias_da_semana"><input type="checkbox" name="rule_on" value="1" {% if v.rule_on %}checked{% endif %}> <span><strong>Regra ligada</strong> · desligada, o modo só entra à mão</span></label>
+    <p class="ajuda">Dia útil é de segunda a sexta, sem os feriados do calendário. "Primeiros dias úteis" vale do dia 1º até o último deles (o fim de semana no meio conta); "últimos" vale do primeiro deles até o fim do mês.</p>
+  </fieldset>
+  {% endif %}
+
+  <div class="acoes">
+    <button>Salvar</button>
+    <a class="botao discreto" href="/modos">Cancelar</a>
+    {% if v.id %}<a class="botao discreto" href="/tv?modo={{ v.id }}" target="_blank" rel="noopener">Pré-visualizar (como está salvo)</a>{% endif %}
+  </div>
+</form>
+<script>
+  // ↑ ↓ mudam a ordem das linhas; a ordem dos campos "tela" é a ordem da rotação
+  for (const b of document.querySelectorAll("button.mover")) {
+    b.addEventListener("click", () => {
+      const tr = b.closest("tr");
+      const outra = b.dataset.d === "-1" ? tr.previousElementSibling : tr.nextElementSibling;
+      if (!outra) return;
+      if (b.dataset.d === "-1") outra.before(tr); else outra.after(tr);
+      b.focus();
+    });
+  }
+  const tipo = document.getElementById("tipo");
+  function regra() {
+    for (const el of document.querySelectorAll("[data-para]")) el.hidden = !el.dataset.para.split(" ").includes(tipo.value);
+  }
+  if (tipo) { tipo.addEventListener("change", regra); regra(); }
+</script>
+{% endblock %}

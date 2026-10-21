@@ -18,7 +18,7 @@ from ..db import Database, events, first_event_day
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, calendario, notas
+from .. import anexos, calendario, modos, notas
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -68,7 +68,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
     seen = tvcontrole.Seen()  # qual tela está na TV agora (só na memória)
 
     @app.get("/api/tv")
-    def api_tv(tela: str = "", pausada: str = "", espiar: str = ""):
+    def api_tv(tela: str = "", pausada: str = "", espiar: str = "", modo: str = ""):
         now = clock()
         if tela and not espiar:  # a aba "no meu PC" não conta como a TV da sala
             seen.update(tela, pausada == "1", now)
@@ -76,7 +76,10 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         columns = board(db, now)
         # ausente pelo calendário (fase 13) e sem ter marcado outra presença hoje: "Ausente até dd/mm"
         away = calendario.absent_today(db, now.date())
-        return {
+        # pré-visualizar um modo (fase 14): só na aba "no meu PC", nunca muda a TV da sala
+        preview = modos.get_mode(db, int(modo)) if espiar and modo.isdigit() else None
+        mode = preview or modos.current(db, now).mode
+        payload = {
             "now": now.isoformat(timespec="seconds"),
             "people": [
                 {"name": p.name, "initials": p.initials, "color": p.color, "status": status,
@@ -93,8 +96,15 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             # pausa pelo app (fase 10) e quanto dura a pausa feita com um clique na própria TV
             "pausa": tvcontrole.tv_payload(db, now, owners),
             "pausa_minutos": tvcontrole.DEFAULT_MINUTES,
-            **rotation(db, now),
+            "modo": {"nome": mode.name, "padrao": mode.is_default, "previa": preview is not None},
+            **rotation(db, now, mode),
         }
+        if not mode.sound:  # modo sem som (ex.: Reunião na sala): a faixa aparece, sem tocar
+            for a in payload["avisos"]:
+                a["mudo"] = True
+        if mode.hide_titles:  # modo com os títulos escondidos (ex.: Visita): o texto nem sai do servidor
+            modos.mask_titles(payload)
+        return payload
 
     # ---------- TV da sala: pausar, trocar de tela e ver uma tela no meu PC (fase 10) ----------
 
@@ -102,7 +112,10 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         now = clock()
         pause = tvcontrole.current_pause(db, now)
         who = get_person(db, pause["por"]) if pause and pause.get("por") else None
+        mode_now = modos.current(db, now)
         return page(request, "tv-da-sala.html", user, status_code, seen=seen.get(now), pause=pause,
+                    mode_now=mode_now, mode_by=get_person(db, mode_now.by) if mode_now.by else None,
+                    modes=modos.list_modes(db), mode_durations=modos.DURATIONS,
                     pause_who=who, pause_until=datetime.fromisoformat(pause["ate"]) if pause else None,
                     screens=rotation(db, now)["screens"], labels=tvcontrole.LABELS, durations=tvcontrole.DURATIONS,
                     default_minutes=str(tvcontrole.DEFAULT_MINUTES), **ctx)
@@ -157,6 +170,142 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             return to_login()
         tvcontrole.resume(db, clock(), user)
         return back_to_tv_room("A TV da sala voltou a passar as telas sozinha.")
+
+    @app.post("/tv-da-sala/modo")
+    def tv_da_sala_modo(request: Request, modo: str = Form(""), ate: str = Form("dia")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        if modo == "automatico":
+            modos.back_to_automatic(db, clock(), user)
+            return back_to_tv_room("A TV da sala voltou ao modo automático.")
+        try:
+            mode = modos.choose(db, clock(), user, int(modo) if modo.isdigit() else 0, ate)
+        except ValidationError as exc:
+            return tv_room_page(request, user, 422, error=str(exc))
+        return back_to_tv_room(f"A TV da sala está no modo “{mode.name}” {modos.DURATIONS[ate]}. "
+                               "Ela troca em até 5 segundos.")
+
+    # ---------- modos da TV (fase 14) ----------
+
+    def modes_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
+        return page(request, "modos.html", user, status_code, modes=modos.list_modes(db),
+                    mode_now=modos.current(db, clock()), can_manage=modos.can_manage(user), **ctx)
+
+    def mode_form(request: Request, user: Person, v: dict, status_code: int = 200, **ctx) -> HTMLResponse:
+        return page(request, "modo.html", user, status_code, v=v, RULES=modos.RULES, WEEKDAYS=modos.WEEKDAYS,
+                    MIN=modos.MIN_SECONDS, MAX=modos.MAX_SECONDS, PAGE_MIN=modos.PAGE_MIN, PAGE_MAX=modos.PAGE_MAX,
+                    **ctx)
+
+    def mode_values(m) -> dict:
+        rule = m.rule
+        return {"id": m.id, "name": m.name, "is_default": m.is_default, "builtin": m.builtin,
+                "page_seconds": str(m.page_seconds), "sound": m.sound, "hide_titles": m.hide_titles,
+                "screens": [{"id": s.id, "label": s.label, "seconds": str(s.seconds), "enabled": s.enabled}
+                            for s in m.screens],
+                "rule_on": m.rule_on, "tipo": rule.get("tipo", ""), "n": str(rule.get("n", 5)),
+                "de": str(rule.get("de", "")), "ate": str(rule.get("ate", "")), "dias": rule.get("dias", []),
+                "janelas": ", ".join(f"{a}-{b}" for a, b in rule.get("janelas", []))}
+
+    def parse_mode(form) -> tuple[dict, dict]:
+        labels = {s.id: s.label for s in modos.default_mode(db).screens}
+        order = [str(x) for x in form.getlist("tela") if str(x) in labels]
+        on = set(form.getlist("ligada"))
+        screens = [{"id": t, "label": labels[t], "seconds": str(form.get(f"segundos_{t}", "")).strip(),
+                    "enabled": t in on} for t in order]
+        v = {"name": str(form.get("name", "")), "page_seconds": str(form.get("page_seconds", "")).strip(),
+             "sound": form.get("sound") == "1", "hide_titles": form.get("hide_titles") == "1",
+             "screens": screens, "rule_on": form.get("rule_on") == "1", "tipo": str(form.get("tipo", "")),
+             "n": str(form.get("n", "")).strip(), "de": str(form.get("de", "")).strip(),
+             "ate": str(form.get("ate", "")).strip(), "dias": [int(d) for d in form.getlist("dias") if str(d).isdigit()],
+             "janelas": str(form.get("janelas", ""))}
+        return v, {"name": v["name"], "page_seconds": v["page_seconds"], "sound": v["sound"],
+                   "hide_titles": v["hide_titles"], "rule_on": v["rule_on"],
+                   "screens": [(x["id"], x["seconds"], x["enabled"]) for x in screens]}
+
+    def manage_modes(request: Request) -> tuple[Person | None, Response | None]:
+        user = me(request)
+        if user is None:
+            return None, to_login()
+        if not modos.can_manage(user):
+            return user, forbidden(request, user, "Só o gestor e os administradores mudam os modos da TV.")
+        return user, None
+
+    def back_to_modes(message: str) -> RedirectResponse:
+        return RedirectResponse(f"/modos?ok={quote(message)}", status_code=303)
+
+    @app.get("/modos", response_class=HTMLResponse)
+    def modos_lista(request: Request, ok: str = ""):
+        user = me(request)
+        return to_login() if user is None else modes_page(request, user, ok=ok)
+
+    @app.get("/modos/novo", response_class=HTMLResponse)
+    def modos_novo(request: Request):
+        user, denied = manage_modes(request)
+        if denied:
+            return denied
+        base = mode_values(modos.default_mode(db))
+        v = {**base, "id": "", "name": "", "is_default": False, "builtin": None, "rule_on": False, "tipo": "",
+             "screens": [{**x, "enabled": False} for x in base["screens"]]}
+        return mode_form(request, user, v)
+
+    async def mode_save(request: Request, mode_id: int | None):
+        user, denied = manage_modes(request)
+        if denied:
+            return denied
+        form = await request.form()
+        v, fields = parse_mode(form)
+        current = modos.get_mode(db, mode_id) if mode_id else None
+        if mode_id and current is None:
+            return Response(status_code=404)
+        v.update(id=mode_id or "", is_default=bool(current and current.is_default),
+                 builtin=current.builtin if current else None)
+        try:
+            rule = {} if v["is_default"] else modos.parse_rule(v["tipo"], v["n"], v["de"], v["ate"],
+                                                                [str(d) for d in v["dias"]], v["janelas"])
+            saved = modos.save_mode(db, clock(), user, mode_id, rule=rule, **fields)
+        except ValidationError as exc:
+            return mode_form(request, user, v, 422, error=str(exc))
+        return back_to_modes(f"Modo “{saved.name}” salvo.")
+
+    @app.post("/modos")
+    async def modos_criar(request: Request):
+        return await mode_save(request, None)
+
+    @app.get("/modos/{mode_id}", response_class=HTMLResponse)
+    def modos_editar(request: Request, mode_id: int):
+        user, denied = manage_modes(request)
+        if denied:
+            return denied
+        m = modos.get_mode(db, mode_id)
+        return Response(status_code=404) if m is None else mode_form(request, user, mode_values(m))
+
+    @app.post("/modos/{mode_id}")
+    async def modos_salvar(request: Request, mode_id: int):
+        return await mode_save(request, mode_id)
+
+    @app.post("/modos/{mode_id}/{acao}")
+    def modos_acao(request: Request, mode_id: int, acao: str):
+        user, denied = manage_modes(request)
+        if denied:
+            return denied
+        now = clock()
+        try:
+            if acao == "duplicar":
+                copy = modos.duplicate_mode(db, now, user, mode_id)
+                return RedirectResponse(f"/modos/{copy.id}", status_code=303)
+            if acao == "excluir":
+                modos.delete_mode(db, now, user, mode_id)
+                return back_to_modes("Modo apagado.")
+            if acao in ("subir", "descer"):
+                modos.move_mode(db, now, user, mode_id, -1 if acao == "subir" else 1)
+                return back_to_modes("Ordem dos modos salva.")
+            if acao in ("ligar-regra", "desligar-regra"):
+                modos.set_rule_on(db, now, user, mode_id, acao == "ligar-regra")
+                return back_to_modes("Regra " + ("ligada." if acao == "ligar-regra" else "desligada."))
+        except ValidationError as exc:
+            return modes_page(request, user, 422, error=str(exc))
+        return Response(status_code=404)
 
     # ---------- app do analista ----------
 
@@ -1606,6 +1755,13 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "aviso_teste": f"{who} testou o aviso da TV",
         "tv_pausa": f"{who} pausou a TV da sala em “{detail}”",
         "tv_retomada": f"{who} fez a TV da sala voltar a passar as telas",
+        "tv_modo": f"{who} pôs a TV da sala no modo “{detail}”",
+        "tv_modo_automatico": f"{who} fez a TV da sala voltar ao modo automático",
+        "modo_criado": f"{who} criou o modo da TV “{detail}”",
+        "modo_editado": f"{who} editou o modo da TV “{detail}”",
+        "modo_excluido": f"{who} apagou o modo da TV “{detail}”",
+        "modo_regra_ligada": f"{who} ligou a regra automática do modo “{detail}”",
+        "modo_regra_desligada": f"{who} desligou a regra automática do modo “{detail}”",
         "rotina_editada": f"{who} editou a rotina “{detail}”",
         "rotina_desativada": f"{who} desativou a rotina “{detail}”",
         "rotina_reativada": f"{who} reativou a rotina “{detail}”",
