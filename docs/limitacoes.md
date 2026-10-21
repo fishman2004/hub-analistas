@@ -8,4 +8,4 @@
 - **Atualização a cada 5 s na TV e 10 s no app**, não instantânea.
 - **Mover cartões é por botões** (Começar, Concluir, Voltar). Arrastar e soltar fica para quando a equipe pedir.
 - **Uma TV só.** Funciona em mais de uma (basta abrir `/tv`), mas foi pensada para a sala.
-- **Ainda não tem:** avisos sonoros e rotinas com horário, prioridades do mês, banco de horas, visão do gerente e integração com o Pombo. Tudo está no [roadmap](roadmap.md).
+- **Ainda não tem:** PIN e papéis, visão do gestor, TV em rotação, painéis de dados, banco de horas, avisos sonoros e rotinas com horário, prioridades do mês e integração com o Pombo. Tudo está no [roadmap](roadmap.md).
