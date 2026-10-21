@@ -3,7 +3,7 @@
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Callable
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -31,6 +31,7 @@ from ..prioridades import (DEFAULT_LIST, add_priority, can_remove, create_defaul
                            list_month, mark_done, month_label, month_of, parse_due_day, past_months, remove_priority,
                            undo_done)
 from ..telas import MAX_SECONDS, MIN_SECONDS, PAGE_MAX, PAGE_MIN, rotation, save_screen_config, screen_config
+from .. import tvcontrole
 
 HERE = Path(__file__).parent
 COOKIE = "hub_sessao"
@@ -59,9 +60,13 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         # só o esqueleto: os dados chegam pelo /api/tv, já sem nada de demanda reservada
         return templates.TemplateResponse(request, "tv.html", {})
 
+    seen = tvcontrole.Seen()  # qual tela está na TV agora (só na memória)
+
     @app.get("/api/tv")
-    def api_tv():
+    def api_tv(tela: str = "", pausada: str = "", espiar: str = ""):
         now = clock()
+        if tela and not espiar:  # a aba "no meu PC" não conta como a TV da sala
+            seen.update(tela, pausada == "1", now)
         owners = {p.id: p for p in list_people(db, active_only=False)}
         columns = board(db, now)
         return {
@@ -77,8 +82,73 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             "overdue": sum(is_overdue(d, now.date()) for d in columns["todo"] + columns["doing"]),
             # aviso sonoro de cada rotina de hoje: a TV toca uma vez, quando chega o horário
             "avisos": tv_alerts(db, now),
+            # pausa pelo app (fase 10) e quanto dura a pausa feita com um clique na própria TV
+            "pausa": tvcontrole.tv_payload(db, now, owners),
+            "pausa_minutos": tvcontrole.DEFAULT_MINUTES,
             **rotation(db, now),
         }
+
+    # ---------- TV da sala: pausar, trocar de tela e ver uma tela no meu PC (fase 10) ----------
+
+    def tv_room_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
+        now = clock()
+        pause = tvcontrole.current_pause(db, now)
+        who = get_person(db, pause["por"]) if pause and pause.get("por") else None
+        return page(request, "tv-da-sala.html", user, status_code, seen=seen.get(now), pause=pause,
+                    pause_who=who, pause_until=datetime.fromisoformat(pause["ate"]) if pause else None,
+                    screens=rotation(db, now)["screens"], labels=tvcontrole.LABELS, durations=tvcontrole.DURATIONS,
+                    default_minutes=str(tvcontrole.DEFAULT_MINUTES), **ctx)
+
+    def back_to_tv_room(message: str) -> RedirectResponse:
+        return RedirectResponse(f"/tv-da-sala?ok={quote(message)}", status_code=303)
+
+    @app.get("/tv-da-sala", response_class=HTMLResponse)
+    def tv_da_sala(request: Request, ok: str = ""):
+        user = me(request)
+        return to_login() if user is None else tv_room_page(request, user, ok=ok)
+
+    @app.post("/tv-da-sala/pausar")
+    def tv_da_sala_pausar(request: Request, tela: str = Form("atual"), minutos: str = Form("15")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        if tela == "atual":
+            current = seen.get(clock())
+            if current is None:
+                return tv_room_page(request, user, 422, error="A TV da sala não está conectada agora. "
+                                    "Escolha uma tela da lista para ela abrir quando conectar.")
+            tela = current["tela"]
+        try:
+            tvcontrole.pause(db, clock(), user, tela, minutos)
+        except ValidationError as exc:
+            return tv_room_page(request, user, 422, error=str(exc))
+        return back_to_tv_room(f"A TV da sala fica em “{tvcontrole.LABELS[tela]}”. Ela obedece em até 5 segundos.")
+
+    @app.post("/tv-da-sala/trocar")
+    def tv_da_sala_trocar(request: Request, direcao: str = Form("proxima")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        current = seen.get(clock())
+        screen = tvcontrole.step(db, clock(), user, -1 if direcao == "anterior" else 1,
+                                 current["tela"] if current else None)
+        return back_to_tv_room(f"A TV da sala foi para “{tvcontrole.LABELS[screen]}” e fica pausada nela.")
+
+    @app.post("/tv-da-sala/pagina")
+    def tv_da_sala_pagina(request: Request):
+        user = me(request)
+        if user is None:
+            return to_login()
+        tvcontrole.next_page(db, clock(), user)
+        return back_to_tv_room("As colunas do Quadro passam para a página seguinte.")
+
+    @app.post("/tv-da-sala/retomar")
+    def tv_da_sala_retomar(request: Request):
+        user = me(request)
+        if user is None:
+            return to_login()
+        tvcontrole.resume(db, clock(), user)
+        return back_to_tv_room("A TV da sala voltou a passar as telas sozinha.")
 
     # ---------- app do analista ----------
 
@@ -903,6 +973,8 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         "horas_jornada": f"{who} mudou a jornada do banco de horas ({detail})",
         "rotina_criada": f"{who} cadastrou a rotina “{detail}”",
         "aviso_teste": f"{who} testou o aviso da TV",
+        "tv_pausa": f"{who} pausou a TV da sala em “{detail}”",
+        "tv_retomada": f"{who} fez a TV da sala voltar a passar as telas",
         "rotina_editada": f"{who} editou a rotina “{detail}”",
         "rotina_desativada": f"{who} desativou a rotina “{detail}”",
         "rotina_reativada": f"{who} reativou a rotina “{detail}”",

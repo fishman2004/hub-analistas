@@ -170,3 +170,19 @@ O Pombo já grava tudo o que envia num CSV por analista, numa pasta que pode ser
 **Na TV, só o necessário.** Horário, nome do envio, analista, canal e situação, com a contagem de destinatários (a regra "sem números" é só para vendas). Destinatários, motivo das falhas e nomes de arquivo ficam na página Envios, que pede login: o motivo de uma falha pode trazer um endereço de e-mail ou o nome de um grupo. O analista aparece com o nome, as iniciais e a cor do cadastro do Hub quando o nome que o Pombo grava (ou a pasta que ele cria com esse nome) bate com alguém da equipe.
 
 **Indicador da rotação com mais telas.** Com a sétima tela, os nomes no topo da TV se sobrepunham. Agora o indicador ficou um pouco mais compacto e, se ainda faltar espaço (as fases 6 a 8 trazem telas novas), os nomes das outras telas encurtam com "…"; o da tela atual sempre aparece inteiro.
+
+## Pausa da TV (fase 10)
+
+Pedido do gestor: pausar a TV numa tela para analisar algo, tanto na própria TV quanto pelos PCs. São três jeitos, porque "analisar no nosso PC" pode querer dizer duas coisas:
+
+- **Na própria TV:** um clique em qualquer lugar ou a tecla Espaço. As setas ← → trocam de tela e ↑ ↓ passam as páginas do Quadro. Essa pausa fica só na memória da página (recarregar volta à rotação).
+- **A TV da sala pelo app:** a página **TV da sala** pausa numa tela, troca para a anterior ou a próxima, passa a página do Quadro e retoma. Qualquer pessoa com PIN, e tudo vai para o histórico (é reversível e fica registrado quem fez). Ela vence a pausa feita na TV; quem está na frente da TV vê o selo "Pausada por KI" piscar se clicar, e quem retoma é o app ou o prazo.
+- **Ver uma tela no meu PC:** "Abrir no meu PC" abre `/tv?tela=<id>&fixa=1`, uma TV só daquela aba, parada, que não mexe na sala e não toca o aviso das rotinas.
+
+**Toda pausa tem prazo** (15 minutos por padrão; pelo app, de 5 a 60 minutos ou até o fim do dia), para a TV nunca ficar esquecida parada. O prazo é calculado a cada busca, sem tarefa agendada. Durante a pausa os dados continuam atualizando, a presença e o relógio seguem e o **aviso das rotinas toca normalmente**.
+
+**Qual tela está na TV agora:** a rotação acontece no navegador da TV, então o servidor não sabia. A TV passa a contar na busca que já faz a cada 5 s, e o servidor guarda só na memória (reiniciar o Hub esquece, e em 5 s a TV conta de novo). Sem notícia há mais de 30 s, a página diz que a TV não está conectada.
+
+**Sem lugar a mais no topo:** com a TV pausada, o selo "⏸ Pausada" ocupa o lugar do indicador da rotação, que não teria o que mostrar.
+
+Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 10.1 a 10.4 do [plano da v3](plano-v3.md)): 15 minutos, um clique, qualquer pessoa com PIN e aviso sonoro tocando com a TV pausada.
