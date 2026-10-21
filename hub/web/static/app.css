@@ -212,6 +212,15 @@ fieldset.escolhas .check input { margin-top: 0; }
 .acoes-linha { white-space: nowrap; }
 .acoes-linha form { display: inline; }
 .acoes-linha .botao, .acoes-linha button { padding: 4px 10px; font-size: .9rem; }
+.avisos-hoje { background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio); padding: 12px 16px; margin-bottom: 24px; }
+.avisos-hoje .barra { margin-bottom: 8px; }
+.avisos-hoje h2 { margin: 0; font-size: 1.1rem; }
+.avisos-hoje .ajuda { margin: 8px 0 0; }
+.lista-avisos { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lista-avisos li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 6px 10px; border-radius: 8px; background: var(--fundo); }
+.lista-avisos li.passou { color: var(--suave); }
+.lista-avisos li.proximo { box-shadow: inset 0 0 0 2px var(--azul); }
+.lista-avisos .ajuda, .lista-avisos .etiqueta { margin: 0 0 0 auto; }
 /* ---------- prioridades do mês ---------- */
 .meses { display: flex; flex-wrap: wrap; gap: 4px; }
 .meses a { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--linha); color: var(--suave); text-decoration: none; font-size: .9rem; }

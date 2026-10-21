@@ -17,6 +17,17 @@ O navegador só toca som numa página que alguém clicou, e na TV ninguém clica
 
 Se o som estiver bloqueado, a faixa do aviso aparece igual, com a frase "Som bloqueado pelo navegador".
 
+## Testar o aviso agora, sem esperar uma rotina
+Dá para fazer isto a qualquer hora, inclusive para conferir o som depois de mexer no Edge.
+
+- Com a TV aberta no PC da sala, entre no app como gestor ou administrador e abra **Rotinas**.
+- No quadro **Avisos de hoje na TV**, clique em **Testar aviso na TV agora**. Aparece "Aviso de teste enviado".
+- Em até 5 segundos, a TV toca o som e mostra a faixa "Hora da rotina · HH:MM Teste do aviso" por uns 20 segundos.
+- Se a faixa aparecer com "Som bloqueado pelo navegador", faça os passos de **Som na TV** acima e teste de novo.
+- Se nada aparecer na TV: confira se ela está aberta e sem o aviso "Sem atualização desde". O teste vale por 2 minutos; uma TV aberta depois disso não toca.
+- Em **Histórico** aparece "Fulano testou o aviso da TV".
+- O quadro **Avisos de hoje na TV** lista as rotinas que avisam hoje, na ordem do horário: as que já passaram ficam apagadas e a próxima fica destacada. Num dia sem rotina (domingo, por exemplo), ele diz que não há aviso hoje.
+
 ## Cadastro (gestor ou administrador)
 5. No app, abra **Rotinas** no menu. A lista está vazia.
 6. Clique em **Criar rotinas sugeridas**. Aparecem 6 rotinas, todas com você como responsável:

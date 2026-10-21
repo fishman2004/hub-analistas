@@ -25,8 +25,8 @@ from ..gestor import DUE_FILTERS, can_open, filter_demands, team_summary
 from .. import horas
 from ..paineis import STALE_MAX, STALE_MIN, panel_config, save_panel_config, save_upload, stale_hours, store_for
 from ..presence import STATUSES, presence_board, set_status
-from ..rotinas import (WEEKDAY_LABELS, can_manage, create_suggested, get_routine, list_routines, save_routine,
-                       set_routine_active, tv_alerts, weekdays_label)
+from ..rotinas import (WEEKDAY_LABELS, alerts_today, can_manage, create_suggested, get_routine, list_routines,
+                       save_routine, set_routine_active, start_test_alert, tv_alerts, weekdays_label)
 from ..prioridades import (DEFAULT_LIST, add_priority, can_remove, create_default_list, is_late, is_month, last_day,
                            list_month, mark_done, month_label, month_of, parse_due_day, past_months, remove_priority,
                            undo_done)
@@ -362,7 +362,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             people = people + [owner]
         return page(request, "rotinas.html", user, status_code, routines=routines, by_id={r.id: r for r in routines},
                     people=people, owners={p.id: p for p in list_people(db, active_only=False)}, v=v,
-                    can_manage=can_manage(user), **ctx)
+                    can_manage=can_manage(user), alerts=alerts_today(db, clock()), **ctx)
 
     def manager_only(request: Request) -> tuple[Person | None, Response | None]:
         user = me(request)
@@ -396,6 +396,16 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         message = (f"{created} rotina{plural} criada{plural}, com você como responsável. Dá para mudar em Editar."
                    if created else "As rotinas sugeridas já existem.")
         return routines_page(request, user, ok=message)
+
+    @app.post("/rotinas/testar-aviso")
+    def rotinas_testar_aviso(request: Request):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        start_test_alert(db, clock(), user)
+        return routines_page(request, user, ok="Aviso de teste enviado. Em até 5 segundos, a TV da sala toca o som e "
+                             "mostra a faixa “Teste do aviso” por 20 segundos. Se a faixa aparecer sem som, o Edge da "
+                             "TV está bloqueando o som (veja “Som na TV” no roteiro da fase 7).")
 
     async def routine_save(request: Request, routine_id: int | None):
         user, stop = manager_only(request)
@@ -892,6 +902,7 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         "horas_saldo": f"{who} definiu o saldo base do banco de horas de {name_of(ref_id)} ({detail})",
         "horas_jornada": f"{who} mudou a jornada do banco de horas ({detail})",
         "rotina_criada": f"{who} cadastrou a rotina “{detail}”",
+        "aviso_teste": f"{who} testou o aviso da TV",
         "rotina_editada": f"{who} editou a rotina “{detail}”",
         "rotina_desativada": f"{who} desativou a rotina “{detail}”",
         "rotina_reativada": f"{who} reativou a rotina “{detail}”",

@@ -19,8 +19,8 @@ from hub.db import SCHEMA, SCHEMA_VERSION, Database, events
 from hub.demands import (board, delete_demand, find_card, is_overdue, move_demand, toggle_folder, tv_card,
                          update_demand)
 from hub.people import ValidationError, add_person, get_person, list_people
-from hub.rotinas import (SUGGESTED, create_suggested, list_routines, save_routine, set_routine_active, tv_alerts,
-                         weekdays_label)
+from hub.rotinas import (SUGGESTED, create_suggested, list_routines, save_routine, set_routine_active,
+                         start_test_alert, tv_alerts, weekdays_label)
 from hub.telas import rotation
 from hub.web.app import create_app
 
@@ -339,6 +339,24 @@ def test_tv_gets_routine_cards_and_alerts_without_reserved_data(team):
     assert tv_alerts(db, at(9, day=25)) == []  # domingo: nada
 
 
+def test_test_alert_goes_to_the_tv_for_two_minutes(team):
+    db, p = team
+    rotina(db, p["Kayo"])
+    with pytest.raises(PermissionError):
+        start_test_alert(db, at(15, 3), p["Bia"])
+    assert [a["name"] for a in tv_alerts(db, at(15, 3))] == ["Transferência de pedidos"]
+    start_test_alert(db, at(15, 3), p["Gil"])  # gestor
+    teste = tv_alerts(db, at(15, 3))[-1]
+    # a chave termina com a data, como as das rotinas: a TV guarda as já tocadas só do dia
+    assert teste == {"key": f"teste-150300-2026-10-{SEG}", "at": "2026-10-19T15:03:00", "time": "15:03",
+                     "deadline": None, "name": "Teste do aviso"}
+    assert tv_alerts(db, at(15, 5))[-1] == teste  # TV que buscar o estado em até 2 minutos ainda toca
+    assert [a["name"] for a in tv_alerts(db, at(15, 6))] == ["Transferência de pedidos"]
+    assert tv_alerts(db, at(15, 3, day=25)) == []  # domingo seguinte: nem rotina nem teste
+    [e] = [e for e in events(db, date(2026, 10, SEG), date(2026, 10, SEG)) if e["kind"] == "aviso_teste"]
+    assert e["actor_id"] == p["Gil"].id
+
+
 def test_deadlines_screen_only_shows_late_routines(team):
     db, p = team
     rotina(db, p["Kayo"], deadline="15:00")
@@ -386,6 +404,35 @@ def test_routines_page_permissions(team):
     r = kayo.post("/rotinas/sugeridas")
     assert r.status_code == 200 and "6 rotinas criadas" in r.text
     assert "Transferência de pedidos" in bia.get("/rotinas").text and "seg a sex" in bia.get("/rotinas").text
+
+
+def avisos_da_pagina(html):
+    return html.split('class="avisos-hoje"')[1].split("</section>")[0]
+
+
+def test_routines_page_lists_todays_alerts_and_tests_the_tv(team):
+    db, p = team
+    bia = client(db, p["Bia"], now=at(15, 1))
+    assert "Sem avisos: a TV só avisa no horário das rotinas cadastradas." in avisos_da_pagina(bia.get("/rotinas").text)
+    rotina(db, p["Kayo"])
+    rotina(db, p["Kayo"], "Fechamento", starts_at="17:00")
+    rotina(db, p["Kayo"], "Comparativo", weekdays=[1], starts_at="10:00")  # só às terças
+    page = bia.get("/rotinas").text
+    avisos = avisos_da_pagina(page)
+    assert "Avisos de hoje na TV" in page and "Testar aviso na TV agora" not in page
+    assert avisos.index("14:50") < avisos.index("horário já passou") < avisos.index("17:00") < avisos.index("próximo aviso")
+    assert "Comparativo" not in avisos and "Comparativo" in page  # não vale hoje, mas está na lista de rotinas
+    assert bia.post("/rotinas/testar-aviso").status_code == 403
+    kayo = client(db, p["Kayo"], now=at(15, 1))
+    assert "Testar aviso na TV agora" in kayo.get("/rotinas").text
+    r = kayo.post("/rotinas/testar-aviso")
+    assert r.status_code == 200 and "Aviso de teste enviado" in r.text
+    assert "Teste do aviso" not in avisos_da_pagina(r.text)  # o teste não entra na lista do dia
+    tv = TestClient(create_app(db, clock=lambda: at(15, 1)), base_url=BASE).get("/api/tv").json()
+    assert [a["name"] for a in tv["avisos"]] == ["Transferência de pedidos", "Fechamento", "Teste do aviso"]
+    assert "Kayo testou o aviso da TV" in bia.get("/historico?de=2026-10-19&ate=2026-10-19").text
+    domingo = client(db, p["Gil"], now=at(15, 1, day=25))
+    assert "nenhuma rotina ativa vale para hoje" in avisos_da_pagina(domingo.get("/rotinas").text)
 
 
 def test_any_analyst_marks_a_folder_and_sees_the_routine(team):
