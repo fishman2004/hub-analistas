@@ -189,7 +189,7 @@ Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 10.1 a 10.4 do [plan
 
 ## Demandas com detalhes e anexos (fase 11)
 
-Pedido do gestor: anexar arquivos (Excel, PDF) às demandas, para o responsável (inclusive quem criou) mexer depois. Editar a demanda já existia; faltavam os **detalhes** e os **arquivos**.
+Pedido do gestor: anexar arquivos (Excel, PDF) às demandas, para o responsável (inclusive quem criou) mexer depois. Editar a demanda já existia; faltavam a **descrição** (o Kayo pediu depois: para pedidos extensos, quem vê clica no cartão e lê) e os **arquivos**. No banco o campo continua `details`; na tela, "Descrição", e o cartão do quadro abre o texto com um clique (📝).
 
 - **"Mexer depois" num arquivo** é baixar, editar no Excel e usar **Enviar nova versão**. O Hub não edita planilha no navegador (precisaria de um programa a mais e de internet). A versão de antes continua guardada e baixável em "versões anteriores", então ninguém perde o arquivo anterior.
 - **Arquivo fora do banco e fora do repositório:** na pasta Anexos, com nome aleatório. O banco continua pequeno (a cópia diária segue rápida) e nenhum nome de arquivo estranho (`..\`, acento, nome repetido) chega ao disco.

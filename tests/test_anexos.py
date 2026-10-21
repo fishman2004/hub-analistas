@@ -133,11 +133,13 @@ def test_details_and_changes_in_history(env):
     d = create_demand(db, at(8), kayo.id, title="Relatório", owner_id=kayo.id, due=date(2026, 10, 22),
                       details="Ver a aba 2")
     assert d.details == "Ver a aba 2"
+    board_html = c.get("/").text  # no quadro, o cartão abre a descrição com um clique
+    assert "📝 Descrição" in board_html and "Ver a aba 2" in board_html
     update_demand(db, at(9), kayo.id, d.id, title="Relatório", owner_id=bianca.id, folder="B", requested_by=None,
                   due=date(2026, 10, 25), reserved=False, details="Ver a aba 3")
     hist = c.get("/historico").text
-    assert "editou “Relatório”: dono Kayo → Bianca, pasta nenhuma → B, prazo 22/10 → 25/10, detalhes" in hist
-    with pytest.raises(ValidationError, match="Detalhes muito longos"):
+    assert "editou “Relatório”: dono Kayo → Bianca, pasta nenhuma → B, prazo 22/10 → 25/10, descrição" in hist
+    with pytest.raises(ValidationError, match="Descrição muito longa"):
         update_demand(db, at(9), kayo.id, d.id, title="Relatório", owner_id=bianca.id, folder=None,
                       requested_by=None, due=None, reserved=False, details="x" * 4001)
 
