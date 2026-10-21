@@ -73,6 +73,10 @@
         {# rotina: o prazo de hoje já está na etiqueta; a data só aparece se ficou de outro dia #}
         {% if d.due and (not d.routine or d.due != today) %}<span class="{{ 'atraso' if is_overdue(d, today) else '' }}">{{ 'atrasada · ' if is_overdue(d, today) else '' }}prazo {{ d.due.strftime('%d/%m') }}</span>{% endif %}
       </p>
+      {% if d.details %}
+      {# descrição longa: um clique abre ali mesmo no cartão (só no app, nunca na TV) #}
+      <details class="cartao-descricao"><summary>📝 Descrição</summary><p>{{ d.details }}</p></details>
+      {% endif %}
       {% if waiting %}<p class="aguardando">Aguardando: {{ d.routine.waiting|join(', ') }}</p>{% endif %}
       {% if by_folders %}{{ pastas(d) }}{% endif %}
       <div class="cartao-acoes">

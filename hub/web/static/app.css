@@ -283,3 +283,8 @@ input[type=file] { font: inherit; color: var(--suave); max-width: 100%; }
 .linha-tempo .historico { margin-top: 10px; }
 .busca .bolinha { min-width: 24px; height: 24px; font-size: .75rem; }
 h3 { font-size: 1rem; margin: 8px 0 0; }
+
+/* descrição da demanda no cartão do quadro: abre com um clique */
+.cartao-descricao { margin-top: 6px; font-size: .9rem; }
+.cartao-descricao summary { cursor: pointer; color: var(--azul); width: max-content; }
+.cartao-descricao p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; padding: 8px 10px; background: var(--fundo); border-radius: 8px; max-height: 260px; overflow: auto; }
