@@ -26,7 +26,7 @@ MAX_STEPS, MAX_STEP = 8, 80
 # as etapas das metas do mês, na ordem do Kayo (o analista marca todas, inclusive as do gerente)
 GOAL_STEPS = (
     "Enviar o arquivo ao gerente",
-    "Gerente compartilha com a equipe e faz os ajustes",
+    "Gerente fazendo ajustes com a supervisão",
     "Gerente devolve a planilha",
     "Upload no sistema (375, 353 e 399)",
 )
