@@ -102,7 +102,7 @@ button.link { background: none; border: none; color: var(--azul); padding: 0; fo
 .linha { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 label { display: block; font-weight: 600; margin-bottom: 4px; }
 .opcional, .ajuda { color: var(--suave); font-weight: 400; }
-input[type=text], input[type=date], select {
+input[type=text], input[type=date], input[type=time], select {
   width: 100%; font: inherit; color: var(--texto); padding: 9px 11px; border-radius: 8px; border: 1px solid var(--linha); background: var(--cartao);
 }
 input.curto { max-width: 90px; }
@@ -175,3 +175,15 @@ input[type=password] { width: 100%; font: inherit; font-size: 1.3rem; letter-spa
 .envio { display: flex; gap: 8px; align-items: center; }
 .envio input[type="file"] { max-width: 260px; }
 .ficha.largo { max-width: 1100px; }
+
+/* ---------- banco de horas ---------- */
+.botao-link { font-size: .9rem; }
+.linha-horas { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.faltando { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; color: var(--suave); }
+.chip { border: 1px solid var(--linha); border-radius: 999px; padding: 2px 10px; color: var(--texto); text-decoration: none; background: var(--fundo); font-size: .9rem; }
+.chip:hover { border-color: var(--texto); }
+h2.secao { margin-top: 28px; }
+.pilha { display: grid; gap: 16px; margin-top: 16px; max-width: 720px; }
+td.cartao-acoes { display: table-cell; white-space: nowrap; }
+td.cartao-acoes form { display: inline; margin-left: 8px; }
+input[readonly] { opacity: .7; }

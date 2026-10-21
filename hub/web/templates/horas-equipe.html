@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% set active = 'horas' %}
+{% block title %}Banco de horas da equipe · Hub dos Analistas{% endblock %}
+{% block main %}
+<h1>Banco de horas da equipe</h1>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+{% if imported is defined %}<div class="sucesso" role="status">Saldo base importado de {{ imported }} pessoa{{ 's' if imported != 1 else '' }}.</div>
+{% if unknown %}<div class="aviso" role="status">Nomes da planilha que não estão no Hub (ficaram de fora): {{ unknown|join(', ') }}.</div>{% endif %}{% endif %}
+<p class="ajuda">Só você (gestor) vê esta página. Cada pessoa vê e lança apenas o próprio banco de horas em <a href="/horas">Banco de horas</a>. Nada disso vai para a TV.</p>
+
+<div class="tabela-rolagem">
+<table class="tabela">
+  <thead><tr><th>Pessoa</th><th class="num">Saldo</th><th class="num">Saldo base</th><th>Último dia lançado</th><th class="num">Dias sem lançamento</th></tr></thead>
+  <tbody>
+  {% for p, s in rows %}
+  <tr>
+    <td><a href="/horas/equipe/{{ p.id }}">{{ p.name }}</a></td>
+    <td class="num {{ 'atraso' if s.balance < 0 else '' }}"><strong>{{ h.duration(s.balance) }}</strong></td>
+    <td class="num">{% if s.base is not none %}{{ h.duration(s.base) }} <span class="ajuda">até {{ s.as_of.strftime('%d/%m') }}</span>{% else %}<span class="ajuda">não lançado</span>{% endif %}</td>
+    <td>{{ s.last_day.strftime('%d/%m/%Y') if s.last_day else '—' }}</td>
+    <td class="num {{ 'atraso' if s.missing else '' }}">{{ s.missing|length }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="pilha">
+<section class="ficha cartao-form">
+  <h2>Exportar</h2>
+  <p>Saldos: <a href="/horas/exportar?tipo=saldos&formato=xlsx">Excel</a> · <a href="/horas/exportar?tipo=saldos&formato=csv">CSV</a></p>
+  <form method="get" action="/horas/exportar" class="ficha">
+    <input type="hidden" name="tipo" value="lancamentos">
+    <div class="linha linha-horas">
+      <div><label for="de">Dias lançados de</label><input type="date" id="de" name="de"></div>
+      <div><label for="ate">até</label><input type="date" id="ate" name="ate"></div>
+      <div><label for="formato">Formato</label><select id="formato" name="formato"><option value="xlsx">Excel</option><option value="csv">CSV</option></select></div>
+    </div>
+    <div><button>Exportar dias lançados</button></div>
+  </form>
+</section>
+
+<form class="ficha cartao-form" method="post" action="/horas/equipe/importar" enctype="multipart/form-data">
+  <h2>Importar a planilha base</h2>
+  <p class="ajuda">O saldo atual que o RH enviar. Colunas <code>NOME</code> e <code>SALDO</code> (ex.: <code>12:30</code> ou <code>-03:15</code>) e, se tiver, <code>DATA</code> (até quando o saldo vale; sem ela, vale até ontem). O nome tem de ser igual ao cadastro do Hub. A planilha é lida e descartada: não fica guardada.</p>
+  <div class="envio"><input type="file" name="arquivo" accept=".xlsx,.xlsm,.csv" required aria-label="Planilha base"><button>Importar</button></div>
+</form>
+
+<form class="ficha cartao-form" method="post" action="/horas/equipe/saldo">
+  <h2>Ajustar o saldo base de uma pessoa</h2>
+  <div class="linha">
+    <div><label for="pessoa">Pessoa</label><select id="pessoa" name="pessoa" required>{% for p in people %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></div>
+    <div><label for="saldo">Saldo</label><input type="text" id="saldo" name="saldo" placeholder="-03:15" required></div>
+    <div><label for="data">Vale até (inclusive)</label><input type="date" id="data" name="data" value="{{ (today - h.timedelta(days=1)).isoformat() }}" max="{{ today.isoformat() }}" required></div>
+  </div>
+  <p class="ajuda">Os dias lançados até essa data deixam de contar: eles já estão dentro do saldo base.</p>
+  <div><button>Salvar saldo</button></div>
+</form>
+
+<form class="ficha cartao-form" method="post" action="/horas/equipe/jornada">
+  <h2>Jornada</h2>
+  <div class="linha">
+    <div><label for="semana">Segunda a sexta (horas)</label><input type="text" id="semana" name="semana" value="{{ h.hhmm(journey.semana) }}" pattern="\d{1,2}:\d{2}" placeholder="10:00" required></div>
+    <div><label for="sabado">Sábado <span class="opcional">(00:00 = sem jornada)</span></label><input type="text" id="sabado" name="sabado" value="{{ h.hhmm(journey.sabado) }}" pattern="\d{1,2}:\d{2}" placeholder="00:00"></div>
+  </div>
+  <p class="ajuda">É o tempo entre a entrada e a saída esperadas, com o almoço dentro (das 8h às 18h = 10:00). A diferença de cada dia é o tempo entre a entrada e a saída lançadas menos a jornada. Domingo nunca tem jornada. Mudar a jornada recalcula todos os dias lançados.</p>
+  <div><button>Salvar jornada</button></div>
+</form>
+</div>
+{% endblock %}

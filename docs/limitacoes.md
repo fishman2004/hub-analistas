@@ -10,4 +10,5 @@
 - **Mover cartões é por botões** (Começar, Concluir, Voltar). Arrastar e soltar fica para quando a equipe pedir.
 - **Uma TV só.** Funciona em mais de uma (basta abrir `/tv`), mas foi pensada para a sala.
 - **Painéis:** os dias de venda são de segunda a sábado, sem descontar feriados (a meta do dia e o "esperado" ficam um pouco abaixo do real num mês com feriado), e o sábado conta como um dia inteiro. Uma planilha de vendas em `.xlsx` muito grande demora mais para ler que em `.csv`; a TV continua com os dados anteriores enquanto isso.
-- **Ainda não tem:** banco de horas, avisos sonoros e rotinas com horário, prioridades do mês e integração com o Pombo. Tudo está no [roadmap](roadmap.md).
+- **Banco de horas:** não desconta feriados (num feriado é só não lançar o dia, que não conta) e não substitui o RH: vale o saldo que o RH mandar na próxima importação. O gestor não corrige o lançamento de ninguém; quem lançou corrige.
+- **Ainda não tem:** avisos sonoros e rotinas com horário, prioridades do mês e integração com o Pombo. Tudo está no [roadmap](roadmap.md).

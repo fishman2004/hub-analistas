@@ -25,6 +25,7 @@ Uma **TV na sala**, ligada num PC sempre ligado, mostra:
 - **Quadro da equipe:** A fazer → Fazendo → Concluído hoje, com a cor e as iniciais de cada analista, as atrasadas em destaque e o prazo de cada demanda.
 - **Demanda reservada:** um assunto sensível aparece só como "Demanda reservada". O título nunca sai do servidor para a TV, e no app só o dono, quem criou, o gestor e os administradores o veem.
 - **Visão do gestor:** o dia da equipe numa tela só (presença, a fazer, fazendo, concluídas hoje e atrasadas por pessoa) e todas as demandas com filtros.
+- **Banco de horas** (só no app, nunca na TV): o gestor importa o saldo que o RH envia e cada analista lança a entrada e a saída do dia, vendo na hora se está com horas extras ou negativas. Só a própria pessoa e o gestor veem.
 
 Cada analista usa o **app** pelo navegador do próprio PC, sem instalar nada. Entra com o próprio nome e um **PIN** de 4 a 6 números, marca a presença, lança demandas e as move entre as colunas. O botão **Tema** no cabeçalho alterna entre automático (segue o Windows), claro e escuro, e cada navegador lembra a sua escolha. Tudo fica no **histórico**, com quem fez e quando.
 
