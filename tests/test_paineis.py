@@ -245,7 +245,7 @@ def test_examples_reach_the_tv_with_percentages_only(db):
     assert {"metas-mes", "metas-dia", "produtos-foco", "fornecedores"} <= set(data)
     mes = data["metas-mes"]["data"]
     assert mes["mes"] == "Setembro de 2026" and mes["ate"] == "17/09" and mes["dia_semana"] == "quinta"
-    assert mes["atualizado"] == "09:00" and mes["velho"] is False and mes["esperado"] == 58
+    assert mes["atualizado"] == "09:00" and mes["velho"] is False and mes["esperado"] == 56  # 07/09 é feriado: sai da conta dos dias
     assert [c["pasta"] for c in mes["financeiro"]] == list("ABCDEFG") + ["TLV", "T"]
     # nenhum valor em reais, quantidade ou nome de vendedor/cliente: só %, letras das pastas e textos fixos
     forn = data["fornecedores"]["data"]["pastas"]

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Callable
 
+from .calendario import tv_agenda
 from .db import Database, log_event
 from .demands import Demand, board, is_overdue, tv_card
 from .envios import tv_envios
@@ -66,6 +67,8 @@ def _day_label(d: Demand, today: date) -> str:
 SCREENS: list[Screen] = [
     Screen("quadro", "Quadro", 30, _quadro, always=True),
     Screen("prazos", "Prazos da semana", 15, _prazos),
+    # calendário (fase 13): compromissos da equipe, feriados e ausências de hoje e dos próximos dias
+    Screen("agenda", "Agenda", 15, tv_agenda),
     # prioridades do início do mês (fase 8): fica na rotação até tudo estar feito
     Screen("prioridades", "Prioridades do mês", 15, tv_prioridades),
     # painéis de dados (fase 5): só porcentagens, e só entram quando as planilhas estão na pasta

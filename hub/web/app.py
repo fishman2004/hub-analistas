@@ -1,5 +1,6 @@
 """Servidor do Hub: a tela da TV e o app dos analistas."""
 
+from calendar import monthrange
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Callable
@@ -17,7 +18,7 @@ from ..db import Database, events, first_event_day
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, notas
+from .. import anexos, calendario, notas
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -36,6 +37,8 @@ from ..telas import MAX_SECONDS, MIN_SECONDS, PAGE_MAX, PAGE_MIN, rotation, save
 from .. import tvcontrole
 
 HERE = Path(__file__).parent
+MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro",
+          "Novembro", "Dezembro"]
 COOKIE = "hub_sessao"
 
 
@@ -71,11 +74,14 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             seen.update(tela, pausada == "1", now)
         owners = {p.id: p for p in list_people(db, active_only=False)}
         columns = board(db, now)
+        # ausente pelo calendário (fase 13) e sem ter marcado outra presença hoje: "Ausente até dd/mm"
+        away = calendario.absent_today(db, now.date())
         return {
             "now": now.isoformat(timespec="seconds"),
             "people": [
                 {"name": p.name, "initials": p.initials, "color": p.color, "status": status,
-                 "since": since.strftime("%H:%M")}
+                 "since": since.strftime("%H:%M"),
+                 "ausente_ate": away[p.id].strftime("%d/%m") if p.id in away and status == STATUSES[-1] else ""}
                 for p, status, since in presence_board(db, now)
             ],
             "columns": {c: [tv_card(d, owners[d.owner_id], now.date()) for d in columns[c]] for c in COLUMNS},
@@ -741,10 +747,10 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
     def routine_values(r=None, user: Person | None = None) -> dict:
         if r is None:
             return {"id": "", "name": "", "weekdays": [0, 1, 2, 3, 4], "starts_at": "", "deadline": "",
-                    "owner_id": str(user.id), "folders": [], "waits_for": []}
+                    "owner_id": str(user.id), "folders": [], "waits_for": [], "on_holidays": False}
         return {"id": r.id, "name": r.name, "weekdays": list(r.weekdays), "starts_at": r.starts_at,
                 "deadline": r.deadline or "", "owner_id": str(r.owner_id), "folders": list(r.folders),
-                "waits_for": list(r.waits_for)}
+                "waits_for": list(r.waits_for), "on_holidays": r.on_holidays}
 
     def routines_page(request: Request, user: Person, status_code: int = 200, v: dict | None = None,
                       **ctx) -> HTMLResponse:
@@ -774,7 +780,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         return {"name": str(form.get("name", "")), "weekdays": ints("weekdays"),
                 "starts_at": str(form.get("starts_at", "")), "deadline": str(form.get("deadline", "")),
                 "owner_id": int(owner) if owner.isdigit() else 0, "folders": [str(f) for f in form.getlist("folders")],
-                "waits_for": ints("waits_for")}
+                "waits_for": ints("waits_for"), "on_holidays": form.get("on_holidays") == "1"}
 
     @app.get("/rotinas", response_class=HTMLResponse)
     def rotinas(request: Request):
@@ -842,6 +848,246 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return routines_page(request, user, 422, error=str(exc))
         return RedirectResponse("/rotinas", status_code=303)
+
+    # ---------- calendário (fase 13) ----------
+
+    def cal_day(text: str) -> date | None:
+        try:
+            return date.fromisoformat(text) if text else None
+        except ValueError:
+            return None
+
+    def calendar_page(request: Request, user: Person, status_code: int = 200, visao: str = "mes", dia: str = "",
+                      filtros: tuple[str, ...] = calendario.DEFAULT_FILTERS, **ctx) -> HTMLResponse:
+        today = clock().date()
+        visao = visao if visao in ("mes", "semana", "lista") else "mes"
+        ref = cal_day(dia) or today
+        if visao == "mes":
+            first = ref.replace(day=1)
+            start = first - timedelta(days=first.weekday())
+            last = date(first.year, first.month, monthrange(first.year, first.month)[1])
+            end = last + timedelta(days=6 - last.weekday())
+            prev, nxt = (first - timedelta(days=1)).replace(day=1), last + timedelta(days=1)
+            title = f"{MONTHS[first.month - 1]} de {first.year}"
+        elif visao == "semana":
+            start = ref - timedelta(days=ref.weekday())
+            end = start + timedelta(days=6)
+            prev, nxt = start - timedelta(days=7), start + timedelta(days=7)
+            title = f"Semana de {start:%d/%m} a {end:%d/%m/%Y}"
+        else:
+            start, end = ref, ref + timedelta(days=29)
+            prev, nxt = ref - timedelta(days=30), ref + timedelta(days=30)
+            title = f"Próximos 30 dias a partir de {start:%d/%m/%Y}"
+        items = calendario.day_items(db, user, start, end, today, filtros)
+        days = [start + timedelta(days=n) for n in range((end - start).days + 1)]
+        upcoming = calendario.absences_between(db, today, today + timedelta(days=60))
+        people = list_people(db, active_only=False)
+        ctx.setdefault("a", {"pessoa": str(user.id), "de": "", "ate": "", "motivo": ""})
+        return page(request, "calendario.html", user, status_code, visao=visao, ref=ref, start=start, end=end,
+                    days=days, weeks=[days[i:i + 7] for i in range(0, len(days), 7)], items=items, today=today,
+                    prev=prev, nxt=nxt, title=title, filtros=filtros, FILTERS=calendario.FILTERS, DEFAULT_FILTERS=calendario.DEFAULT_FILTERS,
+                    WEEKDAYS=calendario.WEEKDAYS, month=ref.month, absences=upcoming,
+                    by_id={p.id: p for p in people}, team=[p for p in people if p.active],
+                    can_mark=calendario.can_mark_absence, can_see_reason=calendario.can_see_reason,
+                    can_manage_holidays=calendario.can_manage_holidays(user), **ctx)
+
+    def cal_filters(request: Request) -> tuple[str, ...]:
+        # "filtros=1" vem do formulário dos filtros: sem ele (link, menu), valem os de sempre
+        if request.query_params.get("filtros") != "1":
+            return calendario.DEFAULT_FILTERS
+        return tuple(f for f in calendario.FILTERS if f in request.query_params.getlist("f"))
+
+    @app.get("/calendario", response_class=HTMLResponse)
+    def calendario_ver(request: Request, visao: str = "mes", data: str = "", ok: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        return calendar_page(request, user, visao=visao, dia=data, filtros=cal_filters(request), ok=ok)
+
+    def back_to_calendar(message: str = "", day: date | None = None) -> RedirectResponse:
+        qs = {k: v for k, v in (("data", day.isoformat() if day else ""), ("ok", message)) if v}
+        return RedirectResponse("/calendario" + (f"?{urlencode(qs)}" if qs else ""), status_code=303)
+
+    def event_values(e=None, day: str = "", user: Person | None = None) -> dict:
+        if e is None:
+            return {"id": "", "title": "", "kind": "reuniao", "starts_on": day, "ends_on": "", "starts_at": "",
+                    "ends_at": "", "place": "", "description": "", "visibility": "equipe", "reserved": False,
+                    "repeat": "", "people": [user.id] if user else []}
+        return {"id": e.id, "title": e.title, "kind": e.kind, "starts_on": e.starts_on.isoformat(),
+                "ends_on": e.ends_on.isoformat() if e.ends_on else "", "starts_at": e.starts_at or "",
+                "ends_at": e.ends_at or "", "place": e.place or "", "description": e.description or "",
+                "visibility": e.visibility, "reserved": e.reserved, "repeat": e.repeat, "people": list(e.people)}
+
+    def event_page(request: Request, user: Person, v: dict, status_code: int = 200, event=None,
+                   **ctx) -> HTMLResponse:
+        people = list_people(db)
+        extra = [p for p in list_people(db, active_only=False) if not p.active and p.id in v["people"]]
+        return page(request, "compromisso.html", user, status_code, v=v, event=event, team=people + extra,
+                    KINDS=calendario.KINDS, REPEATS=calendario.REPEATS,
+                    can_edit=event is None or calendario.can_edit_event(event, user),
+                    creator=get_person(db, event.created_by) if event and event.created_by else None, **ctx)
+
+    def parse_event(form) -> tuple[dict, dict]:
+        values = {k: str(form.get(k, "")) for k in ("title", "kind", "starts_on", "ends_on", "starts_at", "ends_at",
+                                                     "place", "description", "visibility", "repeat")}
+        values["reserved"] = form.get("reserved") == "1"
+        values["people"] = [int(p) for p in form.getlist("people") if str(p).isdigit()]
+        fields = {**{k: values[k] for k in ("title", "kind", "starts_at", "ends_at", "place", "description",
+                                            "visibility", "repeat", "reserved", "people")},
+                  "starts_on": cal_day(values["starts_on"]), "ends_on": cal_day(values["ends_on"])}
+        return values, fields
+
+    @app.get("/calendario/novo", response_class=HTMLResponse)
+    def calendario_novo(request: Request, data: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        day = cal_day(data) or clock().date()
+        return event_page(request, user, event_values(day=day.isoformat(), user=user))
+
+    @app.post("/calendario")
+    async def calendario_criar(request: Request):
+        user = me(request)
+        if user is None:
+            return to_login()
+        values, fields = parse_event(await request.form())
+        try:
+            e = calendario.save_event(db, clock(), user, None, **fields)
+        except ValidationError as exc:
+            return event_page(request, user, {**values, "id": ""}, 422, error=str(exc))
+        return back_to_calendar("Compromisso salvo.", e.starts_on)
+
+    # ausências e feriados vêm antes de /calendario/{id}, senão "ausencias" viraria um id
+    @app.post("/calendario/ausencias")
+    def calendario_ausencia(request: Request, pessoa: str = Form(""), de: str = Form(""), ate: str = Form(""),
+                            motivo: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        person_id = int(pessoa) if pessoa.isdigit() else user.id
+        try:
+            calendario.add_absence(db, clock(), user, person_id, cal_day(de), cal_day(ate), motivo)
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError as exc:
+            return calendar_page(request, user, 422, error=str(exc),
+                                 a={"pessoa": pessoa, "de": de, "ate": ate, "motivo": motivo})
+        return back_to_calendar("Ausência marcada.", cal_day(de))
+
+    @app.post("/calendario/ausencias/{absence_id}/excluir")
+    def calendario_ausencia_excluir(request: Request, absence_id: int):
+        user = me(request)
+        if user is None:
+            return to_login()
+        try:
+            calendario.delete_absence(db, clock(), user, absence_id)
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError as exc:
+            return calendar_page(request, user, 422, error=str(exc))
+        return back_to_calendar("Ausência removida.")
+
+    def holidays_page(request: Request, user: Person, year: int, status_code: int = 200, **ctx) -> HTMLResponse:
+        rows = calendario.holidays(db).year(year)
+        return page(request, "feriados.html", user, status_code, year=year, rows=rows.values(),
+                    can_manage=calendario.can_manage_holidays(user), WEEKDAYS=calendario.WEEKDAYS, **ctx)
+
+    @app.get("/calendario/feriados", response_class=HTMLResponse)
+    def calendario_feriados(request: Request, ano: str = "", ok: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        year = int(ano) if ano.isdigit() and 2000 <= int(ano) <= 2100 else clock().year
+        return holidays_page(request, user, year, ok=ok)
+
+    def back_to_holidays(year: int, message: str) -> RedirectResponse:
+        return RedirectResponse(f"/calendario/feriados?ano={year}&ok={quote(message)}", status_code=303)
+
+    @app.post("/calendario/feriados")
+    def calendario_feriado_criar(request: Request, dia: str = Form(""), nome: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        day = cal_day(dia)
+        try:
+            if day is None:
+                raise ValidationError("Informe o dia do feriado.")
+            calendario.add_local_holiday(db, clock(), user, day, nome)
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError as exc:
+            return holidays_page(request, user, day.year if day else clock().year, 422, error=str(exc),
+                                 v={"dia": dia, "nome": nome})
+        return back_to_holidays(day.year, "Feriado acrescentado.")
+
+    @app.post("/calendario/feriados/{dia}/{acao}")
+    def calendario_feriado_acao(request: Request, dia: str, acao: str):
+        user = me(request)
+        if user is None:
+            return to_login()
+        day = cal_day(dia)
+        if day is None or acao not in ("ligar", "desligar", "remover"):
+            return Response(status_code=404)
+        try:
+            if acao == "remover":
+                calendario.remove_local_holiday(db, clock(), user, day)
+            else:
+                calendario.set_holiday_active(db, clock(), user, day, acao == "ligar")
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError as exc:
+            return holidays_page(request, user, day.year, 422, error=str(exc))
+        return back_to_holidays(day.year, {"ligar": "Feriado ligado.", "desligar": "Feriado desligado: o dia "
+                                           "volta a contar como dia útil.", "remover": "Feriado removido."}[acao])
+
+    def visible_event(request: Request, user: Person, event_id: int):
+        """O compromisso, se a pessoa pode abrir; senão, a resposta de erro."""
+        e = calendario.get_event(db, event_id)
+        if e is None or not calendario.can_see_event(e, user):
+            return None, page(request, "sem-permissao.html", user, 404, message="Compromisso não encontrado.")
+        if not calendario.can_see_title(e, user):
+            return None, forbidden(request, user, "Compromisso reservado: só quem participa, o gestor e os "
+                                                  "administradores abrem.")
+        return e, None
+
+    @app.get("/calendario/{event_id}", response_class=HTMLResponse)
+    def calendario_abrir(request: Request, event_id: int, ok: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        e, error = visible_event(request, user, event_id)
+        return error or event_page(request, user, event_values(e), event=e, ok=ok)
+
+    @app.post("/calendario/{event_id}")
+    async def calendario_salvar(request: Request, event_id: int):
+        user = me(request)
+        if user is None:
+            return to_login()
+        e, error = visible_event(request, user, event_id)
+        if error:
+            return error
+        values, fields = parse_event(await request.form())
+        try:
+            saved = calendario.save_event(db, clock(), user, event_id, **fields)
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError as exc:
+            return event_page(request, user, {**values, "id": event_id}, 422, event=e, error=str(exc))
+        return back_to_calendar("Compromisso salvo.", saved.starts_on)
+
+    @app.post("/calendario/{event_id}/excluir")
+    def calendario_excluir(request: Request, event_id: int):
+        user = me(request)
+        if user is None:
+            return to_login()
+        e, error = visible_event(request, user, event_id)
+        if error:
+            return error
+        try:
+            calendario.delete_event(db, clock(), user, event_id)
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        return back_to_calendar("Compromisso apagado.", e.starts_on)
 
     # ---------- prioridades do mês ----------
 
@@ -1203,7 +1449,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         # banco de horas: a linha só aparece para a própria pessoa e o gestor
         rows = [r for r in rows if not r["subject"].startswith("horas:")
                 or horas.can_see(user, int(r["subject"].partition(":")[2]))]
-        lines = [(datetime.fromisoformat(r["at"]), describe(r, people, demands, user)) for r in rows]
+        cal_events = calendario.all_events(db)
+        lines = [(datetime.fromisoformat(r["at"]), describe(r, people, demands, user, cal_events)) for r in rows]
         return page(request, "historico.html", user, lines=lines, start=start, end=end, pessoa=pessoa,
                     people=list_people(db, active_only=False))
 
@@ -1305,8 +1552,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
     return app
 
 
-def describe(row, people: dict, demands: dict, viewer: Person) -> str:
-    """Uma linha de histórico em português. Demanda reservada só mostra o título a quem pode vê-lo."""
+def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict | None = None) -> str:
+    """Uma linha de histórico em português. Demanda e compromisso reservados só mostram o título a quem pode vê-lo."""
     who = people[row["actor_id"]].name if row["actor_id"] in people else "Alguém"
     kind, subject, detail = row["kind"], row["subject"], row["detail"]
     ref = subject.partition(":")[2]
@@ -1318,6 +1565,9 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         if kind == "demanda_editada":
             detail, _, changes = detail.partition(CHANGES_SEP)
         title = detail if d is None else d.title if visible else RESERVED_TEXT
+    if subject.startswith("compromisso:"):
+        e = (cal_events or {}).get(ref_id)
+        title = detail if e is None or calendario.can_see_title(e, viewer) else calendario.RESERVED_TEXT
     file_name = f"“{detail}”" if visible else "um arquivo"  # nome de arquivo de reservada também é escondido
     name = people[ref_id].name if subject.startswith("pessoa:") and ref_id in people else detail
     name_of = lambda pid: people[pid].name if pid in people else "alguém"
@@ -1363,6 +1613,15 @@ def describe(row, people: dict, demands: dict, viewer: Person) -> str:
         "pasta_marcada": f"{who} marcou a pasta {detail} em “{title}”",
         "pasta_desmarcada": f"{who} desmarcou a pasta {detail} em “{title}”",
         "admin_alterado": f"{who} {'tornou' if detail == 'sim' else 'tirou'} {name} {'administrador' if detail == 'sim' else 'de administrador'}",
+        "compromisso_criado": f"{who} criou o compromisso “{title}”",
+        "compromisso_editado": f"{who} editou o compromisso “{title}”",
+        "compromisso_excluido": f"{who} apagou o compromisso “{title}”",
+        "ausencia_marcada": f"{who} marcou ausência de {name_of(ref_id)} ({detail})",
+        "ausencia_removida": f"{who} tirou a ausência de {name_of(ref_id)} de {detail}",
+        "feriado_criado": f"{who} acrescentou o feriado {detail}",
+        "feriado_ligado": f"{who} ligou o feriado {detail}",
+        "feriado_desligado": f"{who} desligou o feriado {detail} (o dia volta a ser útil)",
+        "feriado_removido": f"{who} removeu o feriado {detail}",
         "prioridade_criada": f"{who} acrescentou “{detail}” às prioridades do mês",
         "prioridade_feita": f"{who} marcou como feita a prioridade “{detail}”",
         "prioridade_desfeita": f"{who} desmarcou a prioridade “{detail}”",

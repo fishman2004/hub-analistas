@@ -22,6 +22,7 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import BinaryIO
 
+from .calendario import load_holidays
 from .db import Database, log_event
 from .people import Person, ValidationError, list_people
 from .planilhas import EXTENSIONS, PlanilhaError, day as parse_day, normalize, read_rows
@@ -93,8 +94,10 @@ def _setting(conn, key: str, default: int) -> int:
 
 
 def journey_from(conn) -> dict:
+    # feriados do calendário (fase 13): não pedem lançamento, e hora trabalhada neles é toda extra
     return {"semana": _setting(conn, SETTING_WEEK, WEEK_DEFAULT),
-            "sabado": _setting(conn, SETTING_SATURDAY, SATURDAY_DEFAULT)}
+            "sabado": _setting(conn, SETTING_SATURDAY, SATURDAY_DEFAULT),
+            "feriados": load_holidays(conn)}
 
 
 def journey(db: Database) -> dict:
@@ -103,6 +106,8 @@ def journey(db: Database) -> dict:
 
 
 def planned_for(day: date, j: dict) -> int:
+    if day in j.get("feriados", ()):
+        return 0
     if day.weekday() < 5:
         return j["semana"]
     return j["sabado"] if day.weekday() == 5 else 0

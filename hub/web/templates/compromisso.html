@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% set active = 'calendario' %}
+{% block title %}{{ 'Compromisso' if v.id else 'Novo compromisso' }} · Hub dos Analistas{% endblock %}
+{% block main %}
+<h1>{{ ('Editar compromisso' if can_edit else 'Compromisso') if v.id else 'Novo compromisso' }}</h1>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+{% if event and not can_edit %}
+<p class="ajuda">Muda este compromisso quem criou{{ ' (' ~ creator.name ~ ')' if creator else '' }}, o gestor e os administradores.</p>
+{% endif %}
+
+<form class="ficha" method="post" action="/calendario{{ '/' ~ v.id if v.id else '' }}">
+  <fieldset class="cal-campos" {% if not can_edit %}disabled{% endif %}>
+  <div>
+    <label for="title">Título</label>
+    <input type="text" id="title" name="title" value="{{ v.title }}" maxlength="120" required {% if not v.id %}autofocus{% endif %} placeholder="Reunião de fechamento com o gestor">
+  </div>
+  <div class="linha">
+    <div>
+      <label for="kind">Tipo</label>
+      <select id="kind" name="kind">{% for k, label in KINDS.items() %}<option value="{{ k }}" {% if k == v.kind %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </div>
+    <div>
+      <label for="repeat">Repete</label>
+      <select id="repeat" name="repeat">{% for k, label in REPEATS.items() %}<option value="{{ k }}" {% if k == v.repeat %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    </div>
+  </div>
+  <div class="linha">
+    <div><label for="starts_on">Dia</label><input type="date" id="starts_on" name="starts_on" value="{{ v.starts_on }}" required></div>
+    <div><label for="ends_on">Até o dia <span class="opcional">(se durar vários dias)</span></label><input type="date" id="ends_on" name="ends_on" value="{{ v.ends_on }}"></div>
+  </div>
+  <div class="linha">
+    <div><label for="starts_at">Começa às <span class="opcional">(vazio = dia todo)</span></label><input type="time" id="starts_at" name="starts_at" value="{{ v.starts_at }}"></div>
+    <div><label for="ends_at">Termina às <span class="opcional">(opcional)</span></label><input type="time" id="ends_at" name="ends_at" value="{{ v.ends_at }}"></div>
+  </div>
+  <div>
+    <label for="place">Local <span class="opcional">(opcional)</span></label>
+    <input type="text" id="place" name="place" value="{{ v.place }}" maxlength="80" placeholder="Sala de reunião, Teams…">
+  </div>
+  <div>
+    <label for="description">Descrição <span class="opcional">(opcional)</span></label>
+    <textarea id="description" name="description" rows="4" maxlength="2000" placeholder="Pauta, links, o que levar…">{{ v.description }}</textarea>
+    <p class="ajuda">Só aparece aqui no app, nunca na TV.</p>
+  </div>
+  <fieldset class="escolhas">
+    <legend>Quem vê</legend>
+    <label class="check"><input type="radio" name="visibility" value="equipe" {% if v.visibility == 'equipe' %}checked{% endif %}> A equipe <span class="ajuda">(no calendário de todos e na TV)</span></label>
+    <label class="check"><input type="radio" name="visibility" value="pessoal" {% if v.visibility == 'pessoal' %}checked{% endif %}> Só eu <span class="ajuda">(ninguém mais vê, nem na TV)</span></label>
+  </fieldset>
+  <fieldset class="escolhas">
+    <legend>Participantes <span class="opcional">(opcional; não vale para "só eu")</span></legend>
+    {% for p in team %}
+    <label class="check"><input type="checkbox" name="people" value="{{ p.id }}" {% if p.id in v.people %}checked{% endif %}> {{ p.name }}{{ ' (desativado)' if not p.active else '' }}</label>
+    {% endfor %}
+  </fieldset>
+  <label class="check">
+    <input type="checkbox" name="reserved" value="1" {% if v.reserved %}checked{% endif %}>
+    <span><strong>Reservado</strong> · para quem não participa (e na TV) aparece só "Compromisso reservado"</span>
+  </label>
+  </fieldset>
+  <div class="acoes">
+    {% if can_edit %}<button>Salvar</button>{% endif %}
+    <a class="botao discreto" href="/calendario{{ '?data=' ~ v.starts_on if v.starts_on else '' }}">{{ 'Cancelar' if can_edit else 'Voltar' }}</a>
+  </div>
+</form>
+{% if event and can_edit %}
+<form method="post" action="/calendario/{{ event.id }}/excluir" class="cal-excluir" onsubmit="return confirm('Apagar este compromisso{{ ' (e todas as repetições)' if event.repeat else '' }}?')">
+  <button class="perigo">Apagar compromisso</button>
+</form>
+{% endif %}
+{% endblock %}

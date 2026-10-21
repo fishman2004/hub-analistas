@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% set active = 'calendario' %}
+{% block title %}Calendário · Hub dos Analistas{% endblock %}
+{% macro filtro_qs() %}{% if filtros != DEFAULT_FILTERS %}&filtros=1{% for f in filtros %}&f={{ f }}{% endfor %}{% endif %}{% endmacro %}
+{% macro item(i) %}
+<li class="cal-item cal-{{ i.kind }}{{ ' atrasada' if i.late else '' }}"{% if i.color %} style="--cor: {{ i.color }}"{% endif %}>
+  {% if i.time %}<span class="cal-hora">{{ i.time }}</span>{% endif %}
+  {% if i.link %}<a href="{{ i.link }}">{{ i.title }}</a>{% else %}<span>{{ i.title }}</span>{% endif %}
+  {% if i.initials %}<span class="cal-ini">{{ i.initials }}</span>{% endif %}
+  {% if i.note %}<span class="cal-nota">{{ i.note }}</span>{% endif %}
+</li>
+{% endmacro %}
+{% block main %}
+<div class="barra">
+  <h1>{{ title }}</h1>
+  <div class="acoes">
+    <a class="botao" href="/calendario/novo?data={{ (ref if ref >= today else today).isoformat() }}">+ Compromisso</a>
+    <a class="botao discreto" href="/calendario/feriados?ano={{ ref.year }}">Feriados</a>
+  </div>
+</div>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+
+<div class="cal-controles">
+  <nav class="meses" aria-label="Visão">
+    {% for key, label in (('mes', 'Mês'), ('semana', 'Semana'), ('lista', 'Lista')) %}
+    <a href="/calendario?visao={{ key }}&data={{ ref.isoformat() }}{{ filtro_qs() }}" {% if key == visao %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <nav class="cal-setas" aria-label="Período">
+    <a class="botao discreto" href="/calendario?visao={{ visao }}&data={{ prev.isoformat() }}{{ filtro_qs() }}" title="Anterior">◀</a>
+    <a class="botao discreto" href="/calendario?visao={{ visao }}{{ filtro_qs() }}">Hoje</a>
+    <a class="botao discreto" href="/calendario?visao={{ visao }}&data={{ nxt.isoformat() }}{{ filtro_qs() }}" title="Seguinte">▶</a>
+  </nav>
+  <form class="cal-filtros" method="get" action="/calendario">
+    <input type="hidden" name="visao" value="{{ visao }}">
+    <input type="hidden" name="data" value="{{ ref.isoformat() }}">
+    <input type="hidden" name="filtros" value="1">
+    {% for key, label in FILTERS.items() %}
+    <label class="check cal-{{ key }}"><input type="checkbox" name="f" value="{{ key }}" {% if key in filtros %}checked{% endif %} onchange="this.form.submit()"> {{ label }}</label>
+    {% endfor %}
+    <noscript><button class="discreto">Aplicar</button></noscript>
+  </form>
+</div>
+
+{% if visao == 'mes' %}
+<div class="cal-grade" role="table" aria-label="{{ title }}">
+  <div class="cal-cabeca" role="row">{% for w in WEEKDAYS %}<div role="columnheader">{{ w[:3] }}</div>{% endfor %}</div>
+  {% for week in weeks %}
+  <div class="cal-semana" role="row">
+    {% for d in week %}
+    {% set lista = items.get(d, []) %}
+    <div role="cell" class="cal-dia{{ ' fora' if d.month != month else '' }}{{ ' hoje' if d == today else '' }}{{ ' feriado' if lista and lista[0].kind == 'feriado' else '' }}">
+      <a class="cal-num" href="/calendario/novo?data={{ d.isoformat() }}" title="Novo compromisso em {{ d.strftime('%d/%m') }}">{{ d.day }}</a>
+      {% if lista %}<ul>{% for i in lista[:5] %}{{ item(i) }}{% endfor %}</ul>
+      {% if lista|length > 5 %}<a class="cal-mais" href="/calendario?visao=semana&data={{ d.isoformat() }}{{ filtro_qs() }}">+ {{ lista|length - 5 }}</a>{% endif %}{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="cal-lista">
+  {% for d in days %}
+  {% set lista = items.get(d, []) %}
+  {% if visao == 'semana' or lista %}
+  <section class="cal-dia-linha{{ ' hoje' if d == today else '' }}">
+    <h2><a href="/calendario/novo?data={{ d.isoformat() }}" title="Novo compromisso neste dia">{{ WEEKDAYS[d.weekday()]|capitalize }}, {{ d.strftime('%d/%m') }}</a>{% if d == today %} <span class="etiqueta">hoje</span>{% endif %}</h2>
+    {% if lista %}<ul>{% for i in lista %}{{ item(i) }}{% endfor %}</ul>{% else %}<p class="vazio">Nada neste dia.</p>{% endif %}
+  </section>
+  {% endif %}
+  {% endfor %}
+  {% if visao == 'lista' and not items %}<p class="vazio">Nada nos próximos 30 dias.</p>{% endif %}
+</div>
+{% endif %}
+
+<div class="cal-rodape">
+<section class="ficha cartao-form" aria-labelledby="ausencias-titulo">
+  <h2 id="ausencias-titulo">Ausências da equipe</h2>
+  <p class="ajuda">Férias, folga, curso. Na TV aparece só "Ausente" e a data de volta. O motivo é opcional e só você e o gestor veem.</p>
+  {% if absences %}
+  <ul class="cal-lista-ausencias">
+    {% for x in absences %}
+    {% set p = by_id.get(x.person_id) %}
+    <li>
+      <span class="bolinha" style="--cor: {{ p.color if p else '#888' }}">{{ p.initials if p else '?' }}</span>
+      <span><strong>{{ p.name if p else 'Alguém' }}</strong> · {{ x.starts_on.strftime('%d/%m') }}{% if x.ends_on != x.starts_on %} a {{ x.ends_on.strftime('%d/%m') }}{% endif %}
+        {%- if x.reason and can_see_reason(user, x) %} <span class="ajuda">· {{ x.reason }}</span>{% endif %}</span>
+      {% if can_mark(user, x.person_id) %}
+      <form method="post" action="/calendario/ausencias/{{ x.id }}/excluir" onsubmit="return confirm('Tirar esta ausência?')"><button class="discreto">Tirar</button></form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="vazio">Ninguém com ausência marcada nos próximos 60 dias.</p>{% endif %}
+  <form method="post" action="/calendario/ausencias" class="ficha">
+    <div class="linha">
+      {% if user.is_manager %}
+      <div>
+        <label for="aus-pessoa">Quem</label>
+        <select id="aus-pessoa" name="pessoa">
+          {% for p in team %}<option value="{{ p.id }}" {% if p.id|string == a.pessoa|string %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select>
+      </div>
+      {% else %}<input type="hidden" name="pessoa" value="{{ user.id }}">{% endif %}
+      <div><label for="aus-de">Primeiro dia</label><input type="date" id="aus-de" name="de" value="{{ a.de }}" required></div>
+      <div><label for="aus-ate">Último dia <span class="opcional">(se for mais de um)</span></label><input type="date" id="aus-ate" name="ate" value="{{ a.ate }}"></div>
+    </div>
+    <div>
+      <label for="aus-motivo">Motivo <span class="opcional">(opcional, só você e o gestor veem)</span></label>
+      <input type="text" id="aus-motivo" name="motivo" value="{{ a.motivo }}" maxlength="80" placeholder="Férias">
+    </div>
+    <div class="acoes"><button>Marcar {{ 'ausência' if user.is_manager else 'minha ausência' }}</button></div>
+  </form>
+</section>
+</div>
+{% endblock %}
