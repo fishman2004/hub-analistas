@@ -41,12 +41,13 @@ As fases 10 a 15 são a **v3**, com as sugestões do gestor: o plano completo, c
 | 12 | **Bloco de notas pessoal:** página **Notas** com título, texto (grava sozinho enquanto a pessoa digita), arquivos com nova versão, fixar, arquivar, busca, lixeira de 30 dias, **Transformar em demanda** (levando os arquivos) e **Baixar minhas notas** (ZIP). Só a dona vê: nem gestor nem administrador; fora do histórico e da TV. | Pronto ([roteiro de teste](roteiros/fase-12-notas.md)) |
 | 13 | **Calendário:** página **Calendário** (mês, semana e lista) com compromissos (equipe, "só eu" ou reservado; repetição semanal, mensal ou anual), feriados nacionais calculados e os da cidade, ausências da equipe, prazos das demandas, prazos das prioridades e rotinas. Os feriados saem da meta do dia dos painéis, das rotinas e do banco de horas. Na TV, a tela **Agenda** e "Ausente até dd/mm" na faixa de presença. | Pronto ([roteiro de teste](roteiros/fase-13-calendario.md)) |
 | 14 | **Modos da TV:** cada modo diz quais telas passam, em que ordem e por quanto tempo, com o som do aviso e os títulos ligados ou não. Vêm prontos o **Padrão** (o que estava em Configurações), **Início de mês** e **Fim de mês** (ligam sozinhos nos 5 primeiros e nos 5 últimos dias úteis) e, sem ligar sozinhos, Fechamento do dia, Hora das transferências, Sábado, Campanha, Reunião na sala, Apresentação dos painéis, Visita e Só o quadro. Qualquer pessoa troca o modo na página **TV da sala**; gestor e administradores criam e editam em **Modos da TV**, com pré-visualização no próprio PC. | Pronto ([roteiro de teste](roteiros/fase-14-modos.md)) |
-| 15 | **Exportar uma tela da TV em PDF**, com a mesma regra da TV | Planejada |
+| 15 | **Exportar a TV em PDF:** na página **TV da sala**, "Exportar PDF" em cada tela, "a tela que está na TV agora" e "todas as telas da rotação" (uma folha por tela, e cada página do Quadro numa folha). Abre a janela de impressão do navegador (**Salvar como PDF**), com a mesma regra da TV, rodapé com data e as iniciais de quem exportou e uma versão clara para imprimir. Fica no histórico. | Pronto ([roteiro de teste](roteiros/fase-15-pdf.md)) |
 
 ### Ideias para depois
 
 - **Modos da TV por pasta** (só a pasta B nos painéis, para a reunião daquela gerência) e com **layout diferente** (por exemplo, a faixa de presença menor).
 - **Exportar o calendário** em `.ics` para o Outlook.
+- **PDF com valores** (só para o gestor) e **imagem PNG** de uma tela para colar no WhatsApp.
 
 ## Regras que valem para todas as fases
 

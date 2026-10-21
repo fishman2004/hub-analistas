@@ -248,3 +248,17 @@ Pedido do gestor: um "modo" para dias como Início de mês (mais demandas que n�
 - **Ninguém fica perdido:** o nome do modo aparece discreto no topo da TV, e a página TV da sala diz qual modo vale e por quê ("automático (nos 5 últimos dias úteis do mês)" ou "escolhido por Ana até 18:00").
 
 Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 14.1 a 14.6 do [plano da v3](plano-v3.md)).
+
+## Exportar a TV em PDF (fase 15)
+
+Pedido do gestor: exportar uma das telas da TV em PDF, para mandar a alguém.
+
+- **Sem gerar PDF no servidor e sem instalar nada:** a página de exportação desenha a TV numa folha do tamanho de uma TV Full HD e abre a janela de impressão do navegador, onde a pessoa escolhe **Salvar como PDF**. Os gráficos são SVG e saem nítidos.
+- **Uma tela, a que está na TV agora ou todas** (um "retrato do dia", uma folha por tela). As telas que passam páginas (Quadro, Prioridades, Produtos foco, Envios) saem com todas as páginas, para não faltar nada.
+- **A mesma regra da TV, sempre:** o PDF usa os mesmos dados do `/api/tv`. Painéis só em porcentagem, reservadas mascaradas, e nada de banco de horas, anexos, notas, descrição de compromisso ou motivo de ausência. Como um PDF pode ir para qualquer pessoa, isso protege igual ou mais que a TV. Um PDF com valores, só para o gestor, fica para outra fase.
+- **Escuro, igual à TV,** com a opção **versão clara para imprimir** (gasta menos tinta).
+- **Rodapé** com o nome da tela, a data e a hora e as **iniciais** de quem exportou (não o nome completo). O nome sugerido do arquivo é `Hub - (tela) - AAAA-MM-DD HHhMM`.
+- **Quem pode:** qualquer pessoa com PIN, e fica no histórico (quem exportou qual tela e quando), porque o PDF sai da sala.
+- **Sem imagem PNG** nesta fase: o PDF abre no celular.
+
+Escolhas padrão aprovadas pelo Kayo (21/10/2026, perguntas 15.1 a 15.4 do [plano da v3](plano-v3.md)).

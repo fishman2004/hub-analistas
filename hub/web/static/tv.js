@@ -18,6 +18,10 @@
 // Modos (fase 14): o servidor já manda a rotação do modo que vale agora; a TV só mostra o nome do
 // modo no topo (o Padrão não aparece) e não toca o som quando o aviso vem "mudo". Com ?modo=<id>, a
 // aba é a pré-visualização de um modo no PC de alguém: passa as telas daquele modo, sem mexer na sala.
+//
+// Exportar em PDF (fase 15): na página /tv/exportar, o corpo tem a classe "exportar". A TV desenha uma
+// vez, com os mesmos dados do /api/tv, numa folha de 1920x1080 fora da tela; cada tela (e cada página
+// dela) é copiada como uma folha estática e a janela de impressão abre ("Salvar como PDF").
 (function () {
   "use strict";
   const INTERVALO_MS = 5000;
@@ -38,9 +42,10 @@
   const PARAMS = new URLSearchParams(location.search);
   const ESPIAR = PARAMS.get("fixa") === "1";
   const PREVIA = /^\d+$/.test(PARAMS.get("modo") || "") ? PARAMS.get("modo") : null;
-  const NO_PC = ESPIAR || Boolean(PREVIA);  // não é a TV da sala: não toca aviso nem obedece à pausa da sala
+  const EXPORTAR = document.body.classList.contains("exportar");
+  const NO_PC = ESPIAR || Boolean(PREVIA) || EXPORTAR;  // não é a TV da sala: não toca aviso nem obedece à pausa da sala
   let pedida = ESPIAR ? PARAMS.get("tela") : null;  // a tela que a aba "no meu PC" abre primeiro
-  let pausaLocal = ESPIAR ? { ate: Infinity } : null;
+  let pausaLocal = ESPIAR || EXPORTAR ? { ate: Infinity } : null;
   let pausaRemota = null;  // { tela, ate, iniciais, pagina }, do /api/tv
   let paginaRemota;  // contador de "página seguinte" pelo app; undefined até a primeira busca
   let minutosPausa = 15;
@@ -385,13 +390,85 @@
     }
   }
 
+  // ---------- exportar em PDF (fase 15) ----------
+
+  const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
+
+  function paginasDe(sec) {  // "2/3" no título de uma coluna ou tela: quantas páginas ela tem
+    let n = 1;
+    for (const e of sec.querySelectorAll(".pagina")) {
+      const m = /\/(\d+)/.exec(e.textContent);
+      if (m) n = Math.max(n, Number(m[1]));
+    }
+    return n;
+  }
+
+  function retrato(rotulo, pagina, total) {
+    // copia a folha desenhada como está: elementos estáticos, sem id, com o nome da tela no topo e o rodapé
+    const copia = document.getElementById("ao-vivo").cloneNode(true);
+    copia.removeAttribute("id");
+    for (const e of copia.querySelectorAll("[id]")) e.removeAttribute("id");
+    for (const e of copia.querySelectorAll(".sem-conexao, .aviso-rotina, .selo-pausa, .selo-modo")) e.remove();
+    const rot = copia.querySelector(".rotacao");
+    rot.hidden = false;
+    rot.replaceChildren(el("div", "rot-titulo", rotulo));
+    const corpo = document.body.dataset;
+    copia.append(el("div", "folha-rodape", corpo.rodape.replace("{tela}", rotulo)
+      + (total > 1 ? " · página " + (pagina + 1) + " de " + total : "")));
+    return copia;
+  }
+
+  async function exportar() {
+    const aviso = document.getElementById("exportar-aviso");
+    relogio();
+    let dados;
+    try {
+      const r = await fetch("/api/tv?espiar=1", { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      dados = await r.json();
+    } catch (e) {
+      aviso.textContent = "Não deu para buscar os dados da TV. Feche esta aba e tente de novo.";
+      return;
+    }
+    desenharPresenca(dados.people);
+    avisoAtrasadas(dados.overdue || 0);
+    desenharTelas(dados);
+    const pedido = document.body.dataset.exportar;
+    const alvo = pedido === "todas" ? rotacao : rotacao.filter((t) => t.id === pedido);
+    if (!alvo.length) {
+      aviso.textContent = "Essa tela não tem nada para mostrar agora (ela está fora da rotação da TV).";
+      return;
+    }
+    const folhas = [];
+    for (const t of alvo) {
+      mostrar(t.id);
+      await esperar(80);
+      const sec = secao(t.id);
+      const total = paginasDe(sec);
+      for (let p = 0; p < total; p++) {
+        if (p) { trocarPagina(1); await esperar(650); }  // depois do fade das colunas
+        folhas.push(retrato(t.label, p, total));
+      }
+    }
+    document.getElementById("folhas").replaceChildren(...folhas);
+    aviso.textContent = folhas.length === 1 ? "1 folha pronta." : folhas.length + " folhas prontas.";
+    document.body.classList.add("pronta");
+    if (!PARAMS.has("sem_imprimir")) setTimeout(() => window.print(), 300);
+  }
+
   window.HubTV = {
     registrar(id, modulo) { modulos[id] = modulo; },
     pausada,
+    exportando: EXPORTAR,
     el, cartao, paginar, encaixar, dataCurta,
   };
 
   window.addEventListener("load", () => {
+    if (EXPORTAR) {
+      document.getElementById("imprimir").addEventListener("click", () => window.print());
+      exportar();
+      return;
+    }
     // a TV pode mudar de tamanho (quiosque abrindo): redesenha com o último estado
     window.addEventListener("resize", () => { if (ultimoEstado) desenharTelas(ultimoEstado); });
     document.addEventListener("click", alternarPausa);

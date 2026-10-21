@@ -24,6 +24,14 @@ body {
   background: var(--fundo); color: var(--texto);
   font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
 }
+/* exportar em PDF (fase 15): cada folha é uma TV de 1920x1080, com 1rem = 16px como na TV Full HD */
+html.exportar { font-size: 16px; }
+body.exportar { height: auto; overflow: auto; display: block; padding: 0; }
+.folha {
+  position: relative; width: 1920px; height: 1080px; overflow: hidden;
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 1rem;
+  padding: 1.25rem 1.5rem 1.5rem; background: var(--fundo); color: var(--texto);
+}
 
 .topo { display: flex; justify-content: space-between; align-items: center; gap: 2rem; }
 .topo-dir { display: flex; align-items: center; gap: 1.5rem; }
@@ -348,3 +356,34 @@ body {
 /* modo da TV (fase 14): o nome do modo, discreto, quando não é o Padrão */
 .selo-modo { font-size: 1.2rem; font-weight: 600; color: var(--suave); border: .12rem solid var(--linha);
   border-radius: 999px; padding: .15rem .9rem; white-space: nowrap; }
+
+/* ---------- exportar em PDF (fase 15) ---------- */
+#ao-vivo { position: absolute; left: -100000px; top: 0; }  /* a folha onde a TV desenha: fora da tela */
+.exportar-barra { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem 2rem; align-items: center;
+  padding: 1rem 1.5rem; background: var(--painel); border-bottom: 1px solid var(--linha); font-size: 1rem; }
+.exportar-barra p { margin: .25rem 0 0; color: var(--suave); }
+.exportar-acoes { display: flex; gap: 1rem; align-items: center; }
+.exportar-acoes button { font: inherit; font-weight: 700; padding: .6rem 1.2rem; border-radius: .6rem; border: none; cursor: pointer;
+  background: var(--pausa); color: var(--fundo); }
+.exportar-acoes a { color: var(--pausa); }
+.folhas { display: grid; justify-content: center; gap: 1.5rem; padding: 1.5rem; }
+.folhas .folha { zoom: .5; box-shadow: 0 0 0 2px var(--linha); }
+.rot-titulo { font-size: 1.6rem; font-weight: 700; color: var(--texto); }
+.folha-rodape { position: absolute; left: 1.5rem; right: 1.5rem; bottom: .3rem; font-size: .9rem; color: var(--suave); text-align: right; }
+/* versão clara para imprimir no papel */
+body.clara {
+  --fundo: #ffffff; --painel: #f2f4f7; --cartao: #ffffff; --linha: #d5dbe1; --texto: #18212b; --suave: #5c6875;
+  --sala: #1a7f37; --reuniao: #a15c00; --pausa: #1f5f99; --fora: #6a737d; --atraso: #b42318; --esperado: #18212b;
+  color-scheme: light;
+}
+body.clara .cartao, body.clara .ag-item, body.clara .pessoa { box-shadow: inset 0 0 0 1px var(--linha); }
+@page { size: 297mm 167.5mm; margin: 0; }
+@media print {
+  body.exportar { background: none; }
+  .exportar-barra, #ao-vivo { display: none !important; }
+  .folhas { display: block; padding: 0; }
+  /* 297 mm = 1122,5 px: a folha de 1920 px cabe na largura da página */
+  .folhas .folha { zoom: .5846; box-shadow: none; break-after: page; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+body.clara .letra[class*="pasta-"] { background: #5c6875; }  /* G, TLV e T: sem cor própria */
+body.clara .cartao-pasta.total { background: #e4e9ee; }
