@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% set active = 'tv' %}
+{% block title %}TV da sala · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>TV da sala</h1>
+  <a class="botao discreto" href="/tv" target="_blank" rel="noopener">Abrir a TV numa aba</a>
+</div>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+
+<section class="cartao-form tv-agora" aria-label="O que está na TV agora">
+  {% if seen %}
+  <p><strong>Na TV agora:</strong> {{ seen.label }}{% if seen.pausada %} (pausada){% endif %} <span class="ajuda">· conferido há {{ seen.segundos }} s</span></p>
+  {% else %}
+  <p><strong>A TV da sala não está conectada agora.</strong> <span class="ajuda">Ela conta qual tela está mostrando a cada 5 segundos; sem notícia há mais de 30 s, o PC da sala pode estar desligado ou com a TV fechada.</span></p>
+  {% endif %}
+  {% if pause %}
+  <p class="aviso">⏸ Pausada em <strong>{{ labels.get(pause.tela, pause.tela) }}</strong>{% if pause_who %} por {{ pause_who.name }}{% endif %}, até {{ pause_until.strftime('%H:%M') }}. Depois disso ela volta a passar as telas sozinha.</p>
+  {% else %}
+  <p class="ajuda">A TV está passando as telas sozinha.</p>
+  {% endif %}
+
+  <div class="acoes tv-botoes">
+    <form method="post" action="/tv-da-sala/trocar"><input type="hidden" name="direcao" value="anterior"><button class="discreto">◀ Anterior</button></form>
+    <form method="post" action="/tv-da-sala/trocar"><input type="hidden" name="direcao" value="proxima"><button class="discreto">Próxima ▶</button></form>
+    <form method="post" action="/tv-da-sala/pagina"><button class="discreto">Página seguinte do Quadro</button></form>
+    {% if pause %}<form method="post" action="/tv-da-sala/retomar"><button>▶ Voltar à rotação</button></form>{% endif %}
+  </div>
+</section>
+
+<form class="ficha cartao-form" method="post" action="/tv-da-sala/pausar">
+  <h2>Pausar a TV da sala</h2>
+  <div class="linha">
+    <div>
+      <label for="tela">Em qual tela</label>
+      <select id="tela" name="tela">
+        <option value="atual">A que está na TV agora{% if seen %} ({{ seen.label }}){% endif %}</option>
+        {% for s in screens %}<option value="{{ s.id }}">{{ s.label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="minutos">Por quanto tempo</label>
+      <select id="minutos" name="minutos">
+        {% for k, label in durations.items() %}<option value="{{ k }}" {% if k == default_minutes %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  <p class="ajuda">A TV obedece em até 5 segundos e mostra “Pausada” no topo, com as suas iniciais. Os números continuam atualizando e o aviso das rotinas toca normalmente. Na própria TV, um clique (ou a tecla Espaço) também pausa.</p>
+  <div><button>⏸ Pausar</button></div>
+</form>
+
+<section class="cartao-form">
+  <h2>Ver uma tela no meu PC</h2>
+  <p class="ajuda">Abre a tela numa aba só sua, já parada, sem mexer na TV da sala. Use as setas ← → do teclado para trocar de tela e ↑ ↓ para as páginas do Quadro.</p>
+  <ul class="lista-telas">
+    {% for s in screens %}
+    <li><span>{{ s.label }}</span> <a class="botao discreto" href="/tv?tela={{ s.id }}&amp;fixa=1" target="_blank" rel="noopener">Abrir no meu PC</a></li>
+    {% endfor %}
+  </ul>
+  <p class="ajuda">Aparecem só as telas que estão na rotação agora (uma tela sem dados, como um painel sem planilha, fica de fora).</p>
+</section>
+{% endblock %}

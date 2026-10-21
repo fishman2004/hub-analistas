@@ -9,6 +9,11 @@
 // Aviso das rotinas (fase 7): o /api/tv manda as rotinas de hoje com o horário. Quando o horário
 // chega, a TV toca o som uma vez e mostra uma faixa por cima de qualquer tela por ~20 s. As rotinas
 // já tocadas ficam guardadas (na memória e no localStorage), para recarregar a página não tocar de novo.
+//
+// Pausa (fase 10): um clique ou a tecla Espaço pausa na tela atual (← → trocam de tela, ↑ ↓ passam as
+// páginas do Quadro) e ela volta sozinha depois do tempo padrão. A pausa feita pelo app (página "TV da
+// sala") chega no /api/tv e vence a local. Com ?tela=<id>&fixa=1, a aba é "a TV no meu PC": nasce
+// pausada naquela tela, não obedece à pausa da sala, não toca aviso e não conta como a TV da sala.
 (function () {
   "use strict";
   const INTERVALO_MS = 5000;
@@ -26,6 +31,13 @@
   let rotacao = [{ id: "quadro", label: "Quadro", seconds: 30 }];
   let atual = "quadro";
   let inicioTela = Date.now();
+  const PARAMS = new URLSearchParams(location.search);
+  const ESPIAR = PARAMS.get("fixa") === "1";
+  let pedida = ESPIAR ? PARAMS.get("tela") : null;  // a tela que a aba "no meu PC" abre primeiro
+  let pausaLocal = ESPIAR ? { ate: Infinity } : null;
+  let pausaRemota = null;  // { tela, ate, iniciais, pagina }, do /api/tv
+  let paginaRemota;  // contador de "página seguinte" pelo app; undefined até a primeira busca
+  let minutosPausa = 15;
 
   // ---------- peças que as telas reaproveitam ----------
 
@@ -204,7 +216,7 @@
   }
 
   function conferirAvisos() {
-    if (!avisos.length) return;
+    if (ESPIAR || !avisos.length) return;  // a TV aberta no PC de alguém não toca aviso
     const agora = Date.now() + desvio;
     const novos = [];
     let mudou = false;
@@ -249,9 +261,63 @@
     desenharIndicador();
   }
 
+  // ---------- pausa ----------
+
+  const remota = () => !ESPIAR && pausaRemota;
+  const pausada = () => Boolean(remota() || pausaLocal);
+  const horaCurta = (d) => String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+
+  function desenharPausa() {
+    const selo = document.getElementById("pausa");
+    selo.hidden = !pausada();
+    document.getElementById("rotacao").hidden = pausada();  // o selo fica no lugar do indicador da rotação
+    if (ESPIAR) selo.textContent = "⏸ No seu PC · ← → trocam a tela";
+    else if (pausaRemota) selo.textContent = "⏸ Pausada" + (pausaRemota.iniciais ? " por " + pausaRemota.iniciais : "")
+      + " · volta às " + pausaRemota.ate.slice(11, 16);
+    else if (pausaLocal) selo.textContent = "⏸ Pausada · volta às " + horaCurta(new Date(pausaLocal.ate));
+  }
+
+  function alternarPausa() {
+    if (ESPIAR) return;  // a aba no meu PC fica sempre parada
+    if (remota()) {  // pausa do app vence: quem retoma é o app (ou o prazo)
+      const selo = document.getElementById("pausa");
+      selo.classList.remove("piscar"); void selo.offsetWidth; selo.classList.add("piscar");
+      return;
+    }
+    pausaLocal = pausaLocal ? null : { ate: Date.now() + minutosPausa * 60000 };
+    if (!pausaLocal) inicioTela = Date.now();  // volta à rotação com o tempo cheio da tela
+    desenharPausa();
+  }
+
+  function trocarTela(direcao) {
+    if (remota() || rotacao.length < 2) return;
+    if (!pausaLocal) pausaLocal = { ate: Date.now() + minutosPausa * 60000 };
+    const i = rotacao.findIndex((t) => t.id === atual);
+    mostrar(rotacao[(i + direcao + rotacao.length) % rotacao.length].id);
+    desenharPausa();
+  }
+
+  function trocarPagina(direcao) {
+    const m = modulos[atual];
+    if (m && m.pagina) m.pagina(secao(atual), direcao);
+  }
+
   function passo() {
+    if (pausaLocal && pausaLocal.ate <= Date.now()) {  // o prazo da pausa passou: volta sozinha
+      pausaLocal = null;
+      inicioTela = Date.now();
+      desenharPausa();
+    }
+    if (pedida && rotacao.some((t) => t.id === pedida)) { mostrar(pedida); pedida = null; return; }
+    if (remota()) {
+      // pausada pelo app: fica na tela pedida (ou na primeira, se ela saiu da rotação)
+      const alvo = rotacao.some((t) => t.id === pausaRemota.tela) ? pausaRemota.tela : rotacao[0].id;
+      if (alvo !== atual) mostrar(alvo);
+      return;
+    }
     const tela = rotacao.find((t) => t.id === atual);
     if (!tela) { mostrar(rotacao[0].id); return; }  // a tela atual saiu da rotação
+    if (pausaLocal) return;  // parada: nem troca de tela nem anda a barra
     const passou = Date.now() - inicioTela;
     if (passou >= tela.seconds * 1000 && rotacao.length > 1) {
       const i = rotacao.findIndex((t) => t.id === atual);
@@ -274,7 +340,9 @@
     relogio();
     try {
       // servidor travado (aceita a conexão mas não responde) também conta como "sem atualização"
-      const r = await fetch("/api/tv", { cache: "no-store", signal: AbortSignal.timeout(4000) });
+      // conta qual tela está aparecendo, para a página "TV da sala" do app saber
+      const url = "/api/tv?tela=" + encodeURIComponent(atual) + "&pausada=" + (pausada() ? 1 : 0) + (ESPIAR ? "&espiar=1" : "");
+      const r = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(4000) });
       if (!r.ok) throw new Error("HTTP " + r.status);
       const dados = await r.json();
       ultimaAtualizacao = new Date();
@@ -283,6 +351,14 @@
       desvio = new Date(dados.now).getTime() - Date.now();
       hoje = dados.now.slice(0, 10);
       avisos = dados.avisos || [];
+      minutosPausa = dados.pausa_minutos || 15;
+      const antes = pausaRemota;
+      pausaRemota = dados.pausa || null;
+      if (antes && !pausaRemota) inicioTela = Date.now();  // o app retomou: a tela começa com o tempo cheio
+      const pagina = pausaRemota && pausaRemota.tela === "quadro" ? pausaRemota.pagina : 0;
+      if (paginaRemota !== undefined && pagina > paginaRemota && remota()) trocarPagina(1);
+      paginaRemota = pagina;
+      desenharPausa();
       conferirAvisos();
       desenharPresenca(dados.people);
       avisoAtrasadas(dados.overdue || 0);
@@ -294,12 +370,19 @@
 
   window.HubTV = {
     registrar(id, modulo) { modulos[id] = modulo; },
+    pausada,
     el, cartao, paginar, encaixar, dataCurta,
   };
 
   window.addEventListener("load", () => {
     // a TV pode mudar de tamanho (quiosque abrindo): redesenha com o último estado
     window.addEventListener("resize", () => { if (ultimoEstado) desenharTelas(ultimoEstado); });
+    document.addEventListener("click", alternarPausa);
+    document.addEventListener("keydown", (e) => {
+      const teclas = { " ": () => alternarPausa(), ArrowLeft: () => trocarTela(-1), ArrowRight: () => trocarTela(1),
+                       ArrowUp: () => trocarPagina(-1), ArrowDown: () => trocarPagina(1) };
+      if (teclas[e.key]) { e.preventDefault(); teclas[e.key](); }
+    });
     atualizar();
     setInterval(atualizar, INTERVALO_MS);
     setInterval(passo, 250);

@@ -18,14 +18,14 @@
       estado.paginas.length > 1 ? (estado.pagina + 1) + "/" + estado.paginas.length : "";
   }
 
-  function trocarPaginas(secaoTela) {
+  function trocarPaginas(secaoTela, direcao = 1) {
     for (const sec of secaoTela.querySelectorAll(".coluna")) {
       const estado = colunas[sec.dataset.col];
       if (!estado || estado.paginas.length < 2) continue;
       const caixa = sec.querySelector(".cartoes");
       caixa.classList.add("trocando");
       setTimeout(() => {
-        estado.pagina = (estado.pagina + 1) % estado.paginas.length;
+        estado.pagina = (estado.pagina + direcao + estado.paginas.length) % estado.paginas.length;
         desenharColuna(sec, sec.dataset.col);
         caixa.classList.remove("trocando");
       }, FADE_MS);
@@ -35,7 +35,9 @@
   let secaoTela = null;
   setInterval(() => {
     // só passa as páginas com o Quadro na tela; ao voltar, ele recomeça da primeira (aoMostrar)
-    if (secaoTela && secaoTela.classList.contains("ativa") && Date.now() - ultimaTroca >= segundosPagina * 1000) {
+    // com a TV pausada (fase 10), a página fica a que está: quem passa é a seta ↑ ↓ ou o app
+    if (secaoTela && secaoTela.classList.contains("ativa") && !HubTV.pausada()
+        && Date.now() - ultimaTroca >= segundosPagina * 1000) {
       ultimaTroca = Date.now();
       trocarPaginas(secaoTela);
     }
@@ -55,6 +57,10 @@
         colunas[col] = { paginas, pagina: anterior ? Math.min(anterior.pagina, Math.max(paginas.length - 1, 0)) : 0 };
         desenharColuna(coluna, col);
       }
+    },
+    pagina(sec, direcao) {  // pausada: seta ↑ ↓ na TV ou "Página seguinte" no app
+      ultimaTroca = Date.now();
+      trocarPaginas(sec, direcao);
     },
     aoMostrar(sec) {
       // quem olha para a TV vê as colunas desde a primeira página

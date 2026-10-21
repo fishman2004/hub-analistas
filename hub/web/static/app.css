@@ -256,3 +256,10 @@ fieldset.escolhas .check input { margin-top: 0; }
 .tabela-envios tr:has(+ .envio-detalhe) td { border-bottom: none; }
 .envio-detalhe td { padding-top: 0; }
 .detalhes { margin: 0; padding-left: 18px; display: grid; gap: 2px; font-size: .92rem; }
+
+/* TV da sala (fase 10) */
+.tv-agora, .cartao-form + .cartao-form, .tv-agora + .cartao-form { margin-bottom: 16px; }
+.tv-agora p { margin: 0 0 10px; }
+.tv-botoes form { margin: 0; }
+.lista-telas { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
+.lista-telas li { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid var(--linha); padding: 4px 0; }

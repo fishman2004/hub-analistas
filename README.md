@@ -54,6 +54,7 @@ flowchart LR
 
 - **Regras do dia calculadas, não agendadas:** "Concluído hoje", "Fora da empresa" depois da meia-noite, "atrasada" e o cartão de cada rotina no horário dela são calculados toda vez. Não há tarefa agendada que possa falhar.
 - **A TV passa de uma tela para a outra sozinha:** o Quadro, a tela **Prazos da semana** (quando há prazos), as **Prioridades do mês** (até tudo estar feito) e os **painéis de metas** (do mês, do dia e produtos foco), que o Hub calcula das planilhas de vendas guardadas na pasta dos painéis e mostra **só em porcentagem** ([paineis.md](docs/paineis.md)), e os **Envios do dia** do Pombo. Os tempos ficam em **Configurações**. Se houver demanda atrasada, um aviso fica no topo em todas as telas.
+- **Pausar a TV:** um clique (ou Espaço) na própria TV pausa na tela atual. Pelo app, a página **TV da sala** pausa a TV da sala numa tela, troca de tela e retoma, ou abre qualquer tela só no seu PC. A pausa volta sozinha depois de 15 minutos.
 - **A TV nunca rola:** uma coluna com mais demandas do que cabem passa as páginas sozinha, com um fade. Se o servidor cair, a TV mantém a última tela e avisa "sem atualização desde HH:MM".
 - Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 
@@ -88,7 +89,8 @@ Cria uma equipe, demandas, rotinas, prioridades do mês, planilhas de vendas e u
 | [Segurança e dados](docs/seguranca-e-dados.md) | TI e gestão: o que fica onde e quem vê o quê |
 | [Painéis de dados](docs/paineis.md) | Quem exporta as planilhas: nomes, colunas e como o Hub calcula |
 | [Limitações](docs/limitacoes.md) | Todos |
-| [Roadmap](docs/roadmap.md) | As fases da v2: tema, PIN, gestor, TV em rotação, painéis, banco de horas, rotinas, prioridades do mês, Pombo |
+| [Roadmap](docs/roadmap.md) | As fases da v2 (tema, PIN, gestor, TV em rotação, painéis, banco de horas, rotinas, prioridades do mês, Pombo) e da v3 |
+| [Plano da v3](docs/plano-v3.md) | As sugestões do gestor: pausa da TV, anexos, notas, calendário, modos da TV e PDF |
 | [Decisões técnicas](docs/decisoes.md) | Por que cada escolha foi feita |
 
 ## Para desenvolvedores
