@@ -14,6 +14,32 @@
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
 {% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
 
+<section class="avisos-hoje" aria-labelledby="avisos-titulo">
+  <div class="barra">
+    <h2 id="avisos-titulo">Avisos de hoje na TV</h2>
+    {% if can_manage %}
+    <form method="post" action="/rotinas/testar-aviso" class="acoes">
+      <button class="discreto" title="A TV da sala toca o som e mostra a faixa agora, sem esperar uma rotina">Testar aviso na TV agora</button>
+    </form>
+    {% endif %}
+  </div>
+  {% if alerts %}
+  <ul class="lista-avisos">
+    {% for a in alerts %}
+    <li class="{{ 'passou' if a.passed else 'proximo' if a.next else '' }}">
+      <strong>{{ a.time }}</strong> {{ a.name }}
+      {% if a.passed %}<span class="ajuda">horário já passou</span>{% elif a.next %}<span class="etiqueta">próximo aviso</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="ajuda">No horário de cada rotina, a TV toca um som e mostra uma faixa por 20 segundos. Ela só toca se estiver aberta naquela hora.</p>
+  {% elif routines %}
+  <p class="vazio">Nenhum aviso hoje: nenhuma rotina ativa vale para hoje.</p>
+  {% else %}
+  <p class="vazio">Sem avisos: a TV só avisa no horário das rotinas cadastradas.</p>
+  {% endif %}
+</section>
+
 {% if routines %}
 <div class="tabela-rolagem">
 <table class="tabela tabela-rotinas">

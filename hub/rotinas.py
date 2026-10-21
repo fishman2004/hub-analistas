@@ -9,9 +9,9 @@ Só o gestor e os administradores cadastram e mudam rotinas; todo mundo vê a li
 
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
-from .db import Database, log_event
+from .db import Database, log_event, put_setting
 from .people import Person, ValidationError
 
 WEEKDAY_LABELS = ("seg", "ter", "qua", "qui", "sex", "sáb", "dom")  # date.weekday(): segunda = 0
@@ -19,6 +19,9 @@ WORKDAYS = (0, 1, 2, 3, 4)
 FOLDERS = ("A", "B", "C", "D", "E", "F", "G")  # as mesmas de demands.FOLDERS (que importa este arquivo)
 MAX_NAME = 80
 _HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
+TEST_SETTING = "rotinas.aviso_teste"  # quando alguém clicou em "Testar aviso na TV agora"
+TEST_WINDOW = timedelta(minutes=2)  # a TV que buscar o estado neste tempo toca o teste
+TEST_NAME = "Teste do aviso"
 
 
 @dataclass(frozen=True)
@@ -215,15 +218,40 @@ def create_suggested(db: Database, now: datetime, actor: Person) -> int:
 def tv_alerts(db: Database, now: datetime) -> list[dict]:
     """Os avisos sonoros de hoje: cada rotina que vale hoje, com o horário (inclusive as que ainda
     não chegaram, para a TV tocar na hora certa entre uma busca e outra). Se o cartão de hoje de
-    uma rotina foi marcado como reservado, o aviso dela não vai para a TV."""
+    uma rotina foi marcado como reservado, o aviso dela não vai para a TV. Logo depois de um
+    "Testar aviso na TV agora", vai também o aviso de teste."""
     today = now.date()
     with db.connect() as conn:
         routines = load_routines(conn)
         reserved = {r[0] for r in conn.execute(
             "SELECT routine_id FROM demands WHERE routine_day = ? AND reserved = 1 AND deleted = 0", (today.isoformat(),))}
-    return [
+        test = conn.execute("SELECT value FROM settings WHERE key = ?", (TEST_SETTING,)).fetchone()
+    alerts = [
         {"key": f"rotina-{r.id}-{today.isoformat()}", "at": r.start(today).isoformat(timespec="seconds"),
          "time": r.starts_at, "deadline": r.deadline, "name": r.name}
         for r in sorted(routines.values(), key=lambda r: (r.starts_at, r.name.lower()))
         if r.runs_on(today) and r.id not in reserved
     ]
+    clicked = datetime.fromisoformat(test[0]) if test else None
+    if clicked and clicked <= now <= clicked + TEST_WINDOW:
+        # a chave termina com a data, como as outras: a TV guarda só as de hoje (ver tv.js)
+        alerts.append({"key": f"teste-{clicked:%H%M%S}-{today.isoformat()}", "at": clicked.isoformat(timespec="seconds"),
+                       "time": clicked.strftime("%H:%M"), "deadline": None, "name": TEST_NAME})
+    return alerts
+
+
+def alerts_today(db: Database, now: datetime) -> list[dict]:
+    """Os avisos de hoje para a tela de Rotinas: os mesmos da TV, com o que já passou e o próximo."""
+    alerts = [a for a in tv_alerts(db, now) if a["key"].startswith("rotina-")]
+    stamp = now.isoformat(timespec="seconds")
+    next_at = next((a["at"] for a in alerts if a["at"] > stamp), None)  # duas no mesmo horário: as duas são o próximo
+    return [{**a, "passed": a["at"] <= stamp, "next": a["at"] == next_at} for a in alerts]
+
+
+def start_test_alert(db: Database, now: datetime, actor: Person) -> None:
+    """Faz a TV tocar o aviso agora, para conferir o som e a faixa sem esperar uma rotina."""
+    if not can_manage(actor):
+        raise PermissionError("Só o gestor e os administradores testam o aviso da TV.")
+    with db.connect() as conn:
+        put_setting(conn, TEST_SETTING, now.isoformat(timespec="seconds"))
+        log_event(conn, now, actor.id, "aviso_teste", "rotinas", "")
