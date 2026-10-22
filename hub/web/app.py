@@ -18,7 +18,7 @@ from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, cadastro, calendario, celular, modos, notas, pastas, rotinas_mes
+from .. import anexos, cadastro, calendario, celular, modos, notas, pastas, rotinas_mes, trilha
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -378,6 +378,9 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             "today": now.date(),
             "show_all": show_all,
             "clips": anexos.counts(db, "demanda"),  # 📎 no cartão (só no app, nunca na TV)
+            # trilha do dia (fase 20): a faixa "Minha trilha de hoje" em cima do quadro
+            "trail": [] if show_all else trilha.my_trail(db, user.id, now),
+            "trail_counts": trilha.counts(trilha.my_trail(db, user.id, now)) if not show_all else {},
         }
 
     def forbidden(request: Request, user: Person, message: str = "") -> HTMLResponse:
@@ -1132,6 +1135,159 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return routines_page(request, user, 422, error=str(exc))
         return RedirectResponse("/rotinas", status_code=303)
+
+    # ---------- trilha do dia (fase 20) ----------
+
+    def trail_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
+        now = clock()
+        people = {p.id: p for p in list_people(db)}
+        away = calendario.absent_today(db, now.date())
+        trails = {pid: steps for pid, steps in trilha.trails_on(db, now.date(), now).items() if pid in people}
+        order = sorted(trails, key=lambda pid: (pid != user.id, people[pid].name.lower()))
+        summary = trilha.week_summary(db, now)
+        if not trilha.can_see_summary(user):
+            summary = [x for x in summary if x["pessoa"].id == user.id]
+        return page(request, "trilha.html", user, status_code, trails=[(people[pid], trails[pid]) for pid in order],
+                    away=away, counts=trilha.counts, summary=summary, can_edit=trilha.can_edit, now=now,
+                    has_mine=bool(trilha.list_blocks(db, user.id)), **ctx)
+
+    @app.get("/trilha", response_class=HTMLResponse)
+    def trilha_ver(request: Request, ok: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        return trail_page(request, user, ok=ok)
+
+    def safe_back(volta: str, fallback: str) -> str:
+        return volta if volta in ("/", "/trilha") else fallback
+
+    @app.post("/trilha/{block_id}/feito")
+    def trilha_feito(request: Request, block_id: int, feito: str = Form("1"), volta: str = Form("/trilha")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        try:
+            trilha.mark(db, clock(), user, block_id, feito == "1")
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError as exc:
+            return trail_page(request, user, 422, error=str(exc))
+        back = safe_back(volta, "/trilha")
+        return RedirectResponse(back + ("#minha-trilha" if back == "/" else ""), status_code=303)
+
+    def block_values(b=None, person_id: int | None = None) -> dict:
+        if b is None:
+            return {"id": "", "person_id": person_id, "weekdays": [0, 1, 2, 3, 4], "starts_at": "", "ends_at": "",
+                    "title": "", "details": "", "icon": "lista", "color": "", "kind": "tarefa", "routine_id": ""}
+        return {"id": b.id, "person_id": b.person_id, "weekdays": list(b.weekdays), "starts_at": b.starts_at,
+                "ends_at": b.ends_at, "title": b.title, "details": b.details, "icon": b.icon, "color": b.color,
+                "kind": b.kind, "routine_id": b.routine_id or ""}
+
+    def build_page(request: Request, user: Person, person: Person, status_code: int = 200, v: dict | None = None,
+                   **ctx) -> HTMLResponse:
+        people = list_people(db)
+        blocks = trilha.list_blocks(db, person.id)
+        return page(request, "trilha-montar.html", user, status_code, person=person, blocks=blocks,
+                    v=v or block_values(person_id=person.id), WEEKDAYS=trilha.WEEKDAYS, ICONS=trilha.ICONS,
+                    COLORS=trilha.COLORS, KINDS=trilha.KINDS, routines=[r for r in list_routines(db) if r.active],
+                    choices=[p for p in people if trilha.can_edit(user, p.id)],
+                    sources=[p for p in people if p.id != person.id and trilha.list_blocks(db, p.id)],
+                    weekday_label=weekdays_label, **ctx)
+
+    def build_target(request: Request, user: Person, raw) -> Person | Response:
+        person = get_person(db, int(raw)) if str(raw).isdigit() else user
+        if person is None:
+            return RedirectResponse("/trilha/montar", status_code=303)
+        if not trilha.can_edit(user, person.id):
+            return forbidden(request, user, "Monta a trilha a própria pessoa, o gestor e os administradores.")
+        return person
+
+    def back_to_build(person_id: int, message: str) -> RedirectResponse:
+        return RedirectResponse(f"/trilha/montar?pessoa={person_id}&ok={quote(message)}", status_code=303)
+
+    @app.get("/trilha/montar", response_class=HTMLResponse)
+    def trilha_montar(request: Request, pessoa: str = "", editar: str = "", ok: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        person = build_target(request, user, pessoa)
+        if not isinstance(person, Person):
+            return person
+        b = trilha.get_block(db, int(editar)) if editar.isdigit() else None
+        return build_page(request, user, person, v=block_values(b, person.id) if b and b.person_id == person.id
+                          else None, ok=ok)
+
+    async def save_trail_block(request: Request, block_id: int | None):
+        user = me(request)
+        if user is None:
+            return to_login()
+        form = await request.form()
+        person = build_target(request, user, form.get("pessoa", ""))
+        if not isinstance(person, Person):
+            return person
+        routine = str(form.get("routine_id", ""))
+        v = {"id": block_id or "", "person_id": person.id,
+             "weekdays": [int(d) for d in form.getlist("weekdays") if str(d).isdigit()],
+             **{k: str(form.get(k, "")) for k in ("starts_at", "ends_at", "title", "details", "icon", "color", "kind")},
+             "routine_id": routine}
+        try:
+            trilha.save_block(db, clock(), user, block_id, person_id=person.id, weekdays=v["weekdays"],
+                              starts_at=v["starts_at"], ends_at=v["ends_at"], title=v["title"], details=v["details"],
+                              icon=v["icon"], color=v["color"], kind=v["kind"],
+                              routine_id=int(routine) if routine.isdigit() else None)
+        except ValidationError as exc:
+            return build_page(request, user, person, 422, v=v, error=str(exc))
+        return back_to_build(person.id, "Bloco salvo.")
+
+    @app.post("/trilha/montar")
+    async def trilha_bloco_criar(request: Request):
+        return await save_trail_block(request, None)
+
+    @app.post("/trilha/montar/modelo")
+    def trilha_modelo(request: Request, pessoa: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        person = build_target(request, user, pessoa)
+        if not isinstance(person, Person):
+            return person
+        try:
+            n = trilha.create_suggested(db, clock(), user, person.id)
+        except ValidationError as exc:
+            return build_page(request, user, person, 422, error=str(exc))
+        return back_to_build(person.id, f"Trilha do modelo criada ({n} blocos). Ajuste o que for diferente.")
+
+    @app.post("/trilha/montar/copiar")
+    def trilha_copiar(request: Request, pessoa: str = Form(""), de: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        person = build_target(request, user, pessoa)
+        if not isinstance(person, Person):
+            return person
+        try:
+            n = trilha.copy_trail(db, clock(), user, int(de) if de.isdigit() else 0, person.id)
+        except ValidationError as exc:
+            return build_page(request, user, person, 422, error=str(exc))
+        return back_to_build(person.id, f"{n} blocos copiados.")
+
+    @app.post("/trilha/montar/{block_id}")
+    async def trilha_bloco_salvar(request: Request, block_id: int):
+        return await save_trail_block(request, block_id)
+
+    @app.post("/trilha/montar/{block_id}/tirar")
+    def trilha_bloco_tirar(request: Request, block_id: int):
+        user = me(request)
+        if user is None:
+            return to_login()
+        b = trilha.get_block(db, block_id)
+        try:
+            trilha.remove_block(db, clock(), user, block_id)
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError:
+            return RedirectResponse("/trilha/montar", status_code=303)
+        return back_to_build(b.person_id, f"“{b.title}” saiu da trilha.")
 
     # ---------- calendário (fase 13) ----------
 

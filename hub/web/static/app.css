@@ -475,6 +475,79 @@ input[type=color] { width: 44px; height: 36px; padding: 2px; border: 1px solid v
   .rm-item { font-size: .85rem; }
 }
 
+/* trilha do dia (fase 20): uma linha de blocos com a luz do que foi feito */
+.visualmente-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:root { --tr-ok: #2e9e4f; --tr-tarde: #d99a1e; --tr-nao: #d93025; }
+.minha-trilha { background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio); padding: 12px 16px 6px; margin-bottom: 24px; }
+.minha-trilha .barra { margin-bottom: 4px; }
+.minha-trilha h2 { margin: 0; }
+.tr-trilha { list-style: none; margin: 0; padding: 8px 2px 10px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; }
+.tr-trilha > .tr-no { flex: 1 0 84px; width: auto; max-width: 120px; }
+.tr-no { --gap: 6px; --trilho: var(--linha); position: relative; flex: none; width: 104px; display: grid; justify-items: center; align-content: start; gap: 3px; text-align: center; }
+.tr-no::before { content: ""; position: absolute; top: 25px; left: 50%; width: calc(100% + var(--gap)); height: 4px; border-radius: 2px; background: var(--trilho); }
+.tr-no:last-child::before { display: none; }
+.tr-icone { position: relative; z-index: 1; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--bloco); color: #14202b; border: 3px solid var(--cartao); box-shadow: 0 0 0 2px var(--bloco); transition: transform .2s ease, box-shadow .3s ease; }
+.tr-icone svg { width: 28px; height: 28px; }
+.tr-icone.mini { width: 30px; height: 30px; border-width: 2px; display: inline-grid; vertical-align: middle; box-shadow: none; }
+.tr-icone.mini svg { width: 18px; height: 18px; }
+.tr-selo { position: absolute; right: -6px; bottom: -4px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  font-size: .72rem; font-weight: 800; color: #fff; background: var(--tr-ok); border: 2px solid var(--cartao); }
+.tr-hora { font-size: .82rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tr-ate { color: var(--suave); font-weight: 400; }
+.tr-titulo { max-width: 100%; font-size: .82rem; line-height: 1.2; overflow-wrap: break-word; hyphens: auto; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tr-marcar { padding: 2px 8px; font-size: .78rem; margin-top: 2px; }
+/* a luz: futuro apagado, agora pulsando, feito aceso, depois âmbar, não feito em vermelho */
+.tr-no.st-futuro .tr-icone { background: var(--fundo); color: var(--suave); box-shadow: 0 0 0 2px var(--linha); opacity: .8; }
+.tr-no.st-futuro .tr-titulo, .tr-no.st-futuro .tr-hora { color: var(--suave); }
+.tr-no.st-agora .tr-icone { animation: tr-pulso 1.8s ease-out infinite; transform: scale(1.06); }
+.tr-no.st-agora .tr-hora { color: var(--azul); }
+.tr-no.st-agora::after { content: "agora"; position: absolute; top: -10px; z-index: 2; font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em;
+  background: var(--azul); color: var(--sobre-cor); border-radius: 999px; padding: 0 6px; }
+.tr-no.st-feito { --trilho: var(--tr-ok); }
+.tr-no.st-feito .tr-icone { box-shadow: 0 0 0 3px var(--tr-ok), 0 0 14px 2px color-mix(in srgb, var(--tr-ok) 55%, transparent); }
+.tr-no.st-feito_atrasado { --trilho: var(--tr-tarde); }
+.tr-no.st-feito_atrasado .tr-icone { box-shadow: 0 0 0 3px var(--tr-tarde), 0 0 10px 1px color-mix(in srgb, var(--tr-tarde) 45%, transparent); }
+.tr-no.st-feito_atrasado .tr-selo { background: var(--tr-tarde); }
+.tr-no.st-nao_feito { --trilho: var(--tr-nao); }
+.tr-no.st-nao_feito .tr-icone { background: color-mix(in srgb, var(--tr-nao) 22%, var(--cartao)); color: var(--tr-nao); box-shadow: 0 0 0 3px var(--tr-nao); animation: tr-negativa 3s ease-in-out infinite; }
+.tr-no.st-nao_feito .tr-selo { background: var(--tr-nao); }
+.tr-no.st-nao_feito .tr-titulo { color: var(--tr-nao); }
+.tr-no.st-pausa .tr-icone { opacity: .55; box-shadow: none; }
+.tr-no.st-pausa .tr-titulo, .tr-no.st-pausa .tr-hora { color: var(--suave); }
+@keyframes tr-pulso { 0% { box-shadow: 0 0 0 2px var(--bloco), 0 0 0 0 color-mix(in srgb, var(--azul) 60%, transparent); }
+  100% { box-shadow: 0 0 0 2px var(--bloco), 0 0 0 14px transparent; } }
+@keyframes tr-negativa { 50% { box-shadow: 0 0 0 3px var(--tr-nao), 0 0 16px 3px color-mix(in srgb, var(--tr-nao) 50%, transparent); } }
+.tr-perdidos { color: var(--tr-nao); font-weight: 600; }
+.tr-legenda { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .85rem; color: var(--suave); }
+.tr-legenda li { display: flex; align-items: center; gap: 6px; }
+.tr-legenda li::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--fundo); box-shadow: 0 0 0 2px var(--linha); }
+.tr-legenda .st-agora::before { background: var(--azul); box-shadow: 0 0 0 2px var(--azul), 0 0 8px var(--azul); }
+.tr-legenda .st-feito::before { background: var(--tr-ok); box-shadow: 0 0 8px var(--tr-ok); }
+.tr-legenda .st-feito_atrasado::before { background: var(--tr-tarde); }
+.tr-legenda .st-nao_feito::before { background: var(--tr-nao); box-shadow: 0 0 8px var(--tr-nao); }
+.tr-pessoa { margin-bottom: 14px; padding-bottom: 6px; }
+.tr-pessoa.ausente { opacity: .6; }
+.tr-pessoa-topo { display: flex; align-items: center; gap: 12px; }
+.tr-mudar { margin-left: auto; }
+.tr-resumo { margin-top: 20px; }
+.tr-barra { display: inline-block; vertical-align: middle; width: 90px; height: 8px; border-radius: 4px; background: var(--linha); overflow: hidden; }
+.tr-barra span { display: block; height: 100%; width: var(--pct); background: var(--tr-ok); }
+.tr-comecar { margin-bottom: 16px; }
+.tr-escolha { display: inline-flex; align-items: center; gap: 4px; margin: 0 8px 6px 0; font-weight: 400; cursor: pointer; }
+.tr-escolha input { margin: 0; }
+.tr-cor { width: 22px; height: 22px; border-radius: 50%; background: var(--bloco); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 20%); }
+@media (max-width: 760px) {
+  /* no celular, a trilha fica em pé: um bloco por linha */
+  .tr-trilha { flex-direction: column; gap: 0; overflow: visible; }
+  .tr-trilha > .tr-no { flex: none; max-width: none; }
+  .tr-no { width: auto; grid-template-columns: 54px auto 1fr auto; justify-items: start; align-items: center; column-gap: 10px; text-align: left; padding: 6px 0; }
+  .tr-no::before { top: 50%; left: 25px; width: 4px; height: 100%; }
+  .tr-icone { grid-row: span 1; }
+  .tr-no.st-agora::after { top: 0; left: 40px; }
+  .tr-marcar { margin: 0; }
+}
+
 /* celular (fase 18) */
 .menu-abrir { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
 .menu-botao { display: none; }

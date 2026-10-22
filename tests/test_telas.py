@@ -35,7 +35,8 @@ PANELS = {"metas-mes": "20", "metas-dia": "15", "produtos-foco": "15", "forneced
           "prioridades": "15",  # fase 8
           "envios": "15",  # fase 9
           "agenda": "15",  # fase 13
-          "rotinas-mes": "25"}  # fase 19
+          "rotinas-mes": "25",  # fase 19
+          "trilhas": "25"}  # fase 20
 
 
 def ids(db, now=at(12)):
@@ -119,7 +120,8 @@ def test_settings_page_is_admin_only(setup):
                                            "ligada_prazos": "on", "pagina": "6", **panels})
     assert r.status_code == 200 and "Salvo" in r.text
     cfg = screen_config(db)
-    assert [(s["id"], s["seconds"], s["enabled"]) for s in cfg["screens"]][:2] == [("quadro", 40, True), ("prazos", 12, True)]
+    assert [(s["id"], s["seconds"], s["enabled"]) for s in cfg["screens"] if s["id"] in ("quadro", "prazos")] == \
+        [("quadro", 40, True), ("prazos", 12, True)]
     assert cfg["page_seconds"] == 6
     r = admin.post("/configuracoes", data={"segundos_quadro": "1", "segundos_prazos": "12", "pagina": "6", **panels})
     assert r.status_code == 422 and "de 5 a 300 segundos" in r.text

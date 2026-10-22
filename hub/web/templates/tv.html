@@ -45,6 +45,12 @@
         <section class="coluna" data-col="done"><h2>Concluído hoje <span class="contagem"></span><span class="pagina"></span></h2><div class="cartoes"></div></section>
       </div>
     </section>
+    <section class="tela" data-tela="trilhas" aria-label="Trilhas do dia">
+      <header class="tr-topo"><h1 class="tela-titulo">Trilha do dia</h1>
+        <ul class="tr-legenda"><li class="st-agora">agora</li><li class="st-feito">feito</li><li class="st-feito_atrasado">feito depois</li><li class="st-nao_feito">não feito</li></ul>
+        <span class="pagina"></span></header>
+      <div class="tr-grade"><div class="tr-eixo"></div><div class="tr-linhas"></div></div>
+    </section>
     <section class="tela" data-tela="prazos" aria-label="Prazos da semana">
       <h1 class="tela-titulo">Prazos da semana</h1>
       <div class="prazos"></div>
@@ -103,6 +109,7 @@
 {% endif %}
   <script src="/static/tv.js?v={{ version }}"></script>
   <script src="/static/tv-telas/quadro.js?v={{ version }}"></script>
+  <script src="/static/tv-telas/trilhas.js?v={{ version }}"></script>
   <script src="/static/tv-telas/prazos.js?v={{ version }}"></script>
   <script src="/static/tv-telas/agenda.js?v={{ version }}"></script>
   <script src="/static/tv-telas/rotinas-mes.js?v={{ version }}"></script>

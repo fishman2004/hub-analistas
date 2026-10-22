@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_trilha.html" import trilha with context %}
+{% set active = 'trilha' %}
+{% block title %}Trilha do dia · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>Trilha do dia</h1>
+  <div class="acoes">
+    <a class="botao" href="/trilha/montar">{{ 'Montar minha trilha' if not has_mine else 'Mudar minha trilha' }}</a>
+  </div>
+</div>
+<p class="ajuda">Os horários de cada um no dia, como as rotinas semanais do gestor. Marque cada bloco quando fizer: aceso no horário, âmbar se for depois e vermelho se o horário passar sem marcar. Na TV, a tela "Trilhas do dia" mostra a luz passando pela trilha de cada analista.</p>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+
+<ul class="tr-legenda" aria-label="Legenda">
+  <li class="st-agora">agora</li><li class="st-feito">feito no horário</li><li class="st-feito_atrasado">feito depois</li>
+  <li class="st-nao_feito">não feito</li><li class="st-futuro">ainda não começou</li>
+</ul>
+
+{% for p, steps in trails %}
+{% set c = counts(steps) %}
+<section class="tr-pessoa cartao-form{{ ' ausente' if p.id in away else '' }}" aria-label="Trilha de {{ p.name }}">
+  <header class="tr-pessoa-topo">
+    <span class="bolinha grande" style="--cor: {{ p.color }}">{{ p.initials }}</span>
+    <div><strong>{{ p.name }}</strong>{% if p.id in away %} <span class="etiqueta">ausente hoje</span>{% endif %}
+      <div class="ajuda">{{ c.feitos }} de {{ c.total }} feitos{% if c.perdidos %} · <span class="tr-perdidos">{{ c.perdidos }} sem marcar</span>{% endif %}</div></div>
+    {% if can_edit(user, p.id) %}<a class="botao discreto tr-mudar" href="/trilha/montar?pessoa={{ p.id }}">Mudar</a>{% endif %}
+  </header>
+  {{ trilha(steps, can_edit(user, p.id) and p.id not in away, '/trilha') }}
+</section>
+{% else %}
+<div class="cartao-form"><p class="vazio">Ninguém tem trilha para hoje{{ ' (feriado ou fim de semana)' if now.weekday() >= 5 else '' }}. Clique em <a href="/trilha/montar">Montar minha trilha</a>: dá para criar a do modelo do gestor com um clique.</p></div>
+{% endfor %}
+
+{% if summary %}
+<section class="cartao-form tr-resumo" aria-labelledby="tr-resumo-titulo">
+  <h2 id="tr-resumo-titulo">Últimos 5 dias úteis</h2>
+  <p class="ajuda">Só os blocos que já terminaram. {{ 'Cada um vê o seu; o gestor e os administradores veem a equipe.' }}</p>
+  <div class="tabela-rolagem">
+  <table class="tabela">
+    <thead><tr><th>Pessoa</th><th>No horário</th><th>Depois</th><th>Sem marcar</th><th>Blocos</th></tr></thead>
+    <tbody>
+    {% for x in summary %}
+    <tr>
+      <td class="sem-quebra"><span class="bolinha" style="--cor: {{ x.pessoa.color }}">{{ x.pessoa.initials }}</span> {{ x.pessoa.name }}</td>
+      <td><div class="tr-barra" role="img" aria-label="{{ x.pct if x.pct is not none else 0 }}% no horário"><span style="--pct: {{ x.pct or 0 }}%"></span></div> {{ x.pct ~ '%' if x.pct is not none else '—' }}</td>
+      <td>{{ x.atrasados }}</td><td class="{{ 'tr-perdidos' if x.perdidos else '' }}">{{ x.perdidos }}</td><td>{{ x.total }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

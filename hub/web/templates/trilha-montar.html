@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% set active = 'trilha' %}
+{% block title %}Montar a trilha · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>Trilha de {{ person.name }}</h1>
+  <div class="acoes">
+    {% if choices|length > 1 %}
+    <form method="get" action="/trilha/montar" class="ficha-inline">
+      <label for="pessoa" class="visualmente-oculto">Pessoa</label>
+      <select id="pessoa" name="pessoa" onchange="this.form.submit()">
+        {% for p in choices %}<option value="{{ p.id }}" {% if p.id == person.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+      </select>
+      <noscript><button class="discreto">Abrir</button></noscript>
+    </form>
+    {% endif %}
+    <a class="botao discreto" href="/trilha">Ver a trilha do dia</a>
+  </div>
+</div>
+<p class="ajuda">Os blocos de horário de cada dia da semana. O mesmo bloco pode valer em vários dias. Os blocos não podem se cruzar no mesmo dia. Monta a trilha a própria pessoa, o gestor e os administradores.</p>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+
+{% if blocks %}
+<div class="tabela-rolagem">
+<table class="tabela tr-blocos">
+  <thead><tr><th>Horário</th><th>Bloco</th><th>Dias</th><th>O que fazer</th><th></th></tr></thead>
+  <tbody>
+  {% for b in blocks %}
+  <tr>
+    <td class="sem-quebra"><strong>{{ b.starts_at }}</strong> às {{ b.ends_at }}</td>
+    <td class="sem-quebra"><span class="tr-icone mini" style="--bloco: {{ b.color }}"><svg aria-hidden="true"><use href="/static/trilha-icones.svg?v={{ version }}#{{ b.icon }}"></use></svg></span> {{ b.title }}{% if b.is_break %} <span class="etiqueta">pausa</span>{% endif %}{% if b.routine_id %} <span class="etiqueta" title="Acende sozinho quando a rotina é concluída no quadro">ligado a uma rotina</span>{% endif %}</td>
+    <td>{{ weekday_label(b.weekdays) }}</td>
+    <td class="ajuda">{{ b.lines|join(' · ') }}</td>
+    <td class="acoes-linha">
+      <a class="botao discreto" href="/trilha/montar?pessoa={{ person.id }}&editar={{ b.id }}#form">Editar</a>
+      <form method="post" action="/trilha/montar/{{ b.id }}/tirar" onsubmit="return confirm('Tirar este bloco da trilha?')"><button class="perigo">Tirar</button></form>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="cartao-form tr-comecar">
+  <p>A trilha está vazia. Para começar rápido:</p>
+  <div class="acoes">
+    <form method="post" action="/trilha/montar/modelo"><input type="hidden" name="pessoa" value="{{ person.id }}"><button>Criar a trilha do modelo do gestor</button></form>
+    {% if sources %}
+    <form method="post" action="/trilha/montar/copiar" class="ficha-inline">
+      <input type="hidden" name="pessoa" value="{{ person.id }}">
+      <label for="de" class="visualmente-oculto">Copiar a trilha de</label>
+      <select id="de" name="de">{% for p in sources %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select>
+      <button class="discreto">Copiar a trilha desta pessoa</button>
+    </form>
+    {% endif %}
+  </div>
+  <p class="ajuda">O modelo tem os blocos dos prints do gestor (segunda, quarta e sexta como a segunda; terça e quinta como a terça). Depois é só ajustar.</p>
+</div>
+{% endif %}
+
+<form class="ficha cartao-form" id="form" method="post" action="/trilha/montar{{ '/' ~ v.id if v.id else '' }}">
+  <h2>{{ 'Editar bloco' if v.id else 'Novo bloco' }}</h2>
+  <input type="hidden" name="pessoa" value="{{ person.id }}">
+  <div class="linha">
+    <div><label for="starts_at">Início</label><input type="time" id="starts_at" name="starts_at" value="{{ v.starts_at }}" required></div>
+    <div><label for="ends_at">Fim</label><input type="time" id="ends_at" name="ends_at" value="{{ v.ends_at }}" required></div>
+    <div><label for="kind">Tipo</label>
+      <select id="kind" name="kind">{% for k, label in KINDS.items() %}<option value="{{ k }}" {% if k == v.kind %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  </div>
+  <div><label for="title">Nome</label><input type="text" id="title" name="title" value="{{ v.title }}" maxlength="60" required placeholder="Devolutivas"></div>
+  <div><label for="details">O que fazer <span class="opcional">(um item por linha; aparece na TV no horário do bloco)</span></label>
+    <textarea id="details" name="details" rows="3" maxlength="400" placeholder="Retornos pendentes&#10;Atendimento extra">{{ v.details }}</textarea></div>
+  <fieldset class="escolhas">
+    <legend>Dias da semana</legend>
+    {% for label in WEEKDAYS %}<label class="check"><input type="checkbox" name="weekdays" value="{{ loop.index0 }}" {% if loop.index0 in v.weekdays %}checked{% endif %}> {{ label }}</label>{% endfor %}
+  </fieldset>
+  <fieldset class="escolhas tr-icones">
+    <legend>Ícone</legend>
+    {% for key, info in ICONS.items() %}{% set label = info[0] %}
+    <label class="tr-escolha" title="{{ label }}"><input type="radio" name="icon" value="{{ key }}" {% if key == v.icon %}checked{% endif %}>
+      <span class="tr-icone mini"><svg aria-hidden="true"><use href="/static/trilha-icones.svg?v={{ version }}#{{ key }}"></use></svg></span><span class="visualmente-oculto">{{ label }}</span></label>
+    {% endfor %}
+  </fieldset>
+  <fieldset class="escolhas tr-cores">
+    <legend>Cor <span class="opcional">(sem escolher, vale a do ícone)</span></legend>
+    <label class="tr-escolha"><input type="radio" name="color" value="" {% if not v.color %}checked{% endif %}> a do ícone</label>
+    {% for c, label in COLORS.items() %}
+    <label class="tr-escolha" title="{{ label }}"><input type="radio" name="color" value="{{ c }}" {% if c == v.color %}checked{% endif %}><span class="tr-cor" style="--bloco: {{ c }}"></span><span class="visualmente-oculto">{{ label }}</span></label>
+    {% endfor %}
+  </fieldset>
+  {% if routines %}
+  <div><label for="routine_id">Ligado a uma rotina <span class="opcional">(opcional: quando o cartão da rotina é concluído no quadro, o bloco acende sozinho)</span></label>
+    <select id="routine_id" name="routine_id"><option value="">Nenhuma</option>
+      {% for r in routines %}<option value="{{ r.id }}" {% if r.id|string == v.routine_id|string %}selected{% endif %}>{{ r.label }}</option>{% endfor %}
+    </select></div>
+  {% endif %}
+  <div class="acoes">
+    <button>Salvar</button>
+    {% if v.id %}<a class="botao discreto" href="/trilha/montar?pessoa={{ person.id }}">Cancelar</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

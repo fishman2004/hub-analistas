@@ -24,6 +24,8 @@ flowchart LR
     F2 --> F17[17 · Entrar pelo nome e pedido de cadastro]
     F17 --> F18[18 · Hub no celular]
     F13 --> F19[19 · Rotinas do mês]
+    F7 --> F20[20 · Trilha do dia]
+    F19 --> F20
 ```
 
 As fases 19 a 21 são a **v5** (o calendário de rotinas e a trilha do dia do gestor, mais animações): o plano está em [plano-v5.md](plano-v5.md). A fase 17 começa a **v4** (o Hub também no celular). As fases 10 a 16 são a **v3**, com as sugestões do gestor: o plano completo, com as regras e as escolhas de cada fase, está em [plano-v3.md](plano-v3.md).
@@ -50,6 +52,7 @@ As fases 19 a 21 são a **v5** (o calendário de rotinas e a trilha do dia do ge
 | 17 | **Entrar pelo nome e pedido de cadastro:** a tela Entrar pede o nome (sem diferença de acento e maiúscula) e o PIN, sem a lista da equipe. Quem não tem cadastro pede pela própria tela, já criando o PIN, e um administrador aprova ou recusa em **Pessoas** (o menu mostra quantos pedidos esperam). Limite de erros por aparelho, além do bloqueio por nome. Num Hub vazio, o primeiro cadastro vira administrador. | Pronto ([roteiro de teste](roteiros/fase-17-login.md)) |
 | 18 | **Hub no celular:** pela **Wi-Fi da empresa**, sem internet. No celular, o menu fecha num botão **☰ Menu**, a presença fica em 2×2, tabelas largas rolam de lado e textos compridos quebram a linha. A página **No celular** mostra o endereço do PC da sala e um **QR Code** para apontar a câmera, e o Hub ganha ícone para **Adicionar à tela inicial** (Android e iPhone). | Pronto ([roteiro de teste](roteiros/fase-18-celular.md)) |
 | 19 | **Rotinas do mês:** o calendário de rotinas do gestor. Cada rotina tem uma categoria com cor (Acompanhamentos, Metas, Comissionamento, APEX...) e uma regra (dias da semana, N-ésimo dia útil, N-ésimo dia útil antes do fim, dia fixo ou uma data), com os dias calculados sem os feriados. No Calendário, a visão **Rotinas do mês** igual ao modelo, com "feita" no dia de hoje; o cadastro e as categorias para o gestor e os administradores, e as rotinas do modelo com um clique. Na TV, a tela **Rotinas do mês**: o mês inteiro e, depois, um **zoom no dia de hoje**, com o que já foi feito e o próximo dia útil. | Pronto ([roteiro de teste](roteiros/fase-19-rotinas-do-mes.md)) |
+| 20 | **Trilha do dia:** os horários de cada analista no dia (como as rotinas semanais do gestor), em blocos com ícone e cor, montados por cada um (ou pelo gestor), com a trilha do modelo e "copiar de outra pessoa". Cada bloco se acende quando é marcado: **verde** no horário, **âmbar** depois e a **luz negativa** vermelha quando o horário passa sem marcar. Um bloco pode ser ligado a uma rotina com aviso e acende sozinho quando o cartão é concluído. No Quadro, a faixa **Minha trilha de hoje**; no menu, **Trilha**, com a equipe e o resumo dos últimos 5 dias úteis. Na TV, a tela **Trilhas do dia**: uma linha por analista no eixo das horas, com uma luz que varre do começo do dia até agora e o bloco de agora por extenso. | Pronto ([roteiro de teste](roteiros/fase-20-trilha.md)) |
 
 ### Ideias para depois
 

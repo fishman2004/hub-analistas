@@ -18,6 +18,7 @@ from .paineis import tv_focos, tv_fornecedores, tv_metas_dia, tv_metas_mes
 from .people import Person, ValidationError, list_people
 from .prioridades import tv_prioridades
 from .rotinas_mes import tv_rotinas_mes
+from .trilha import tv_trilhas
 
 @dataclass(frozen=True)
 class Screen:
@@ -67,6 +68,8 @@ def _day_label(d: Demand, today: date) -> str:
 
 SCREENS: list[Screen] = [
     Screen("quadro", "Quadro", 30, _quadro, always=True),
+    # trilha do dia (fase 20): a trilha de horários de cada analista, com a luz do que foi feito
+    Screen("trilhas", "Trilhas do dia", 25, tv_trilhas),
     Screen("prazos", "Prazos da semana", 15, _prazos),
     # calendário (fase 13): compromissos da equipe, feriados e ausências de hoje e dos próximos dias
     Screen("agenda", "Agenda", 15, tv_agenda),
