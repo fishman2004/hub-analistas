@@ -4,6 +4,7 @@
 {% block main %}
 <h1>Painéis de dados</h1>
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if drive_ok %}<div class="sucesso" role="status">{{ drive_ok }}</div>{% endif %}
 {% if request.query_params.get('enviado') %}<div class="sucesso" role="status">Planilha recebida. A TV usa os dados novos em poucos segundos.</div>{% endif %}
 <p class="ajuda">A TV mostra as metas de venda e positivação <strong>só com gráficos e porcentagens</strong>: valores em reais, quantidades e nomes de vendedores ou clientes nunca aparecem nela.</p>
 
@@ -35,6 +36,21 @@
     {% endfor %}
     </tbody>
   </table>
+</section>
+
+<section class="ficha cartao-form largo" id="drive">
+  <h2>Base 8081 do Google Drive</h2>
+  {% if drive.enabled %}
+  <p>Download automático <strong>ligado</strong>: o Hub verifica a cada {{ drive.minutes }} minutos se a 8081 mudou no Drive.</p>
+  <ul>
+    <li>Última verificação: {{ drive.verificado.strftime('%d/%m às %H:%M') if drive.verificado else 'ainda não' }}</li>
+    <li>Último arquivo novo baixado: {{ drive.baixado.strftime('%d/%m às %H:%M') if drive.baixado else 'ainda não' }}{% if drive.modificado %} (gerado no Drive em {{ drive.modificado.strftime('%d/%m às %H:%M') }}){% endif %}</li>
+  </ul>
+  {% if drive.error %}<div class="aviso" role="status">Último problema: {{ drive.error }}</div>{% endif %}
+  {% if user.is_admin %}<form method="post" action="/paineis/drive/baixar"><button>Baixar agora</button></form>{% endif %}
+  {% else %}
+  <p class="ajuda">Desligado: a 8081 vem só pela pasta acima.{% if user.is_admin %} Para o Hub baixar sozinho do Google Drive, ligue em <a href="/configuracoes#drive">Configurações</a>.{% endif %}</p>
+  {% endif %}
 </section>
 
 <section class="ficha cartao-form largo">

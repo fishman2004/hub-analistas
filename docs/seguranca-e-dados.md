@@ -42,6 +42,7 @@ Marcada **sempre pela própria pessoa**. O Hub não detecta nada sozinho: não o
 |---|---|---|
 | Código, documentação, testes | pasta do projeto | Sim |
 | Equipe, demandas, presença, histórico | `%LOCALAPPDATA%\Hub\hub.db` no PC reserva | **Não** |
+| Chave da ponte do Google Drive (fase 22) | dentro do `hub.db` e nas Propriedades do script da ponte, na conta Google de quem a publicou | **Não**. O código da ponte (`tools/drive/ponte-8081.gs`) vai, sem chave nem id de arquivo |
 | Planilhas dos painéis (metas, vendas da 8081 etc.) | pasta dos painéis (padrão `%LOCALAPPDATA%\Hub\Painéis`, ou a pasta de rede escolhida) | **Não**. No repositório só há exemplos com dados fictícios (`tools/exemplos/`) |
 | Anexos das demandas | pasta Anexos (padrão `%LOCALAPPDATA%\Hub\Anexos`, ou a pasta de rede escolhida), com nomes aleatórios; o nome original fica no `hub.db` | **Não** |
 | Banco de horas | dentro do `hub.db` (a planilha do RH é lida e descartada, não fica guardada) | **Não** |
@@ -49,7 +50,7 @@ Marcada **sempre pela própria pessoa**. O Hub não detecta nada sozinho: não o
 | Cópias diárias (14 dias) | `%LOCALAPPDATA%\Hub\copias` | **Não** |
 | Dados de demonstração (inclusive um histórico do Pombo) | criados na hora por `tools/seed_demo.py`, com nomes **fictícios** | O script sim; os dados não |
 
-Nada sai da rede da empresa: sem nuvem, sem telemetria, sem terceiros.
+Nada sai da rede da empresa: sem nuvem, sem telemetria, sem terceiros. A única exceção, ligada por um administrador, é a **base 8081 do Google Drive** (fase 22): o Hub **baixa** a 8081 da conta Google da empresa por uma ponte que só responde com a chave. Do PC da sala para o Google só vão a chave e a data do último arquivo; nenhum dado do Hub sobe. O arquivo continua **Restrito** no Drive: não use "qualquer pessoa com o link" para a 8081.
 
 ## Acesso
 

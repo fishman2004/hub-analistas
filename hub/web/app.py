@@ -18,7 +18,7 @@ from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, cadastro, calendario, celular, modos, notas, pastas, rotinas_mes, trilha
+from .. import anexos, cadastro, calendario, celular, drive, modos, notas, pastas, rotinas_mes, trilha
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -1750,7 +1750,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
                     anexos_cfg={"folder": str(anexos.folder(db)) if anexos.get_setting(db, anexos.SETTING_FOLDER) else "",
                                 "default_folder": str(anexos.default_folder()), "usage": anexos.usage(db),
                                 "trash": trash, "trash_days": anexos.TRASH_DAYS},
-                    paineis=panel_config(db), pombo=pombo_config(db),
+                    paineis=panel_config(db), drive=drive.drive_config(db),
+                    drive_limits={"min": drive.MINUTES_MIN, "max": drive.MINUTES_MAX}, pombo=pombo_config(db),
                     stale_limits={"min": STALE_MIN, "max": STALE_MAX},
                     limits={"min": MIN_SECONDS, "max": MAX_SECONDS, "page_min": PAGE_MIN, "page_max": PAGE_MAX}, **ctx)
 
@@ -1809,6 +1810,18 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             return config_page(request, user, 422, error_paineis=str(exc))
         return config_page(request, user, ok_paineis=True)
 
+    @app.post("/configuracoes/drive")
+    def configuracoes_drive(request: Request, url: str = Form(""), chave: str = Form(""), minutos: str = Form(""),
+                            gerar: str = Form("")):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            created = drive.save_drive_config(db, clock(), user, url, chave, minutos.strip(), generate=bool(gerar))
+        except ValidationError as exc:
+            return config_page(request, user, 422, error_drive=str(exc))
+        return config_page(request, user, ok_drive=True, new_key=created)
+
     @app.post("/configuracoes/pombo")
     def configuracoes_pombo(request: Request, pasta: str = Form("")):
         user, stop = admin_only(request)
@@ -1826,7 +1839,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         snap = store_for(db).get(wait=True)
         now = clock()
         sales = snap.status("vendas").modified
-        return page(request, "paineis.html", user, status_code, snap=snap, now=now,
+        return page(request, "paineis.html", user, status_code, snap=snap, now=now, drive=drive.drive_config(db),
                     stale=sales is not None and now - sales > timedelta(hours=stale_hours(db)), **ctx)
 
     @app.get("/paineis", response_class=HTMLResponse)
@@ -1846,6 +1859,18 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except OSError:
             return panels_page(request, user, 422, error="Não consegui gravar na pasta dos painéis. Confira se ela existe e se o PC da sala pode escrever nela.")
         return RedirectResponse("/paineis?enviado=1", status_code=303)
+
+    @app.post("/paineis/drive/baixar")
+    def paineis_drive_baixar(request: Request):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        result = drive.sync(db, clock())
+        if not result.ok:
+            return panels_page(request, user, 422, error=result.message)
+        if result.changed:
+            store_for(db).get(wait=True)  # a página já mostra o arquivo novo lido
+        return panels_page(request, user, drive_ok=result.message)
 
     # ---------- envios do Pombo ----------
 
@@ -2230,6 +2255,7 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "papel_alterado": f"{who} mudou o papel de {name} para {detail}",
         "config_tv": f"{who} mudou as configurações da TV",
         "config_paineis": f"{who} mudou as configurações dos painéis",
+        "config_drive": f"{who} mudou o download da 8081 do Google Drive ({detail})",
         "config_pombo": f"{who} mudou a pasta do histórico do Pombo",
         "painel_arquivo": f"{who} enviou a planilha “{detail}” dos painéis",
         "horas_lancado": f"{who} lançou o banco de horas de {detail}",

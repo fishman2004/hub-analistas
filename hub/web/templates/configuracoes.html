@@ -72,6 +72,30 @@
   <div><button>Salvar</button></div>
 </form>
 
+<form class="ficha cartao-form" method="post" action="/configuracoes/drive" id="drive">
+  <h2>Base 8081 do Google Drive</h2>
+  {% if error_drive %}<div class="erro" role="alert">{{ error_drive }}</div>{% endif %}
+  {% if new_key %}<div class="sucesso" role="status">Salvo. Chave nova: <code class="caminho">{{ new_key }}</code><br>Copie agora e cole na propriedade <strong>CHAVE_HUB</strong> da ponte (Apps Script). Ela não aparece de novo: se perder, gere outra.</div>
+  {% elif ok_drive %}<div class="sucesso" role="status">Salvo. A situação do download aparece em <a href="/paineis">Painéis</a>.</div>{% endif %}
+  <p class="ajuda">O Hub baixa sozinho a <strong>(DADOS) - 8081 - Vendas</strong> que a automação salva no Google Drive, por uma ponte do Apps Script que só entrega o arquivo para quem tem a chave. O arquivo no Drive continua fechado. Passo a passo em <code>docs/drive-8081.md</code>.</p>
+  <div>
+    <label for="drive-url">Endereço da ponte (app da Web do Apps Script)</label>
+    <input type="url" id="drive-url" name="url" value="{{ drive.url }}" placeholder="https://script.google.com/macros/s/.../exec">
+    <p class="ajuda">Em branco: download desligado (a chave guardada é apagada). A 8081 continua podendo ser salva ou enviada na pasta dos painéis, como antes.</p>
+  </div>
+  <div>
+    <label for="drive-chave">Chave</label>
+    <input type="password" id="drive-chave" name="chave" autocomplete="off" placeholder="{{ 'Guardada. Em branco: mantém a atual' if drive.has_key else 'Nenhuma chave guardada' }}">
+    <label class="check"><input type="checkbox" name="gerar" {% if not drive.has_key %}checked{% endif %}> Gerar chave nova (aparece uma vez, para colar na ponte)</label>
+  </div>
+  <div>
+    <label for="drive-minutos">Verificar a cada (minutos)</label>
+    <input class="curto" type="number" id="drive-minutos" name="minutos" value="{{ drive.minutes }}" min="{{ drive_limits.min }}" max="{{ drive_limits.max }}" required>
+    <p class="ajuda">Se o arquivo do Drive não mudou, a ponte responde só "igual" e nada é baixado.</p>
+  </div>
+  <div><button>Salvar</button></div>
+</form>
+
 <form class="ficha cartao-form" method="post" action="/configuracoes/pombo" id="pombo">
   <h2>Pombo</h2>
   {% if error_pombo %}<div class="erro" role="alert">{{ error_pombo }}</div>{% endif %}

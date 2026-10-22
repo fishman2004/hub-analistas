@@ -1,6 +1,6 @@
 [project]
 name = "hub-analistas"
-version = "1.13.0"
+version = "1.14.0"
 description = "Hub dos Analistas: presença da equipe e quadro de demandas numa TV da sala."
 requires-python = ">=3.12"
 

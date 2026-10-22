@@ -109,6 +109,7 @@ Como na tela Hoje do Pombo, o que já foi enviado ou tentado vale mais que as li
 | `hub/gestor.py` | Visão do gestor: resumo do dia por pessoa e filtros das demandas |
 | `hub/telas.py` | Telas da TV, rotação e as configurações (tempos) |
 | `hub/tvcontrole.py` | Pausa da TV pelo app (pausar, trocar, página, retomar) e qual tela está na TV agora |
+| `hub/drive.py` | Base 8081 do Google Drive: configuração da ponte e da chave, o download que confere a planilha antes de trocar a da TV e o laço em segundo plano (fase 22) |
 | `hub/paineis.py` | Painéis de dados: pasta, os arquivos, cálculo das metas, cache e o que vai para a TV |
 | `hub/horas.py` | Banco de horas: saldo base, lançamentos, saldo calculado, importação da planilha do RH e exportação |
 | `hub/planilhas.py` | Leitura de CSV e XLSX (cabeçalho sem acento, número e data em formato brasileiro) |
@@ -127,5 +128,5 @@ Como na tela Hoje do Pombo, o que já foi enviado ou tentado vale mais que as li
 | `hub/backup.py` | Cópia de segurança diária (14 dias) |
 | `hub/winsys.py` | Abrir com o Windows, não dormir, TV em tela cheia |
 | `hub/web/` | Rotas, páginas, o JavaScript da TV (`static/tv.js` e uma tela por arquivo em `static/tv-telas/`) e o do tema do app (`static/tema.js`) |
-| `tools/` | Teste de rede, dados de demonstração (inclusive um histórico fictício do Pombo), as planilhas de exemplo dos painéis (`tools/exemplos/`, geradas por `tools/gerar_exemplos.py`) e o gerador do som do aviso (`tools/gerar_som.py`, que grava `hub/web/static/aviso.wav`) |
+| `tools/` | Teste de rede, dados de demonstração (inclusive um histórico fictício do Pombo), as planilhas de exemplo dos painéis (`tools/exemplos/`, geradas por `tools/gerar_exemplos.py`), a ponte do Apps Script da 8081 (`tools/drive/ponte-8081.gs`) e o gerador do som do aviso (`tools/gerar_som.py`, que grava `hub/web/static/aviso.wav`) |
 | `tests/` | Testes automáticos (pytest) |
