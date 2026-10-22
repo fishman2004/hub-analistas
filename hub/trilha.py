@@ -26,6 +26,7 @@ from .people import Person, ValidationError, list_people
 
 WEEKDAYS = ("seg", "ter", "qua", "qui", "sex", "sáb", "dom")
 MAX_TITLE, MAX_DETAILS = 60, 400
+MAX_NOTE = 300  # justificativa de um bloco no dia
 _HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 # ícone: (nome no formulário, cor padrão). O desenho de cada um está em static/trilha-icones.svg
 ICONS = {
@@ -256,6 +257,8 @@ class Step:
     done_at: datetime | None = None
     done_by: int | None = None
     auto: bool = False  # acendeu pela rotina ligada
+    note: str = ""  # justificativa do dia (vermelho ou âmbar: por que não deu no horário)
+    note_by: int | None = None
 
     @property
     def now(self) -> bool:
@@ -274,14 +277,18 @@ def _status(b: Block, day: date, now: datetime, done_at: datetime | None) -> str
     return "nao_feito"
 
 
-def trails_on(db: Database, day: date, now: datetime, person_ids: list[int] | None = None) -> dict[int, list[Step]]:
+def trails_on(db: Database, day: date, now: datetime, person_ids: list[int] | None = None,
+              with_notes: bool = True) -> dict[int, list[Step]]:
     """A trilha de cada pessoa no dia (só quem tem bloco nesse dia da semana). Em feriado, nada.
-    Para um dia que já passou, use now no fim do dia: o que ninguém marcou fica "não feito"."""
+    Para um dia que já passou, use now no fim do dia: o que ninguém marcou fica "não feito".
+    A TV pede with_notes=False: as justificativas nem são lidas lá."""
     with db.connect() as conn:
         if day in load_holidays(conn):
             return {}
         rows = conn.execute("SELECT * FROM trail_blocks WHERE active = 1 ORDER BY starts_at, id").fetchall()
         marks = {r["block_id"]: r for r in conn.execute("SELECT * FROM trail_marks WHERE day = ?", (day.isoformat(),))}
+        notes = {r["block_id"]: r for r in conn.execute(
+            "SELECT * FROM trail_notes WHERE day = ?", (day.isoformat(),))} if with_notes else {}
         routine_done = {r["routine_id"]: r["done_at"] for r in conn.execute(
             "SELECT routine_id, done_at FROM demands WHERE routine_day = ? AND routine_id IS NOT NULL AND deleted = 0 "
             "AND column_ = 'done' AND done_at IS NOT NULL", (day.isoformat(),))}
@@ -298,7 +305,9 @@ def trails_on(db: Database, day: date, now: datetime, person_ids: list[int] | No
             done_at, done_by = datetime.fromisoformat(m["done_at"]), m["done_by"]
         elif b.routine_id in routine_done:
             done_at, auto = datetime.fromisoformat(routine_done[b.routine_id]), True
-        out.setdefault(b.person_id, []).append(Step(b, _status(b, day, now, done_at), done_at, done_by, auto))
+        n = notes.get(b.id)
+        out.setdefault(b.person_id, []).append(Step(b, _status(b, day, now, done_at), done_at, done_by, auto,
+                                                    n["text"] if n else "", n["written_by"] if n else None))
     return out
 
 
@@ -341,7 +350,39 @@ def counts(steps: list[Step]) -> dict:
             "no_horario": sum(s.status == "feito" for s in tasks),
             "atrasados": sum(s.status == "feito_atrasado" for s in tasks),
             "perdidos": sum(s.status == "nao_feito" for s in tasks),
+            "justificados": sum(bool(s.note) and s.status in ("nao_feito", "feito_atrasado") for s in tasks),
             "total": len(tasks)}
+
+
+def justify(db: Database, now: datetime, actor: Person, block_id: int, text: str) -> None:
+    """Escreve (ou troca) a justificativa de hoje de um bloco que já começou: por que ficou sem marcar, saiu
+    depois do horário ou só em parte. Escrevem os mesmos que marcam. Texto vazio tira a justificativa."""
+    text = "\n".join(x.strip() for x in (text or "").replace("\r\n", "\n").split("\n")).strip()
+    if len(text) > MAX_NOTE:
+        raise ValidationError(f"Justificativa muito longa (máximo {MAX_NOTE} letras).")
+    b = get_block(db, block_id)
+    if b is None:
+        raise ValidationError("Bloco não encontrado.")
+    if not can_edit(actor, b.person_id):
+        raise PermissionError("Justifica o bloco a própria pessoa, o gestor e os administradores.")
+    if b.is_break:
+        raise ValidationError("O intervalo não precisa de justificativa.")
+    today = now.date()
+    with db.connect() as conn:
+        if today.weekday() not in b.weekdays or today in load_holidays(conn):
+            raise ValidationError("Esse bloco não é de hoje.")
+        if now < b.start(today):
+            raise ValidationError("Esse bloco ainda não começou.")
+        if text:
+            conn.execute("INSERT INTO trail_notes(block_id, day, text, written_by, written_at) VALUES (?, ?, ?, ?, ?) "
+                         "ON CONFLICT(block_id, day) DO UPDATE SET text = excluded.text, "
+                         "written_by = excluded.written_by, written_at = excluded.written_at",
+                         (block_id, today.isoformat(), text, actor.id, now.isoformat(timespec="seconds")))
+            log_event(conn, now, actor.id, "trilha_justificada", f"pessoa:{b.person_id}", f"{b.starts_at} {b.title}")
+        elif conn.execute("DELETE FROM trail_notes WHERE block_id = ? AND day = ?",
+                          (block_id, today.isoformat())).rowcount:
+            log_event(conn, now, actor.id, "trilha_justificativa_tirada", f"pessoa:{b.person_id}",
+                      f"{b.starts_at} {b.title}")
 
 
 def week_summary(db: Database, now: datetime, days: int = 5) -> list[dict]:
@@ -361,7 +402,7 @@ def week_summary(db: Database, now: datetime, days: int = 5) -> list[dict]:
             if pid in away:
                 continue  # dia de folga ou férias não conta como "sem marcar"
             ended = [s for s in steps if s.status in ("feito", "feito_atrasado", "nao_feito")]
-            t = totals.setdefault(pid, {"no_horario": 0, "atrasados": 0, "perdidos": 0, "total": 0})
+            t = totals.setdefault(pid, {"no_horario": 0, "atrasados": 0, "perdidos": 0, "justificados": 0, "total": 0})
             c = counts(ended)
             for k in t:
                 t[k] += c[k]
@@ -384,7 +425,7 @@ def tv_trilhas(db: Database, now: datetime) -> dict | None:
 
     today = now.date()
     away = absent_today(db, today)
-    trails = {pid: steps for pid, steps in trails_on(db, today, now).items() if pid not in away}
+    trails = {pid: steps for pid, steps in trails_on(db, today, now, with_notes=False).items() if pid not in away}
     people = {p.id: p for p in list_people(db)}
     trails = {pid: steps for pid, steps in trails.items() if pid in people}
     if not trails:

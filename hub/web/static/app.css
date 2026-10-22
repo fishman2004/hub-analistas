@@ -683,3 +683,38 @@ button:not(.link):hover, .botao:hover { box-shadow: 0 2px 8px rgb(0 0 0 / 12%); 
   @view-transition { navigation: none; }
   .aviso-tempo { display: none; }
 }
+
+/* ---------- justificativas (rotinas do mês e trilha): por que não deu, deu depois ou deu em parte ---------- */
+.rm-hoje .rm-item { flex-wrap: wrap; }
+.rm-hoje .rm-item.feita { opacity: 1; }
+.rm-hoje .rm-item.feita .rm-texto, .rm-hoje .rm-item.feita .rm-dono { opacity: .55; }
+a.rm-num { color: inherit; text-decoration: none; }
+a.rm-num:hover, a.rm-num[aria-current] { background: var(--fundo); border-color: var(--azul); color: var(--azul); }
+.rm-voltar { font-size: .85rem; font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 8px; }
+.rm-nota-marca { font-size: .8em; }
+.rm-nota { flex-basis: 100%; margin: 2px 0 0; padding: 6px 10px; border-radius: 6px; background: var(--fundo); color: var(--texto);
+  font-size: .9rem; white-space: pre-line; text-transform: none; letter-spacing: 0; }
+.rm-item.destaque .rm-nota { color: var(--texto); }
+.rm-just > summary, .tr-just > summary { list-style: none; cursor: pointer; font-size: .82rem; font-weight: 600; color: var(--azul);
+  padding: 2px 8px; border-radius: 999px; border: 1px dashed currentColor; user-select: none; white-space: nowrap; }
+.rm-just > summary::-webkit-details-marker, .tr-just > summary::-webkit-details-marker { display: none; }
+.rm-just.tem > summary, .tr-just.tem > summary { border-style: solid; background: color-mix(in srgb, var(--azul) 12%, transparent); }
+.rm-item.destaque .rm-just > summary { color: #fff; }
+.rm-just[open] { flex-basis: 100%; }
+.rm-just form, .tr-just-caixa { display: grid; gap: 6px; margin-top: 6px; }
+.rm-just textarea, .tr-just-caixa textarea { width: 100%; font: inherit; font-size: .9rem; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid var(--linha); background: var(--cartao); color: var(--texto); resize: vertical; text-transform: none; letter-spacing: 0; }
+.rm-just-acoes, .tr-just-acoes { display: flex; gap: 6px; }
+.rm-hoje .rm-just form { margin-left: 0; }
+/* na trilha, a caixinha abre no meio da tela (a trilha rola de lado e cortaria uma caixa presa ao bloco) */
+.tr-just { position: relative; }
+.tr-just-caixa { position: fixed; z-index: 40; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(380px, calc(100vw - 32px)); padding: 14px;
+  background: var(--cartao); border: 1px solid var(--linha); border-radius: 12px; box-shadow: 0 0 0 100vmax rgb(10 16 22 / 35%), 0 20px 50px rgb(0 0 0 / 30%); text-align: left; }
+.tr-just-caixa label { font-size: .8rem; color: var(--suave); }
+.tr-just[open] .tr-just-caixa { animation: just-entra .2s ease-out; }
+@keyframes just-entra { from { opacity: 0; } }
+.rm-just > summary { display: inline-block; }
+.tr-just-ver { font-size: .78rem; color: var(--suave); }
+@media (max-width: 760px) {
+  .tr-just { grid-column: 2 / -1; }
+}

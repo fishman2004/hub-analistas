@@ -22,6 +22,15 @@
     if (celular.matches) return;
     for (const g of grupos) if (g.open && !g.contains(e.target)) g.open = false;
   });
+  // a caixinha da justificativa na trilha fecha ao clicar fora dela ou com Esc
+  document.addEventListener("click", (e) => {
+    for (const d of document.querySelectorAll("details.tr-just[open]")) {
+      if (!d.querySelector(".tr-just-caixa").contains(e.target) && !d.querySelector("summary").contains(e.target)) d.open = false;
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") for (const d of document.querySelectorAll("details.tr-just[open]")) d.open = false;
+  });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     const aberto = grupos.find((g) => g.open);

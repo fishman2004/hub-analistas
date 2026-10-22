@@ -8,6 +8,9 @@
   let atual = null;
   setInterval(async () => {
     if (document.hidden) return;
+    // alguém escrevendo uma justificativa (ou com uma caixinha aberta): não troca nada até terminar
+    const foco = document.activeElement;
+    if (quadro.querySelector("details[open]") || (quadro.contains(foco) && /^(TEXTAREA|INPUT|SELECT)$/.test(foco.tagName))) return;
     try {
       const r = await fetch(quadro.dataset.parcial, { cache: "no-store", signal: AbortSignal.timeout(8000) });
       if (!r.ok) return;
