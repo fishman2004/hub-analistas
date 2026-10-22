@@ -18,7 +18,7 @@ from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, cadastro, calendario, celular, drive, modos, notas, pastas, rotinas_mes, trilha
+from .. import anexos, cadastro, calendario, celular, drive, modos, notas, pastas, phd, rotinas_mes, trilha
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -1875,6 +1875,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         now = clock()
         sales = snap.status("vendas").modified
         return page(request, "paineis.html", user, status_code, snap=snap, now=now, drive=drive.drive_config(db),
+                    phd=phd.phd_config(db),
                     stale=sales is not None and now - sales > timedelta(hours=stale_hours(db)), **ctx)
 
     @app.get("/paineis", response_class=HTMLResponse)
@@ -1906,6 +1907,42 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         if result.changed:
             store_for(db).get(wait=True)  # a página já mostra o arquivo novo lido
         return panels_page(request, user, drive_ok=result.message)
+
+    @app.post("/paineis/phd/gerar")
+    def paineis_phd_gerar(request: Request):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        result = phd.generate(db, clock(), force=True)
+        if not result.ok:
+            return panels_page(request, user, 422, error=result.message)
+        return panels_page(request, user, phd_ok=result.message)
+
+    @app.post("/paineis/phd/configurar")
+    def paineis_phd_configurar(request: Request, pasta: str = Form(""), areas: str = Form("")):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            phd.save_phd_config(db, clock(), user, pasta, areas)
+        except ValidationError as exc:
+            return panels_page(request, user, 422, error=str(exc))
+        result = phd.generate(db, clock(), force=True)
+        return panels_page(request, user, phd_ok="Configuração salva. " + result.message)
+
+    @app.get("/paineis/phd/{name}")
+    def paineis_phd_baixar(request: Request, name: str):
+        user = me(request)
+        if user is None:
+            return to_login()
+        # só os arquivos que o próprio Hub gerou, nunca um caminho qualquer
+        if name not in phd.state(db).get("arquivos", []):
+            return Response(status_code=404)
+        path = phd.output_folder(db) / name
+        if not path.is_file():
+            return Response(status_code=404)
+        return FileResponse(path, filename=name,
+                            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
     # ---------- envios do Pombo ----------
 
@@ -2291,6 +2328,7 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "config_tv": f"{who} mudou as configurações da TV",
         "config_paineis": f"{who} mudou as configurações dos painéis",
         "config_drive": f"{who} mudou o download da 8081 do Google Drive ({detail})",
+        "config_phd": f"{who} mudou o PHD automático",
         "config_pombo": f"{who} mudou a pasta do histórico do Pombo",
         "painel_arquivo": f"{who} enviou a planilha “{detail}” dos painéis",
         "horas_lancado": f"{who} lançou o banco de horas de {detail}",

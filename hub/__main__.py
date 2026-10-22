@@ -69,6 +69,7 @@ def main() -> None:
     import uvicorn
 
     from .drive import loop as drive_loop
+    from .phd import loop as phd_loop
     from .web.app import create_app
     from .winsys import keep_awake
 
@@ -82,6 +83,7 @@ def main() -> None:
     server = uvicorn.Server(server_config(create_app(db)))
     threading.Thread(target=_backup_loop, args=(db.path,), daemon=True, name="copias").start()
     threading.Thread(target=drive_loop, args=(db.path,), daemon=True, name="drive").start()
+    threading.Thread(target=phd_loop, args=(db.path,), daemon=True, name="phd").start()
     threading.Timer(2.0, open_tv, args=(tv_url,)).start()
     log.info("Hub iniciado na porta %s", PORT)
     try:

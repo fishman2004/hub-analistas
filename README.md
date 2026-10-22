@@ -98,6 +98,7 @@ Cria uma equipe, demandas, rotinas, prioridades do mês, planilhas de vendas e u
 | [Arquitetura](docs/arquitetura.md) | Quem vai manter o código |
 | [Segurança e dados](docs/seguranca-e-dados.md) | TI e gestão: o que fica onde e quem vê o quê |
 | [Painéis de dados](docs/paineis.md) | Quem exporta as planilhas: nomes, colunas e como o Hub calcula |
+| [PHD automático](docs/phd.md) | O PHD calculado da 8081, uma planilha por pasta, para o Pombo mandar no grupo |
 | [Base 8081 do Google Drive](docs/drive-8081.md) | Como o Hub baixa sozinho a 8081 que a automação salva no Drive (a ponte com chave) |
 | [Limitações](docs/limitacoes.md) | Todos |
 | [Roadmap](docs/roadmap.md) | As fases da v2 (tema, PIN, gestor, TV em rotação, painéis, banco de horas, rotinas, prioridades do mês, Pombo) e da v3 |

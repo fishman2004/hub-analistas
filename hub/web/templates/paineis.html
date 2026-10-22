@@ -5,6 +5,7 @@
 <h1>Painéis de dados</h1>
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
 {% if drive_ok %}<div class="sucesso" role="status">{{ drive_ok }}</div>{% endif %}
+{% if phd_ok %}<div class="sucesso" role="status">{{ phd_ok }}</div>{% endif %}
 {% if request.query_params.get('enviado') %}<div class="sucesso" role="status">Planilha recebida. A TV usa os dados novos em poucos segundos.</div>{% endif %}
 <p class="ajuda">A TV mostra as metas de venda e positivação <strong>só com gráficos e porcentagens</strong>: valores em reais, quantidades e nomes de vendedores ou clientes nunca aparecem nela.</p>
 
@@ -50,6 +51,34 @@
   {% if user.is_admin %}<form method="post" action="/paineis/drive/baixar"><button>Baixar agora</button></form>{% endif %}
   {% else %}
   <p class="ajuda">Desligado: a 8081 vem só pela pasta acima.{% if user.is_admin %} Para o Hub baixar sozinho do Google Drive, ligue em <a href="/configuracoes#drive">Configurações</a>.{% endif %}</p>
+  {% endif %}
+</section>
+
+<section class="ficha cartao-form largo" id="phd">
+  <h2>PHD automático (para o Pombo)</h2>
+  <p class="ajuda">Toda vez que a 8081 muda, o Hub calcula a positivação de cada vendedor por dia (clientes distintos) e grava uma planilha por pasta no desenho do PHD. No Pombo, use o <strong>modelo do PHD</strong> apontando para o arquivo da sua pasta. Essa planilha tem nomes de vendedores: ela fica só na pasta abaixo, nunca vai para a TV.</p>
+  <p>Pasta do PHD: <code class="caminho">{{ phd.current_folder }}</code></p>
+  {% if phd.gerado %}
+  <p>Gerado em {{ phd.gerado.strftime('%d/%m às %H:%M') }}, com vendas até {{ phd.vendas_ate.strftime('%d/%m') }}{% if phd.base %} (8081 de {{ phd.base.strftime('%d/%m às %H:%M') }}){% endif %}.</p>
+  <ul class="arquivos-phd">
+    {% for f in phd.files %}<li>{% if f.exists %}<a href="/paineis/phd/{{ f.name }}">{{ f.name }}</a>{% else %}{{ f.name }} <span class="falha">(sumiu da pasta)</span>{% endif %}</li>{% endfor %}
+  </ul>
+  {% else %}
+  <p class="ajuda">Ainda não gerado: o PHD sai assim que a 8081 estiver lida na pasta dos painéis.</p>
+  {% endif %}
+  {% if phd.error %}<div class="aviso" role="status">Último problema{% if phd.erro_em %} ({{ phd.erro_em.strftime('%d/%m às %H:%M') }}){% endif %}: {{ phd.error }}</div>{% endif %}
+  {% if user.is_admin %}
+  <form method="post" action="/paineis/phd/gerar"><button>Gerar agora</button></form>
+  <details class="phd-config">
+    <summary>Configurar</summary>
+    <form class="ficha" method="post" action="/paineis/phd/configurar">
+      <label for="phd-pasta">Pasta onde gravar <span class="ajuda">(de preferência a pasta de rede que os analistas abrem; vazio = {{ phd.default_folder }})</span></label>
+      <input type="text" id="phd-pasta" name="pasta" value="{{ phd.folder }}" placeholder="\\servidor\Analistas\PHD">
+      <label for="phd-areas">Área de cada supervisor <span class="ajuda">(uma linha por supervisor; sem linha, a área é o código do supervisor; <code>= FORA</code> tira o supervisor do PHD)</span></label>
+      <textarea id="phd-areas" name="areas" rows="5" placeholder="B-BJ = CAMPINA GRANDE&#10;B-JP = JOÃO PESSOA&#10;B-JP-P = FORA">{{ phd.areas }}</textarea>
+      <button>Salvar e gerar</button>
+    </form>
+  </details>
   {% endif %}
 </section>
 
