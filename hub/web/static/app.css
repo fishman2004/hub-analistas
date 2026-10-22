@@ -40,11 +40,28 @@ a { color: var(--azul); }
 
 .topo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 24px; background: var(--cartao); border-bottom: 1px solid var(--linha); }
 .marca { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.1rem; color: var(--texto); text-decoration: none; }
-/* o menu fica numa linha só dele, embaixo da marca e de quem entrou: com 11 links ele não cabe ao lado */
-.topo nav { display: flex; gap: 4px; flex-wrap: wrap; order: 3; flex-basis: 100%; margin: 0 -10px; }
-.topo nav a { padding: 6px 10px; border-radius: 999px; color: var(--suave); text-decoration: none; }
-.topo nav a:hover { background: var(--fundo); color: var(--texto); }
+/* o menu fica numa linha só dele, embaixo da marca e de quem entrou. Fase 21: Quadro e Trilha à mão e o resto
+   em grupos que abrem um submenu (<details>, funciona sem JavaScript; hub.js só fecha o grupo ao clicar fora) */
+.topo nav { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; order: 3; flex-basis: 100%; margin: 0 -10px; }
+.topo nav a, .grupo > summary { padding: 6px 12px; border-radius: 999px; color: var(--suave); text-decoration: none; transition: background-color .15s, color .15s; }
+.topo nav a:hover, .grupo > summary:hover { background: var(--fundo); color: var(--texto); }
 .topo nav a[aria-current="page"] { background: var(--azul); color: var(--cartao); }
+.grupo { position: relative; }
+.grupo > summary { list-style: none; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+.grupo > summary::-webkit-details-marker { display: none; }
+.grupo > summary::after { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 2px 2px 0; transform: translateY(-2px) rotate(45deg); transition: transform .2s; }
+.grupo[open] > summary { background: var(--fundo); color: var(--texto); }
+.grupo[open] > summary::after { transform: translateY(1px) rotate(-135deg); }
+.grupo.aqui > summary { color: var(--azul); font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--azul); }
+.grupo-links { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; min-width: 190px; display: grid; gap: 2px; padding: 6px;
+  background: var(--cartao); border: 1px solid var(--linha); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 14%); }
+.grupo[open] .grupo-links { animation: menu-abre .18s ease-out; transform-origin: top left; }
+.topo nav .grupo-links a { border-radius: 8px; padding: 8px 12px; white-space: nowrap; }
+@keyframes menu-abre { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
+.ir-para-botao { margin-left: auto; padding: 5px 10px; font-weight: 400; background: transparent; color: var(--suave); border-color: var(--linha); display: flex; gap: 8px; align-items: center; }
+.ir-para-botao[hidden] { display: none; }
+.ir-para-botao:hover { color: var(--texto); }
+kbd { font: .75rem/1 "Segoe UI", system-ui, sans-serif; padding: 3px 5px; border-radius: 4px; border: 1px solid var(--linha); background: var(--fundo); color: var(--suave); }
 .eu { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .tema { padding: 6px 12px; font-weight: 400; background: transparent; color: var(--suave); border-color: var(--linha); white-space: nowrap; }
 .tema:hover { color: var(--texto); }
@@ -562,7 +579,11 @@ input[type=color] { width: 44px; height: 36px; padding: 2px; border: 1px solid v
   .menu-abrir:focus-visible + .menu-botao { outline: 3px solid var(--azul); outline-offset: 2px; }
   .topo nav { display: none; margin: 0; order: 4; }
   .menu-abrir:checked ~ nav { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-  .topo nav a { padding: 10px 12px; }
+  .topo nav a, .grupo > summary { padding: 10px 12px; }
+  /* no celular os grupos viram seções do menu aberto, um embaixo do outro */
+  .grupo { grid-column: 1 / -1; }
+  .grupo > summary { border-radius: 8px; }
+  .grupo-links { position: static; box-shadow: none; border: 0; padding: 2px 0 6px 12px; grid-template-columns: 1fr 1fr; min-width: 0; }
   /* linha 1: marca e tema; linha 2: quem entrou e o botão do menu; embaixo, o menu aberto */
   .menu-botao ~ .tema { order: 1; margin-left: auto; }
   .marca { font-size: 1rem; }
@@ -582,4 +603,83 @@ input[type=color] { width: 44px; height: 36px; padding: 2px; border: 1px solid v
   .status-botoes { grid-template-columns: 1fr 1fr; gap: 8px; }
   .status-botao { padding: 10px 8px; font-size: 1rem; }
   .so-pc { display: none; }
+}
+
+/* ---------- movimento e toque (fase 21): curto, com transform e opacity, e nada disso com "menos movimento" ---------- */
+@view-transition { navigation: auto; }  /* o navegador desliza de uma página para a outra */
+::view-transition-old(root) { animation: .16s ease-in both pagina-sai; }
+::view-transition-new(root) { animation: .24s ease-out both pagina-entra; }
+.topo { view-transition-name: topo; }  /* o topo fica parado; só o conteúdo troca */
+@keyframes pagina-sai { to { opacity: 0; transform: translateY(-4px); } }
+@keyframes pagina-entra { from { opacity: 0; transform: translateY(8px); } }
+@supports not (view-transition-name: x) { main { animation: pagina-entra .3s ease-out; } }
+
+button, .botao { transition: transform .1s, background-color .15s, box-shadow .15s, opacity .15s; }
+button:active, .botao:active { transform: translateY(1px) scale(.97); }
+button:not(.link):hover, .botao:hover { box-shadow: 0 2px 8px rgb(0 0 0 / 12%); }
+.cartao { transition: transform .18s, box-shadow .18s; }
+.cartao:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgb(0 0 0 / 10%); }
+.indicador { transition: transform .18s; }
+.indicador:hover { transform: translateY(-2px); }
+
+/* enviando: o botão fica esmaecido com uma bolinha girando e não aceita um segundo envio */
+.enviando { opacity: .75; pointer-events: none; position: relative; }
+.enviando::after { content: ""; display: inline-block; width: .8em; height: .8em; margin-left: 8px; vertical-align: -1px; border-radius: 50%;
+  border: 2px solid currentColor; border-right-color: transparent; animation: gira .7s linear infinite; }
+@keyframes gira { to { transform: rotate(360deg); } }
+
+/* o que mudou desde a última vez (cartão novo ou que mudou de coluna, bloco da trilha que acendeu) */
+.cartao.novo, .cartao.mudou { animation: cartao-brilha 2.4s ease-out; }
+@keyframes cartao-brilha { 0% { transform: scale(.96); box-shadow: 0 0 0 3px var(--azul), 0 0 22px var(--azul); }
+  30% { transform: scale(1.02); } 100% { transform: none; box-shadow: 0 0 0 0 transparent; } }
+.col-done .cartao.mudou, .col-done .cartao.novo { position: relative; animation-name: cartao-concluiu; }
+.col-done .cartao.mudou::after, .col-done .cartao.novo::after { content: "✓"; position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+  display: grid; place-items: center; border-radius: 50%; background: var(--sala); color: #fff; font-weight: 800; animation: selo-pula .6s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes cartao-concluiu { 0% { transform: scale(.96); box-shadow: 0 0 0 3px var(--sala), 0 0 26px var(--sala); }
+  30% { transform: scale(1.02); } 100% { transform: none; box-shadow: 0 0 0 0 transparent; } }
+@keyframes selo-pula { from { transform: scale(0) rotate(-30deg); } }
+.tr-no.mudou .tr-icone { animation: bloco-acende 1.2s ease-out; }
+.tr-no.mudou .tr-selo { animation: selo-pula .6s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes bloco-acende { 0% { transform: scale(.8); filter: brightness(1.6); } 40% { transform: scale(1.15); } 100% { transform: none; filter: none; } }
+
+/* barras que crescem (prioridades e o resumo da trilha) */
+.prio-barra span, .tr-barra span { transform-origin: left; animation: barra-cresce .8s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes barra-cresce { from { transform: scaleX(0); } }
+
+/* avisos de sucesso no canto, com a barrinha de tempo (hub.js); sem o script, ficam no topo da página como antes */
+.avisos-pilha { position: fixed; z-index: 50; right: 20px; bottom: 20px; display: grid; gap: 10px; max-width: min(420px, calc(100vw - 32px)); }
+.sucesso.aviso-flutuante { position: relative; overflow: hidden; margin: 0; padding: 12px 40px 14px 16px; background: var(--cartao);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 16%); animation: aviso-entra .35s cubic-bezier(.2, 1.2, .4, 1) both; }
+.sucesso.aviso-flutuante::before { content: "✓ "; font-weight: 800; }
+.aviso-fechar { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--suave); font-size: 1.2rem; line-height: 1; }
+.aviso-fechar:hover { background: var(--fundo); color: var(--texto); box-shadow: none; }
+.aviso-tempo { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--sala); transform-origin: left; animation: aviso-tempo var(--tempo) linear both; }
+.aviso-flutuante.parado .aviso-tempo { animation-play-state: paused; }
+.aviso-flutuante.saindo { animation: aviso-sai .3s ease-in both; }
+@keyframes aviso-entra { from { opacity: 0; transform: translateY(16px) scale(.96); } }
+@keyframes aviso-sai { to { opacity: 0; transform: translateX(30px); } }
+@keyframes aviso-tempo { to { transform: scaleX(0); } }
+
+/* Ir para… (Ctrl+K) */
+.ir-para { width: min(560px, calc(100vw - 32px)); margin-top: 12vh; padding: 0; border: 1px solid var(--linha); border-radius: 14px;
+  background: var(--cartao); color: var(--texto); box-shadow: 0 24px 60px rgb(0 0 0 / 30%); }
+.ir-para[open] { animation: aviso-entra .2s ease-out; }
+.ir-para::backdrop { background: rgb(10 16 22 / 45%); backdrop-filter: blur(2px); }
+.ir-para form { display: grid; }
+.ir-para input { font: inherit; font-size: 1.1rem; padding: 16px 18px; border: 0; border-bottom: 1px solid var(--linha); background: transparent; color: var(--texto); outline: none; }
+.ir-para ul { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow-y: auto; }
+.ir-para li a { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 8px; color: var(--texto); text-decoration: none; }
+.ir-para li[aria-selected="true"] a { background: var(--azul); color: var(--cartao); }
+.ir-para li small { color: inherit; opacity: .7; }
+.ir-para li.vazio { padding: 12px; color: var(--suave); }
+.ir-para-dica { margin: 0; padding: 8px 14px; border-top: 1px solid var(--linha); font-size: .8rem; color: var(--suave); }
+
+@media (max-width: 760px) {
+  .avisos-pilha { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+  .cartao:hover, .indicador:hover { transform: none; box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  @view-transition { navigation: none; }
+  .aviso-tempo { display: none; }
 }

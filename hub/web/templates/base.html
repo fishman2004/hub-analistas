@@ -22,23 +22,33 @@
     {# no celular o menu fecha num botão; sem JavaScript: a caixinha escondida abre e fecha #}
     <input type="checkbox" id="menu-abrir" class="menu-abrir" aria-label="Abrir o menu">
     <label for="menu-abrir" class="menu-botao" aria-hidden="true">☰ Menu</label>
-    <nav aria-label="Menu principal">
+    {# menu em grupos (fase 21): Quadro e Trilha à mão; o resto em 5 grupos que abrem sem JavaScript (<details>) #}
+    {% set waiting = signups_waiting() if user.is_admin else 0 %}
+    {% set gestao = [] %}
+    {% if can_open_gestor(user) %}{% set _ = gestao.append(('gestor', '/gestor', 'Gestor')) %}{% endif %}
+    {% if user.is_admin %}{% set _ = gestao.append(('pessoas', '/pessoas', 'Pessoas')) %}{% set _ = gestao.append(('config', '/configuracoes', 'Configurações')) %}{% endif %}
+    {% set grupos = [
+      ('Dia a dia', [('demandas', '/demandas', 'Demandas'), ('notas', '/notas', 'Notas'), ('historico', '/historico', 'Histórico')]),
+      ('Planejamento', [('rotinas', '/rotinas', 'Rotinas'), ('prioridades', '/prioridades', 'Prioridades'), ('calendario', '/calendario', 'Calendário')]),
+      ('Dados', [('paineis', '/paineis', 'Painéis'), ('horas', '/horas', 'Banco de horas'), ('envios', '/envios', 'Envios')]),
+      ('TV e celular', [('tv', '/tv-da-sala', 'TV da sala'), ('celular', '/celular', 'No celular')]),
+      ('Gestão', gestao),
+    ] %}
+    <nav aria-label="Menu principal" class="menu">
       <a href="/" {% if active == 'quadro' %}aria-current="page"{% endif %}>Quadro</a>
       <a href="/trilha" {% if active == 'trilha' %}aria-current="page"{% endif %}>Trilha</a>
-      <a href="/demandas" {% if active == 'demandas' %}aria-current="page"{% endif %}>Demandas</a>
-      {% if can_open_gestor(user) %}<a href="/gestor" {% if active == 'gestor' %}aria-current="page"{% endif %}>Gestor</a>{% endif %}
-      <a href="/rotinas" {% if active == 'rotinas' %}aria-current="page"{% endif %}>Rotinas</a>
-      <a href="/prioridades" {% if active == 'prioridades' %}aria-current="page"{% endif %}>Prioridades</a>
-      <a href="/calendario" {% if active == 'calendario' %}aria-current="page"{% endif %}>Calendário</a>
-      <a href="/paineis" {% if active == 'paineis' %}aria-current="page"{% endif %}>Painéis</a>
-      <a href="/horas" {% if active == 'horas' %}aria-current="page"{% endif %}>Banco de horas</a>
-      <a href="/envios" {% if active == 'envios' %}aria-current="page"{% endif %}>Envios</a>
-      <a href="/notas" {% if active == 'notas' %}aria-current="page"{% endif %}>Notas</a>
-      <a href="/historico" {% if active == 'historico' %}aria-current="page"{% endif %}>Histórico</a>
-      {% if user.is_admin %}{% set waiting = signups_waiting() %}<a href="/pessoas" {% if active == 'pessoas' %}aria-current="page"{% endif %}>Pessoas{% if waiting %} <span class="contador" title="Pedidos de cadastro esperando">{{ waiting }}</span>{% endif %}</a>
-      <a href="/configuracoes" {% if active == 'config' %}aria-current="page"{% endif %}>Configurações</a>{% endif %}
-      <a href="/tv-da-sala" {% if active == 'tv' %}aria-current="page"{% endif %}>TV da sala</a>
-      <a href="/celular" {% if active == 'celular' %}aria-current="page"{% endif %}>No celular</a>
+      {% for nome, links in grupos if links %}
+      {% set aqui = active in links|map(attribute=0)|list %}
+      <details class="grupo{{ ' aqui' if aqui else '' }}">
+        <summary>{{ nome }}{% if nome == 'Gestão' and waiting %} <span class="contador" title="Pedidos de cadastro esperando">{{ waiting }}</span>{% endif %}</summary>
+        <div class="grupo-links">
+          {% for key, href, label in links %}
+          <a href="{{ href }}" {% if active == key %}aria-current="page"{% endif %}>{{ label }}{% if key == 'pessoas' and waiting %} <span class="contador" title="Pedidos de cadastro esperando">{{ waiting }}</span>{% endif %}</a>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+      <button type="button" class="ir-para-botao so-pc" id="ir-para-abrir" hidden title="Ir para uma página (Ctrl+K)">Ir para… <kbd>Ctrl K</kbd></button>
     </nav>
     <form class="eu" method="post" action="/sair">
       <span class="bolinha" style="--cor: {{ user.color }}">{{ user.initials }}</span>
@@ -49,6 +59,7 @@
     <button type="button" id="tema" class="tema" hidden>Tema</button>
   </header>
   <main>{% block main %}{% endblock %}</main>
+  <script src="/static/hub.js?v={{ version }}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -6,6 +6,9 @@
   const colunas = {};  // col -> { paginas, pagina }
   let segundosPagina = 10;
   let ultimaTroca = Date.now();
+  // fase 21: a demanda que acabou de chegar (ou de ser concluída) brilha na próxima vez que aparece na tela
+  let vistas = null;  // id -> coluna no último desenho (null: primeiro desenho, nada brilha)
+  const recentes = new Map();  // id -> { col, desde }
 
   function desenharColuna(sec, col) {
     const estado = colunas[col];
@@ -14,7 +17,16 @@
     const pagina = estado.paginas[estado.pagina] || [];
     const acabou = estado.pagina >= estado.paginas.length && estado.paginas.length > 0;  // PDF: coluna já terminou
     if (!pagina.length) caixa.append(HubTV.el("div", "vazio", acabou ? "Fim da coluna." : "Nada aqui."));
-    for (const c of pagina) caixa.append(HubTV.cartao(c));
+    const ativa = sec.closest(".tela").classList.contains("ativa") && !HubTV.exportando;
+    for (const c of pagina) {
+      const card = HubTV.cartao(c);
+      const r = recentes.get(c.id);
+      if (ativa && r && r.col === col) {
+        card.classList.add(col === "done" ? "comemora" : "chegou");
+        recentes.delete(c.id);
+      }
+      caixa.append(card);
+    }
     sec.querySelector(".pagina").textContent =
       estado.paginas.length > 1 && !acabou ? (estado.pagina + 1) + "/" + estado.paginas.length : "";
   }
@@ -50,6 +62,16 @@
     desenhar(sec, _dados, tudo) {
       secaoTela = sec;
       segundosPagina = tudo.page_seconds || 10;
+      const agora = Date.now();
+      const novas = {};
+      for (const col of ["todo", "doing", "done"]) {
+        for (const c of tudo.columns[col]) {
+          novas[c.id] = col;
+          if (vistas && vistas[c.id] !== col && (col === "done" || vistas[c.id] === undefined)) recentes.set(c.id, { col, desde: agora });
+        }
+      }
+      vistas = novas;
+      for (const [id, r] of recentes) if (agora - r.desde > 60000) recentes.delete(id);
       for (const coluna of sec.querySelectorAll(".coluna")) {
         const col = coluna.dataset.col;
         coluna.querySelector(".contagem").textContent = tudo.counts[col];
@@ -57,7 +79,11 @@
         if (caixa.classList.contains("trocando")) continue;  // no meio do fade: atualiza no próximo ciclo
         const paginas = HubTV.paginar(caixa, tudo.columns[col]);
         const anterior = colunas[col];
-        colunas[col] = { paginas, pagina: anterior ? Math.min(anterior.pagina, Math.max(paginas.length - 1, 0)) : 0 };
+        let pagina = anterior ? Math.min(anterior.pagina, Math.max(paginas.length - 1, 0)) : 0;
+        // a demanda que acabou de chegar aqui puxa a coluna para a página dela, para a comemoração aparecer
+        const nova = paginas.findIndex((p) => p.some((c) => (recentes.get(c.id) || {}).col === col));
+        if (nova >= 0 && sec.classList.contains("ativa") && !HubTV.exportando) pagina = nova;
+        colunas[col] = { paginas, pagina };
         desenharColuna(coluna, col);
       }
     },

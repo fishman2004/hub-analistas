@@ -8,11 +8,11 @@
 </div>
 
 <section class="resumo" aria-label="Resumo do dia">
-  <div class="indicador"><span class="numero">{{ totals.in_room }}<small>/{{ team|length }}</small></span><span>na sala</span></div>
-  <div class="indicador"><span class="numero">{{ totals.doing }}</span><span>fazendo</span></div>
-  <div class="indicador"><span class="numero">{{ totals.todo }}</span><span>a fazer</span></div>
-  <div class="indicador"><span class="numero">{{ totals.done }}</span><span>concluídas hoje</span></div>
-  <div class="indicador {{ 'alerta' if totals.overdue else '' }}"><span class="numero">{{ totals.overdue }}</span><span>atrasadas</span></div>
+  <div class="indicador"><span class="numero" data-contar="{{ totals.in_room }}">{{ totals.in_room }}<small>/{{ team|length }}</small></span><span>na sala</span></div>
+  <div class="indicador"><span class="numero" data-contar="{{ totals.doing }}">{{ totals.doing }}</span><span>fazendo</span></div>
+  <div class="indicador"><span class="numero" data-contar="{{ totals.todo }}">{{ totals.todo }}</span><span>a fazer</span></div>
+  <div class="indicador"><span class="numero" data-contar="{{ totals.done }}">{{ totals.done }}</span><span>concluídas hoje</span></div>
+  <div class="indicador {{ 'alerta' if totals.overdue else '' }}"><span class="numero" data-contar="{{ totals.overdue }}">{{ totals.overdue }}</span><span>atrasadas</span></div>
 </section>
 
 <h2>A equipe hoje</h2>
