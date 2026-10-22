@@ -154,12 +154,18 @@
       String(agora.getHours()).padStart(2, "0") + ":" + String(agora.getMinutes()).padStart(2, "0");
   }
 
+  let presencaAntes = null;  // fase 21: quem muda de status pisca suavemente
   function desenharPresenca(pessoas) {
     const faixa = document.getElementById("presenca");
     faixa.replaceChildren();
+    const agora = {};
     for (const p of pessoas) {
       // ausência marcada no calendário (fase 13): só "Ausente" e a data de volta, nunca o motivo
-      const card = el("div", "pessoa " + (p.ausente_ate ? "st-ausente" : CLASSE_STATUS[p.status] || "st-fora"));
+      const classe = p.ausente_ate ? "st-ausente" : CLASSE_STATUS[p.status] || "st-fora";
+      const chave = p.initials + "|" + p.name;
+      agora[chave] = classe;
+      const mudou = presencaAntes && presencaAntes[chave] !== undefined && presencaAntes[chave] !== classe;
+      const card = el("div", "pessoa " + classe + (mudou && !EXPORTAR ? " mudou" : ""));
       card.style.setProperty("--cor", p.color);
       card.append(el("div", "ini", p.initials), el("div", "nome", p.name));
       const st = el("div", "status");
@@ -168,6 +174,7 @@
       card.append(st);
       faixa.append(card);
     }
+    presencaAntes = agora;
   }
 
   function desenharModo(modo) {
@@ -273,12 +280,43 @@
     }
   }
 
+  // fase 21: a tela que entra traz os itens em cascata, as barras crescendo do zero e as porcentagens contando
+  const LISTAS = ".cartoes, .prazos, .agenda, .prio-itens, .cartoes-pasta, .barras-pasta, .focos, .envios";
+  const calmo = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let timerEntrada = null;
+
+  function contarPct(sec) {
+    for (const e of sec.querySelectorAll("*")) {
+      if (e.childElementCount || !/^\d{1,3}%$/.test(e.textContent.trim())) continue;
+      const alvo = parseInt(e.textContent, 10);
+      const t0 = performance.now();
+      const passo = (t) => {
+        const p = Math.min(1, (t - t0) / 1100);
+        e.textContent = Math.round(alvo * (1 - Math.pow(1 - p, 3))) + "%";
+        if (p < 1) requestAnimationFrame(passo);
+      };
+      requestAnimationFrame(passo);
+    }
+  }
+
+  function entrar(sec) {
+    if (EXPORTAR || calmo || !sec) return;
+    for (const s of document.querySelectorAll(".tela.entrando")) s.classList.remove("entrando");
+    for (const lista of sec.querySelectorAll(LISTAS)) [...lista.children].forEach((c, i) => c.style.setProperty("--i", Math.min(i, 14)));
+    void sec.offsetWidth;
+    sec.classList.add("entrando");
+    contarPct(sec);
+    clearTimeout(timerEntrada);
+    timerEntrada = setTimeout(() => sec.classList.remove("entrando"), 2600);
+  }
+
   function mostrar(id) {
     atual = id;
     inicioTela = Date.now();
     for (const s of document.querySelectorAll(".tela")) s.classList.toggle("ativa", s.dataset.tela === id);
     const m = modulos[id];
     if (m && m.aoMostrar) m.aoMostrar(secao(id));
+    entrar(secao(id));
     desenharIndicador();
   }
 

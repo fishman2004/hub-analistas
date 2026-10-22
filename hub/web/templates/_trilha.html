@@ -2,7 +2,7 @@
 {% set STATUS_TEXT = {'futuro': 'ainda não começou', 'agora': 'agora', 'feito': 'feito no horário',
                       'feito_atrasado': 'feito depois do horário', 'nao_feito': 'não feito', 'pausa': 'intervalo'} %}
 {% macro no(s, pode, volta) %}
-<li class="tr-no st-{{ s.status }}" style="--bloco: {{ s.block.color }}" title="{{ s.block.starts_at }} às {{ s.block.ends_at }} · {{ s.block.title }} · {{ STATUS_TEXT[s.status] }}{% if s.auto %} (pela rotina){% endif %}{% if s.block.lines %}&#10;{{ s.block.lines|join('&#10;') }}{% endif %}">
+<li class="tr-no st-{{ s.status }}" style="--bloco: {{ s.block.color }}" data-vivo="t:{{ s.block.id }}" data-estado="{{ s.status }}" title="{{ s.block.starts_at }} às {{ s.block.ends_at }} · {{ s.block.title }} · {{ STATUS_TEXT[s.status] }}{% if s.auto %} (pela rotina){% endif %}{% if s.block.lines %}&#10;{{ s.block.lines|join('&#10;') }}{% endif %}">
   <span class="tr-icone"><svg aria-hidden="true"><use href="/static/trilha-icones.svg?v={{ version }}#{{ s.block.icon }}"></use></svg>
     {% if s.status in ('feito', 'feito_atrasado') %}<span class="tr-selo">✓</span>{% elif s.status == 'nao_feito' %}<span class="tr-selo">✕</span>{% endif %}</span>
   <span class="tr-hora">{{ s.block.starts_at }}<span class="tr-ate">–{{ s.block.ends_at }}</span></span>

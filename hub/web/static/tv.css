@@ -577,3 +577,45 @@ body.clara .cartao, body.clara .ag-item, body.clara .pessoa { box-shadow: inset 
 }
 body.clara .letra[class*="pasta-"] { background: #5c6875; }  /* G, TLV e T: sem cor própria */
 body.clara .cartao-pasta.total { background: #e4e9ee; }
+
+/* ---------- movimento (fase 21): leve para o PC da sala (só transform, opacity e filtros curtos) ---------- */
+/* fundo com um degradê que anda bem devagar: dá vida e ajuda a TV a não marcar a imagem parada o dia todo */
+body:not(.exportar)::before { content: ""; position: fixed; inset: -20%; z-index: -1; pointer-events: none;
+  background: radial-gradient(40% 35% at 20% 25%, rgb(127 178 229 / 7%), transparent 70%),
+              radial-gradient(35% 40% at 80% 75%, rgb(76 192 109 / 5%), transparent 70%);
+  animation: fundo-anda 90s ease-in-out infinite alternate; }
+@keyframes fundo-anda { to { transform: translate(6%, -5%) rotate(8deg); } }
+body.clara::before { opacity: .6; }
+
+/* a tela que entra assenta com um leve zoom */
+.tela.ativa { animation: tela-entra .7s cubic-bezier(.2, .8, .2, 1); }
+@keyframes tela-entra { from { transform: scale(1.015); } }
+body.exportar .tela.ativa { animation: none; }  /* PDF: nada pela metade */
+
+/* itens em cascata, barras crescendo do zero (as porcentagens contam no tv.js) */
+.tela.entrando :is(.cartoes, .prazos, .agenda, .prio-itens, .cartoes-pasta, .barras-pasta, .focos, .envios) > * {
+  animation: tv-cascata .6s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes tv-cascata { from { opacity: 0; transform: translateY(.9rem) scale(.98); } }
+.tela.entrando .cheio { transform-origin: left; animation: tv-cresce 1.1s cubic-bezier(.2, .8, .2, 1) .15s both; }
+@keyframes tv-cresce { from { transform: scaleX(0); } }
+
+/* demanda que acabou de ser concluída comemora; a que chegou brilha em azul */
+.cartao.comemora { position: relative; animation: tv-comemora 2.6s ease-out; }
+.cartao.comemora::after { content: "✓"; position: absolute; top: .6rem; right: .7rem; width: 2.4rem; height: 2.4rem; display: grid; place-items: center;
+  border-radius: 50%; background: var(--sala); color: #0e141a; font-size: 1.4rem; font-weight: 900; animation: tv-selo 3s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes tv-comemora { 0% { transform: scale(.94); box-shadow: 0 0 0 .25rem var(--sala), 0 0 2.6rem .6rem rgb(76 192 109 / 60%); }
+  25% { transform: scale(1.03); } 100% { transform: none; box-shadow: 0 0 0 0 transparent; } }
+@keyframes tv-selo { 0% { transform: scale(0) rotate(-40deg); } 20% { transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
+.cartao.chegou { animation: tv-chegou 2.2s ease-out; }
+@keyframes tv-chegou { 0% { transform: translateY(-.6rem) scale(.96); box-shadow: 0 0 0 .2rem var(--pausa), 0 0 2rem .4rem rgb(127 178 229 / 50%); }
+  100% { transform: none; box-shadow: 0 0 0 0 transparent; } }
+
+/* presença: quem mudou de status pisca suavemente */
+.pessoa.mudou { animation: tv-presenca 1.8s ease-out; }
+.pessoa.mudou .status::before { animation: tv-bolinha 1.8s ease-out; }
+@keyframes tv-presenca { 0% { box-shadow: 0 0 0 .2rem var(--st), 0 0 2rem .3rem var(--st); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes tv-bolinha { 0%, 40% { transform: scale(1.8); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

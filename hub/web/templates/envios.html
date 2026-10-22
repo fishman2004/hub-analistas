@@ -14,10 +14,10 @@
 
 {% if runs %}
 <div class="resumo largo">
-  <div class="indicador"><span class="numero">{{ runs|length }}</span> envios hoje</div>
-  <div class="indicador"><span class="numero">{{ groups.ok }}</span> ✓ enviados</div>
-  <div class="indicador {% if groups.falha %}alerta{% endif %}"><span class="numero">{{ groups.falha }}</span> ⚠ com falha</div>
-  <div class="indicador"><span class="numero">{{ groups.andamento }}</span> ⏳ em andamento</div>
+  <div class="indicador"><span class="numero" data-contar="{{ runs|length }}">{{ runs|length }}</span> envios hoje</div>
+  <div class="indicador"><span class="numero" data-contar="{{ groups.ok }}">{{ groups.ok }}</span> ✓ enviados</div>
+  <div class="indicador {% if groups.falha %}alerta{% endif %}"><span class="numero" data-contar="{{ groups.falha }}">{{ groups.falha }}</span> ⚠ com falha</div>
+  <div class="indicador"><span class="numero" data-contar="{{ groups.andamento }}">{{ groups.andamento }}</span> ⏳ em andamento</div>
 </div>
 {% endif %}
 

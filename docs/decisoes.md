@@ -336,3 +336,18 @@ A trilha do modelo do gestor é a semana de cada analista em blocos de horário.
 - Padrão: quem está ausente no Calendário e os feriados ficam sem trilha (e não contam no resumo).
 - Padrão: a trilha do modelo usa o print de segunda para seg, qua e sex e o de terça para ter e qui.
 - Padrão: 4 analistas por página na TV e 25 s de tela.
+
+## Animações e UI/UX: movimento curto e só como extra (fase 21)
+
+- **Sem JavaScript, tudo funciona:** o menu em grupos usa `<details>`, o aviso de sucesso continua na página e o quadro continua atualizando. O `hub.js` só acrescenta.
+- **Leve para o PC da sala:** só `transform`, `opacity` e brilho curto; nada de biblioteca de animação nem nada da internet.
+- **Menos movimento:** com "Mostrar animações" desligado no Windows (`prefers-reduced-motion`), nada se mexe, no app e na TV.
+- **Quadro vivo sem servidor novo:** a comparação é feita no navegador, com uma foto do que estava na tela (por página, por 10 minutos). Depois de um clique em Concluir, a página recarrega e o cartão brilha na coluna nova.
+- **Na TV, a comemoração aparece uma vez:** quando a demanda chega em "Concluído hoje", a coluna vai para a página dela e o cartão brilha com um ✓ na próxima vez que o Quadro está na tela.
+- **Menu:** Quadro e Trilha ficam à mão (o dia a dia de todo mundo); o resto em 5 grupos. O pedido de cadastro esperando aparece também no grupo Gestão, que fica fechado.
+
+### Em aberto (o Kayo confirma)
+
+- Padrão: movimentos de 0,2 a 0,8 s (o zoom do calendário e a luz da trilha são mais longos) e nenhum com "menos movimento".
+- Padrão: os grupos do menu (Dia a dia: Demandas, Notas, Histórico; Planejamento: Rotinas, Prioridades, Calendário; Dados: Painéis, Banco de horas, Envios; TV e celular; Gestão).
+- Padrão: o aviso de sucesso some em 6 s (parado com o mouse em cima).

@@ -71,7 +71,7 @@
     {% set waiting = d.routine and d.routine.waiting and col != 'done' %}
     {% set by_folders = d.routine and d.routine.folders %}
     {% set pending = by_folders and d.routine.folders|reject('in', d.routine.checked)|list %}
-    <article class="cartao {% if is_overdue(d, today) %}atrasada{% endif %}" style="--cor: {{ dono.color }}">
+    <article class="cartao {% if is_overdue(d, today) %}atrasada{% endif %}" style="--cor: {{ dono.color }}" data-vivo="d:{{ d.ref }}" data-estado="{{ col }}">
       <div class="cartao-topo">
         <span class="bolinha">{{ dono.initials }}</span>
         <a class="titulo" href="/demandas/{{ d.ref }}">{{ d.title }}</a>
@@ -105,7 +105,7 @@
     </article>
     {% else %}
     {# reservada de outra pessoa: igual à TV, sem título, pasta, quem pediu nem botões #}
-    <article class="cartao oculta {% if is_overdue(d, today) %}atrasada{% endif %}" style="--cor: {{ dono.color }}">
+    <article class="cartao oculta {% if is_overdue(d, today) %}atrasada{% endif %}" style="--cor: {{ dono.color }}" data-vivo="d:{{ d.ref }}" data-estado="{{ col }}">
       <div class="cartao-topo">
         <span class="bolinha">{{ dono.initials }}</span>
         <span class="titulo">{{ RESERVED_TEXT }}</span>
