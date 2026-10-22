@@ -418,3 +418,39 @@ a.nota-item:hover { background: var(--fundo); border-radius: 8px; }
 .cartao-descricao { margin-top: 6px; font-size: .9rem; }
 .cartao-descricao summary { cursor: pointer; color: var(--azul); width: max-content; }
 .cartao-descricao p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; padding: 8px 10px; background: var(--fundo); border-radius: 8px; max-height: 260px; overflow: auto; }
+
+/* celular (fase 18) */
+.menu-abrir { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.menu-botao { display: none; }
+.celular-qr { display: grid; grid-template-columns: minmax(200px, 280px) 1fr; gap: 24px; align-items: start; }
+.celular-qr .qr { background: #fff; padding: 8px; border-radius: var(--raio); border: 1px solid var(--linha); }
+.celular-qr .qr svg { display: block; width: 100%; height: auto; }
+.endereco-grande { font-size: 1.3rem; font-weight: 700; overflow-wrap: anywhere; margin: 0 0 12px; }
+.celular-passos { margin: 0 0 12px; padding-left: 22px; display: grid; gap: 6px; }
+@media (max-width: 760px) {
+  .topo { padding: 10px 16px; }
+  .menu-botao { display: inline-block; order: 3; padding: 6px 12px; border: 1px solid var(--linha); border-radius: 8px; color: var(--texto); cursor: pointer; user-select: none; }
+  .menu-abrir:focus-visible + .menu-botao { outline: 3px solid var(--azul); outline-offset: 2px; }
+  .topo nav { display: none; margin: 0; order: 4; }
+  .menu-abrir:checked ~ nav { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .topo nav a { padding: 10px 12px; }
+  /* linha 1: marca e tema; linha 2: quem entrou e o botão do menu; embaixo, o menu aberto */
+  .menu-botao ~ .tema { order: 1; margin-left: auto; }
+  .marca { font-size: 1rem; }
+  .tema { font-size: .85rem; padding: 4px 8px; }
+  .eu { order: 2; margin-left: 0; flex: 1 1 60%; min-width: 0; }
+  .eu-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55vw; }
+  main { padding: 16px 12px 48px; }
+  h1 { font-size: 1.5rem; }
+  /* tabelas largas rolam de lado em vez de alargar a página */
+  table.tabela { display: block; overflow-x: auto; max-width: 100%; }
+  code, pre { overflow-wrap: anywhere; white-space: pre-wrap; }
+  /* dedo: botões e campos maiores */
+  button, .botao { padding: 10px 14px; }
+  input[type=text], input[type=date], input[type=time], input[type=number], select, textarea { font-size: 16px; min-height: 42px; }
+  .celular-qr { grid-template-columns: 1fr; }
+  .celular-qr .qr { max-width: 280px; }
+  .status-botoes { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .status-botao { padding: 10px 8px; font-size: 1rem; }
+  .so-pc { display: none; }
+}

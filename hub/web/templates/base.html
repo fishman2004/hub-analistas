@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Hub dos Analistas{% endblock %}</title>
   <link rel="icon" href="/static/hub.svg" type="image/svg+xml">
+  {# celular (fase 18): atalho com ícone na tela inicial #}
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/icones/hub-180.png">
+  <meta name="theme-color" content="#16212c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Hub">
   <link rel="stylesheet" href="/static/app.css?v={{ version }}">
   <script src="/static/tema.js?v={{ version }}"></script>
 </head>
@@ -12,6 +19,9 @@
   <header class="topo">
     <a class="marca" href="/"><img src="/static/hub.svg" alt="" width="30" height="30"> Hub dos Analistas</a>
     {% if user %}
+    {# no celular o menu fecha num botão; sem JavaScript: a caixinha escondida abre e fecha #}
+    <input type="checkbox" id="menu-abrir" class="menu-abrir" aria-label="Abrir o menu">
+    <label for="menu-abrir" class="menu-botao" aria-hidden="true">☰ Menu</label>
     <nav aria-label="Menu principal">
       <a href="/" {% if active == 'quadro' %}aria-current="page"{% endif %}>Quadro</a>
       <a href="/demandas" {% if active == 'demandas' %}aria-current="page"{% endif %}>Demandas</a>
@@ -27,6 +37,7 @@
       {% if user.is_admin %}{% set waiting = signups_waiting() %}<a href="/pessoas" {% if active == 'pessoas' %}aria-current="page"{% endif %}>Pessoas{% if waiting %} <span class="contador" title="Pedidos de cadastro esperando">{{ waiting }}</span>{% endif %}</a>
       <a href="/configuracoes" {% if active == 'config' %}aria-current="page"{% endif %}>Configurações</a>{% endif %}
       <a href="/tv-da-sala" {% if active == 'tv' %}aria-current="page"{% endif %}>TV da sala</a>
+      <a href="/celular" {% if active == 'celular' %}aria-current="page"{% endif %}>No celular</a>
     </nav>
     <form class="eu" method="post" action="/sair">
       <span class="bolinha" style="--cor: {{ user.color }}">{{ user.initials }}</span>

@@ -18,7 +18,7 @@ from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, cadastro, calendario, modos, notas, pastas
+from .. import anexos, cadastro, calendario, celular, modos, notas, pastas
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -30,6 +30,7 @@ from ..paineis import STALE_MAX, STALE_MIN, panel_config, save_panel_config, sav
 from ..presence import STATUSES, presence_board, set_status
 from ..rotinas import (WEEKDAY_LABELS, alerts_today, can_manage, create_suggested, get_routine, list_routines,
                        save_routine, set_routine_active, start_test_alert, tv_alerts, weekdays_label)
+from ..qr import qr_svg
 from ..prioridades import (DEFAULT_LIST, add_priority, by_folder, can_mark, can_remove, create_default_list, is_late,
                            is_month, last_day, list_month, mark_done, month_label, month_of, parse_due_day, parse_steps,
                            past_months,
@@ -44,6 +45,7 @@ COOKIE = "hub_sessao"
 LOGIN_MAX_FAILURES = 10  # erros seguidos de um mesmo aparelho, em qualquer nome...
 LOGIN_WINDOW_MINUTES = 15  # ...dentro deste tempo: o aparelho espera até o erro mais antigo sair da conta
 SIGNUPS_PER_DEVICE = 3  # pedidos de cadastro por aparelho, por hora
+PHONE_PORT = 8800  # a porta do Hub (hub/__main__.py), para o endereço do celular
 
 
 def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> FastAPI:
@@ -509,6 +511,37 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return page(request, "meu-pin.html", user, 422, error=str(exc))
         return page(request, "meu-pin.html", user, ok=True)
+
+    # ---------- celular (fase 18) ----------
+
+    @app.get("/manifest.webmanifest")
+    def manifest():
+        # o atalho na tela inicial do celular: nome, ícone e cor do Hub
+        return JSONResponse({
+            "name": "Hub dos Analistas",
+            "short_name": "Hub",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "background_color": "#16212c",
+            "theme_color": "#16212c",
+            "lang": "pt-BR",
+            "icons": [
+                {"src": "/static/icones/hub-192.png", "sizes": "192x192", "type": "image/png"},
+                {"src": "/static/icones/hub-512.png", "sizes": "512x512", "type": "image/png"},
+                {"src": "/static/hub.svg", "sizes": "any", "type": "image/svg+xml"},
+            ],
+        }, media_type="application/manifest+json")
+
+    @app.get("/celular", response_class=HTMLResponse)
+    def celular_page(request: Request):
+        user = me(request)
+        if user is None:
+            return to_login()
+        address = celular.phone_address(request.headers.get("host", ""), PHONE_PORT, celular.lan_ip())
+        url = f"{address}/entrar" if address else None
+        return page(request, "celular.html", user, address=address,
+                    qr=qr_svg(url) if url else None)
 
     @app.get("/", response_class=HTMLResponse)
     def quadro(request: Request, todas: int = 0, concluida: str = ""):
