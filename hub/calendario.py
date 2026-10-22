@@ -600,6 +600,26 @@ def day_items(db: Database, viewer: Person, start: date, end: date, today: date,
 AGENDA_DAYS = 4  # hoje e os próximos dias úteis: no máximo 4 grupos lado a lado (a TV nunca rola)
 
 
+def tv_team_events(db: Database, start: date, end: date, people: dict) -> dict[date, list[dict]]:
+    """Os compromissos da equipe de cada dia do período, para o calendário do mês na TV (fase 24):
+    sem descrição, reservado mascarado, como na Agenda."""
+    with db.connect() as conn:
+        events = [e for e in _load_events(conn) if e.visibility == "equipe"]
+    out: dict[date, list[dict]] = {}
+    d = start
+    while d <= end:
+        for e in events:
+            if not occurrences(e, d, d):
+                continue
+            who = [people[p] for p in e.people if p in people]
+            out.setdefault(d, []).append({
+                "tipo": "compromisso", "categoria": KINDS[e.kind], "titulo": RESERVED_TEXT if e.reserved else e.title,
+                "hora": e.time_label, "pessoas": [{"initials": p.initials, "color": p.color} for p in who]})
+        out.get(d, []).sort(key=lambda i: (i["hora"] != "dia todo", i["hora"]))
+        d += timedelta(days=1)
+    return out
+
+
 def tv_agenda(db: Database, now: datetime) -> dict | None:
     """Hoje e os próximos dias úteis: compromissos da equipe (sem descrição; reservado mascarado),
     feriados e quem está ausente (só "Ausente", nunca o motivo). Sem nada, sai da rotação."""

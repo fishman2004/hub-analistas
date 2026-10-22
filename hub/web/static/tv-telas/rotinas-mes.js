@@ -3,7 +3,8 @@
 // (40% do tempo da tela, no máximo 10 s), um zoom no quadradinho de hoje: ele cresce até ocupar a tela
 // e abre a lista do dia, grande, com o que já foi feito e o próximo dia útil ao lado.
 // Com a TV pausada, ↑ ↓ alternam entre o mês e o dia. No PDF, viram duas folhas.
-// Só entra na rotação com alguma rotina do mês cadastrada (o servidor decide).
+// Fase 24: os compromissos da equipe (da Agenda) entram também, em cinza com a hora, depois das rotinas.
+// Só entra na rotação com alguma rotina do mês ou algum compromisso no mês (o servidor decide).
 (function () {
   "use strict";
   const { el } = HubTV;
@@ -15,7 +16,23 @@
   let fase = "mes";
   let timer = null;
 
+  function compromisso(i, grande) {
+    const b = el("div", "rmt-item rmt-compromisso");
+    b.append(el("span", "rmt-hora", i.hora === "dia todo" ? (grande ? "dia todo" : "") : i.hora.split("–")[0]));
+    const texto = el("span", "rmt-texto");
+    texto.append(el("b", "", i.categoria + (i.titulo ? ":" : "")), document.createTextNode(i.titulo ? " " + i.titulo : ""));
+    b.append(texto);
+    if (grande) for (const p of i.pessoas.slice(0, 4)) {
+      const ini = el("span", "ini", p.initials);
+      ini.style.setProperty("--cor", p.color);
+      b.append(ini);
+    }
+    if (grande && i.pessoas.length > 4) b.append(el("span", "rmt-por", "+" + (i.pessoas.length - 4)));
+    return b;
+  }
+
   function barra(i, grande) {
+    if (i.tipo === "compromisso") return compromisso(i, grande);
     const b = el("div", "rmt-item" + (i.destaque ? " destaque" : "") + (i.feita ? " feita" : ""));
     b.style.setProperty("--cat", i.cor);
     b.style.setProperty("--cat-texto", i.texto_cor);
@@ -85,7 +102,7 @@
 
   function desenharDia(caixa, dados) {
     caixa.replaceChildren();
-    const hoje = coluna(dados.hoje, "rmt-hoje", "Nenhuma rotina do mês hoje.");
+    const hoje = coluna(dados.hoje, "rmt-hoje", "Nada no calendário hoje.");
     if (dados.hoje.total) {
       const conta = el("div", "rmt-conta");
       conta.append(el("strong", "", dados.hoje.feitas + " de " + dados.hoje.total), document.createTextNode(" feitas"));

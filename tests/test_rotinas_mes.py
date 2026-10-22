@@ -191,7 +191,7 @@ def test_tv_screen_month_today_and_next(env):
                      rule={"tipo": "data", "data": "2026-10-19"}, highlight=True)
     mark_done(db, at(10), kayo, r.id)
     data = tv_rotinas_mes(db, at(12))
-    assert data["titulo"] == "Calendário de rotinas · outubro de 2026"
+    assert data["titulo"] == "Calendário do mês · outubro de 2026"
     days = [d for w in data["semanas"] for d in w]
     assert days[0]["data"] == "2026-09-27" and len(data["semanas"]) == 5
     assert next(d for d in days if d["data"] == "2026-10-12")["feriado"] == "Nossa Senhora Aparecida"
@@ -204,6 +204,30 @@ def test_tv_screen_month_today_and_next(env):
     assert data["proximo"]["rotulo"] == "Amanhã, 20/10" and data["proximo"]["itens"]
     assert first.title in [i["titulo"] for d in days for i in d["itens"]]
     assert "rotinas-mes" in [s["id"] for s in rotation(db, at(12))["screens"]]
+
+
+def test_tv_month_shows_team_events_even_without_routines(env):
+    """Fase 24: o Kayo cadastrou só compromissos na Agenda e esperava o mês com o zoom na TV."""
+    from hub.calendario import save_event
+
+    db, cb, ca, kayo, bianca, ana = env
+    save_event(db, at(9), kayo, None, title="Teste", kind="reuniao", starts_on=date(2026, 10, 19), people=[ana.id])
+    save_event(db, at(9), kayo, None, title="Segredo", kind="entrega", starts_on=date(2026, 10, 22), starts_at="14:00",
+               reserved=True)
+    save_event(db, at(9), kayo, None, title="Só meu", kind="evento", starts_on=date(2026, 10, 19), visibility="pessoal")
+    data = tv_rotinas_mes(db, at(12))
+    assert data["titulo"] == "Calendário do mês · outubro de 2026"
+    assert data["hoje"]["itens"] == [{"tipo": "compromisso", "categoria": "Reunião", "titulo": "Teste", "hora": "dia todo",
+                                      "pessoas": [{"initials": ana.initials, "color": ana.color}]}]
+    assert data["hoje"]["total"] == 0  # a conta "feitas" é só das rotinas
+    days = {d["data"]: d for w in data["semanas"] for d in w}
+    assert [(i["titulo"], i["hora"]) for i in days["2026-10-22"]["itens"]] == [("Compromisso reservado", "14:00")]
+    assert "Só meu" not in str(data) and "Segredo" not in str(data)
+    assert "rotinas-mes" in [s["id"] for s in rotation(db, at(12))["screens"]]
+    # rotinas primeiro, depois os compromissos
+    create_suggested(db, at(9), bianca)
+    itens = tv_rotinas_mes(db, at(12))["hoje"]["itens"]
+    assert itens[-1]["tipo"] == "compromisso" and "tipo" not in itens[0]
 
 
 def test_visit_mode_hides_the_texts(env):

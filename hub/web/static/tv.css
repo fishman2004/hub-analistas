@@ -505,6 +505,10 @@ body.clara .etapas-grade .col.concluida { background: rgba(26, 127, 55, .12); }
 .rmt-texto { min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rmt-item.destaque { background: #d93025; color: #fff; }
 .rmt-dia .rmt-item.feita { opacity: .5; }
+/* compromissos da equipe (fase 24): cinza, com a hora na frente */
+.rmt-item.rmt-compromisso { background: #2c3a48; color: #eaf2fb; box-shadow: inset .25rem 0 0 var(--pausa); }
+.rmt-hora { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--pausa); }
+.rmt-hora:empty { display: none; }
 .rmt-mais { flex: none; font-size: .85rem; font-weight: 700; color: var(--suave); padding-left: .3rem; }
 /* entrada: os dias aparecem em cascata */
 .rm-palco.entrando .rmt-dia { animation: rm-entra .5s ease-out both; animation-delay: calc(var(--i) * 18ms); }

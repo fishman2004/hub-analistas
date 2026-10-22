@@ -1,3 +1,3 @@
 """Hub dos Analistas: presença da equipe e quadro de demandas numa TV da sala."""
 
-__version__ = "1.16.0"
+__version__ = "1.17.0"
