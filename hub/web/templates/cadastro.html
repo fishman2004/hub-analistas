@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Cadastro · Hub dos Analistas{% endblock %}
+{% block main %}
+<p><a href="/entrar">← Voltar para Entrar</a></p>
+{% if sent %}
+<h1>Pedido enviado</h1>
+<div class="sucesso" role="status">Pronto, {{ v.nome }}! Um administrador vai ver o seu pedido em Pessoas.</div>
+<p class="ajuda">Depois da aprovação, é só entrar com o seu nome e o PIN que você acabou de criar. Se o pedido não for aprovado em 7 dias, ele some e dá para pedir de novo.</p>
+{% else %}
+<h1>{% if empty %}Criar o primeiro administrador{% else %}Pedir cadastro{% endif %}</h1>
+{% if empty %}
+<p class="ajuda">O Hub ainda está vazio: você entra direto, já como <strong>administrador</strong>, e depois aprova o cadastro do resto da equipe.</p>
+{% else %}
+<p class="ajuda">Um administrador do Hub precisa aprovar o pedido. Até lá você ainda não entra.</p>
+{% endif %}
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+<form class="ficha cartao-form ficha-pin" method="post" action="/entrar/cadastro">
+  <div class="linha">
+    <div>
+      <label for="nome">Seu nome</label>
+      <input type="text" id="nome" name="nome" value="{{ v.nome or '' }}" maxlength="60" autocomplete="username" autocapitalize="words" required autofocus>
+    </div>
+    <div>
+      <label for="iniciais">Iniciais <span class="opcional">(opcional)</span></label>
+      <input type="text" id="iniciais" name="iniciais" value="{{ v.iniciais or '' }}" maxlength="3" class="curto">
+    </div>
+  </div>
+  <p class="ajuda">Use o nome como a equipe te chama: é ele que você vai digitar para entrar e que aparece na TV.</p>
+  <div class="linha">
+    <div>
+      <label for="pin">Crie um PIN</label>
+      <input type="password" id="pin" name="pin" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required>
+    </div>
+    <div>
+      <label for="confirmar">Repita o PIN</label>
+      <input type="password" id="confirmar" name="confirmar" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="new-password" required>
+    </div>
+  </div>
+  <p class="ajuda">De 4 a 6 números. Só você vai saber: ninguém consegue ver o PIN, nem os administradores.</p>
+  <div><button>{% if empty %}Criar e entrar{% else %}Pedir cadastro{% endif %}</button></div>
+</form>
+{% endif %}
+{% endblock %}

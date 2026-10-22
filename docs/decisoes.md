@@ -277,3 +277,15 @@ Pedido do Kayo: cada pessoa confirma que fez as prioridades do mês **nas suas p
 - **Assistente:** sem pasta e fora das prioridades (vê a lista, mas não cria, marca nem remove). Pode ser responsável por demandas e por rotinas, aparece na presença da TV e usa o banco de horas com a **jornada dos assistentes** (padrão 6h de segunda a sexta, sábado sem jornada; o gestor muda no Banco de horas da equipe). Não vê a visão do gestor.
 
 Escolhas padrão, o Kayo confirma (21/10/2026): jornada do assistente (6h), assistente responsável por rotinas, gestor/administradores cobrindo qualquer pasta, etapas em qualquer ordem e o upload (375, 353 e 399) como uma etapa só.
+
+## Entrar pelo nome e pedido de cadastro (fase 17)
+
+Pedido do Kayo (21/10/2026): cada pessoa digita o nome e o PIN para entrar e, se ainda não tiver cadastro, aparece a opção de criar. Escolhas padrão aprovadas por ele:
+
+- **Sem a lista de nomes na tela Entrar.** Só o campo do nome, que aceita sem acento e sem maiúscula. É mais rápido no celular e não mostra a equipe para quem só abriu o endereço.
+- **Cadastro novo precisa de aprovação.** Qualquer administrador aprova ou recusa em Pessoas. Sem isso, qualquer um na rede entraria. O PIN é escolhido no pedido (só o resumo vai para o banco), então o administrador nunca fica sabendo dele.
+- **Papel do cadastro novo:** analista ou assistente, escolhido na aprovação. Gestor e administrador só em Pessoas, depois, porque dão mais acesso.
+- **Limites:** 10 erros do mesmo aparelho em 15 minutos, em qualquer nome, bloqueiam o aparelho (o bloqueio de 5 erros por nome continua). No máximo 5 pedidos esperando, 3 por aparelho por hora, e o pedido some em 7 dias. A contagem por aparelho fica na memória, sem tabela nova: é simples e reiniciar o Hub só zera os contadores.
+- **Primeiro administrador:** num Hub vazio, o primeiro cadastro entra direto como administrador (o repositório é público e não pode trazer nomes). Num Hub com gente, continua valendo a regra da fase 2 (sem administrador, quem cria o primeiro PIN vira administrador).
+- **Sessão até a meia-noite**, como antes, também no celular.
+- **Nada muda para quem já entra:** quem tem PIN entra igual, os links `/entrar/{número}` continuam funcionando e a TV continua sem login.

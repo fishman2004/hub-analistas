@@ -21,8 +21,8 @@ Dois cliques em **`iniciar.bat`**. O servidor sobe sem janela, e a TV abre no Ed
 ## 4. Primeira configuração
 
 1. De qualquer PC da sala, abra `http://NOME-DO-PC-RESERVA:8800`. O nome do PC aparece no teste de rede ([primeiro-uso.md](primeiro-uso.md)).
-2. Em **Pessoas**, cadastre a equipe. Iniciais e cor são escolhidas sozinhas e podem ser trocadas.
-3. Cada analista abre o mesmo endereço no próprio PC, escolhe o próprio nome, cria o PIN e salva o endereço nos favoritos.
+2. Clique em **Criar o primeiro administrador**, digite o seu nome e crie o seu PIN: você entra já como administrador. Depois, cadastre a equipe em **Pessoas** (iniciais e cor são escolhidas sozinhas e podem ser trocadas) ou deixe cada um pedir o cadastro na tela Entrar.
+3. Cada analista abre o mesmo endereço no próprio PC, digita o próprio nome, cria o PIN e salva o endereço nos favoritos. Quem não foi cadastrado clica em **Ainda não tenho cadastro** e um administrador aprova em **Pessoas**.
 
 ## Desligar o "abrir com o Windows"
 

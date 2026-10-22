@@ -7,6 +7,30 @@
 {% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
 
+{% if signups %}
+<section class="cartao-form pedidos-cadastro" aria-label="Pedidos de cadastro">
+  <h2>Pedidos de cadastro ({{ signups | length }})</h2>
+  <p class="ajuda">Gente que pediu para entrar pela tela Entrar. Aprove só quem é da equipe: a pessoa entra com o PIN que escolheu. Gestor e administrador se dão depois, aqui em Pessoas. Pedido não aprovado em 7 dias some.</p>
+  <ul class="lista-pessoas">
+    {% for s in signups %}
+    <li>
+      <span class="bolinha" style="--cor: var(--linha)">{{ s.initials }}</span>
+      <span><strong>{{ s.name }}</strong> <span class="ajuda">· pediu em {{ s.created_at.strftime('%d/%m às %H:%M') }}</span></span>
+      <form class="ficha-inline" method="post" action="/pessoas/pedidos/{{ s.id }}/aprovar">
+        <select name="role" aria-label="Papel de {{ s.name }}">
+          {% for key in SIGNUP_ROLES %}<option value="{{ key }}">{{ ROLES[key] }}</option>{% endfor %}
+        </select>
+        <button>Aprovar</button>
+      </form>
+      <form method="post" action="/pessoas/pedidos/{{ s.id }}/recusar" data-nome="{{ s.name }}" onsubmit="return confirm('Recusar o pedido de ' + this.dataset.nome + '?')">
+        <button class="perigo">Recusar</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 {% if people %}
 <ul class="lista-pessoas">
   {% for p in people %}

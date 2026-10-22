@@ -30,7 +30,7 @@ Uma **TV na sala**, ligada num PC sempre ligado, mostra:
 - **Prioridades do mês:** a lista do início do mês (lançar a meta, confirmar a meta com o gerente, comissões até o dia 10, campanhas até o dia 15 e o que mais a equipe acrescentar). Fica na TV até tudo estar feito, com quem fez cada item; o que passou do prazo aparece como atrasado.
 - **Envios do dia:** os relatórios que o [Pombo](https://github.com/fishman2004/pombo) de cada analista mandou hoje, lidos do histórico dele na pasta de rede: horário, envio, quem, canal e se saiu tudo (✓), se teve falha (⚠) ou se ainda está em andamento (⏳).
 
-Cada analista usa o **app** pelo navegador do próprio PC, sem instalar nada. Entra com o próprio nome e um **PIN** de 4 a 6 números, marca a presença, lança demandas e as move entre as colunas. Em **Prioridades**, cria a lista do mês com um clique ("Criar lista padrão do mês"), acrescenta itens (com pasta e prazo, se quiser) e marca o que já foi feito. O botão **Tema** no cabeçalho alterna entre automático (segue o Windows), claro e escuro, e cada navegador lembra a sua escolha. Tudo fica no **histórico**, com quem fez e quando.
+Cada analista usa o **app** pelo navegador do próprio PC, sem instalar nada. Entra digitando o próprio nome e um **PIN** de 4 a 6 números (quem ainda não tem cadastro pede pela própria tela, e um administrador aprova), marca a presença, lança demandas e as move entre as colunas. Em **Prioridades**, cria a lista do mês com um clique ("Criar lista padrão do mês"), acrescenta itens (com pasta e prazo, se quiser) e marca o que já foi feito. O botão **Tema** no cabeçalho alterna entre automático (segue o Windows), claro e escuro, e cada navegador lembra a sua escolha. Tudo fica no **histórico**, com quem fez e quando.
 
 <p align="center">
   <img src="docs/imagens/app.jpg" width="680" alt="App do analista: botões de presença e o quadro com as próprias demandas">
@@ -70,7 +70,7 @@ flowchart LR
 2. Baixe o projeto (**Code › Download ZIP**) e extraia numa pasta fixa.
 3. Dois cliques em **`instalar.bat`**. Ele também faz o Hub abrir junto com o Windows.
 4. Dois cliques em **`iniciar.bat`**. A TV abre em tela cheia. Se ela não tocar o aviso das rotinas, [libere o som no Edge](docs/roteiros/fase-7-rotinas.md#som-na-tv).
-5. Em outro PC, abra `http://NOME-DO-PC-RESERVA:8800` e cadastre a equipe em **Pessoas**. Quem criar o primeiro PIN vira administrador.
+5. Em outro PC, abra `http://NOME-DO-PC-RESERVA:8800` e clique em **Criar o primeiro administrador**. Depois, cada pessoa pede o cadastro na tela Entrar e você aprova em **Pessoas** (ou cadastra a equipe direto em **Pessoas**).
 6. Usa o Pombo? Em **Configurações → Pombo**, informe a pasta do histórico (a mesma escolhida no Pombo de cada analista, em Configurações › Pasta do histórico). Os envios de hoje aparecem na página **Envios** e na TV.
 
 Primeira vez na empresa? Comece pelo [teste de rede](docs/primeiro-uso.md).

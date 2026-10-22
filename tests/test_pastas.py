@@ -41,7 +41,7 @@ def item(db, title):
 
 
 def test_schema_has_the_folder_tables():
-    assert SCHEMA_VERSION == 11
+    assert SCHEMA_VERSION >= 11
 
 
 def test_folders_of_each_person(team):
