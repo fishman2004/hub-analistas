@@ -1,17 +1,31 @@
 {% extends "base.html" %}
 {% set active = 'calendario' %}
 {% block title %}Rotinas do mês · Hub dos Analistas{% endblock %}
-{% macro rotina(o, mark=False) %}
+{% macro rotina(o, mark=False, justify=False, day=None) %}
 <li class="rm-item{{ ' destaque' if o.routine.highlight else '' }}{{ ' feita' if o.done else '' }}" style="--cat: {{ o.category.color }}; --cat-texto: {{ o.category.text_color }}">
   <span class="rm-texto"><b>{{ o.category.name }}:</b> {{ o.routine.title }}</span>
   {% if o.routine.owner_id and o.routine.owner_id in by_id %}{% set p = by_id[o.routine.owner_id] %}<span class="bolinha rm-dono" style="--cor: {{ p.color }}" title="{{ p.name }}">{{ p.initials }}</span>{% endif %}
   {% if o.done %}<span class="rm-ok" title="Feita{{ ' por ' ~ by_id[o.done_by].name if o.done_by in by_id else '' }} às {{ o.done_at.strftime('%H:%M') }}">✓</span>{% endif %}
+  {% if o.note and not justify %}<span class="rm-nota-marca" title="Justificativa: {{ o.note }}">💬</span>{% endif %}
   {% if mark %}
   <form method="post" action="/calendario/rotinas-do-mes/{{ o.routine.id }}/feita">
     <input type="hidden" name="feita" value="{{ '0' if o.done else '1' }}">
     <button class="{{ 'discreto' if o.done else '' }}">{{ 'Desfazer' if o.done else '✓ Feita' }}</button>
   </form>
   {% endif %}
+  {% if justify and (not mark or not o.done or o.note) %}
+  {# justificativa (hoje ou um dia que passou): o que ficou sem fazer, atrasou ou saiu em parte #}
+  <details class="rm-just{{ ' tem' if o.note else '' }}">
+    <summary>💬 {{ 'Justificada' if o.note else 'Justificar' }}</summary>
+    <form method="post" action="/calendario/rotinas-do-mes/{{ o.routine.id }}/justificar">
+      <input type="hidden" name="dia" value="{{ day.isoformat() }}">
+      <label for="rm-just-{{ o.routine.id }}" class="visualmente-oculto">Justificativa de {{ o.routine.title }}</label>
+      <textarea id="rm-just-{{ o.routine.id }}" name="texto" rows="2" maxlength="300" placeholder="Ex.: o sistema ficou fora do ar; termina amanhã cedo">{{ o.note }}</textarea>
+      <div class="rm-just-acoes"><button>Salvar</button>{% if o.note %}<button name="tirar" value="1" class="discreto">Tirar</button>{% endif %}</div>
+    </form>
+  </details>
+  {% endif %}
+  {% if o.note %}<p class="rm-nota">💬 {{ o.note }}{% if o.note_by in by_id %} <span class="ajuda">· {{ by_id[o.note_by].initials }} {{ o.note_at.strftime('%d/%m %H:%M') }}</span>{% endif %}</p>{% endif %}
 </li>
 {% endmacro %}
 {% block main %}
@@ -51,13 +65,13 @@
 {% else %}
 <section class="rm-hoje cartao-form" id="hoje" aria-labelledby="rm-hoje-titulo">
   <div class="barra">
-    <h2 id="rm-hoje-titulo">Hoje, {{ today.strftime('%d/%m') }}</h2>
+    <h2 id="rm-hoje-titulo">{% if selected == today %}Hoje, {{ today.strftime('%d/%m') }}{% else %}Dia {{ selected.strftime('%d/%m') }} · já passou <a class="rm-voltar" href="/calendario?visao=rotinas#hoje">voltar para hoje</a>{% endif %}</h2>
     {% if today_items %}<span class="rm-conta">{{ today_items|selectattr('done')|list|length }} de {{ today_items|length }} feitas</span>{% endif %}
   </div>
   {% if today_items %}
-  <ul class="rm-lista">{% for o in today_items %}{{ rotina(o, True) }}{% endfor %}</ul>
-  <p class="ajuda">Qualquer pessoa marca uma rotina como feita no dia; o Hub guarda quem marcou. Na TV, a tela "Rotinas do mês" mostra o mês e depois dá um zoom no dia de hoje.</p>
-  {% else %}<p class="vazio">Nenhuma rotina do mês hoje.</p>{% endif %}
+  <ul class="rm-lista">{% for o in today_items %}{{ rotina(o, selected == today, can_justify, selected) }}{% endfor %}</ul>
+  <p class="ajuda">{% if selected == today %}Qualquer pessoa marca uma rotina como feita no dia; o Hub guarda quem marcou.{% else %}Marcar feita só vale no dia; num dia que passou, dá para escrever a justificativa.{% endif %} Clique no número de um dia que passou para ver e justificar as rotinas dele. Na TV, a tela "Rotinas do mês" mostra o mês e depois dá um zoom no dia de hoje.</p>
+  {% else %}<p class="vazio">Nenhuma rotina do mês {{ 'hoje' if selected == today else 'nesse dia' }}.</p>{% endif %}
 </section>
 
 <div class="rm-grade" role="table" aria-label="Calendário de rotinas de {{ title }}">
@@ -68,7 +82,8 @@
     {% set lista = items.get(d, []) %}
     {% set h = holidays.get(d) %}
     <div role="cell" class="rm-dia{{ ' fora' if d.month != month else '' }}{{ ' hoje' if d == today else '' }}{{ ' fds' if d.weekday() >= 5 else '' }}{{ ' feriado' if h else '' }}{{ ' vazio-dia' if not lista and not h else '' }}">
-      <span class="rm-num">{{ d.day }}</span>
+      {% if lista and d < today and d.month == month %}<a class="rm-num" href="/calendario?visao=rotinas&data={{ d.isoformat() }}&ver={{ d.isoformat() }}#hoje" title="Ver e justificar as rotinas do dia {{ d.strftime('%d/%m') }}"{% if d == selected %} aria-current="date"{% endif %}>{{ d.day }}</a>
+      {% else %}<span class="rm-num">{{ d.day }}</span>{% endif %}
       {% if h %}<span class="rm-feriado">{{ h.name }}</span>{% endif %}
       {% if lista and d.month == month %}<ul class="rm-lista">{% for o in lista %}{{ rotina(o) }}{% endfor %}</ul>{% endif %}
     </div>

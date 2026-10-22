@@ -336,6 +336,26 @@ MIGRATIONS: list[tuple[int, str]] = [
             PRIMARY KEY (block_id, day)
         );
     """),
+    (15, """
+        -- v5 · justificativas: um texto curto por rotina do mês (ou bloco da trilha) num dia, para explicar
+        -- o que não foi feito, foi feito depois ou só em parte. Escrever de novo troca; apagar o texto tira.
+        CREATE TABLE month_routine_notes (
+            routine_id INTEGER NOT NULL REFERENCES month_routines(id),
+            day TEXT NOT NULL,                           -- AAAA-MM-DD
+            text TEXT NOT NULL,
+            written_by INTEGER REFERENCES people(id),
+            written_at TEXT NOT NULL,
+            PRIMARY KEY (routine_id, day)
+        );
+        CREATE TABLE trail_notes (
+            block_id INTEGER NOT NULL REFERENCES trail_blocks(id),
+            day TEXT NOT NULL,
+            text TEXT NOT NULL,
+            written_by INTEGER REFERENCES people(id),
+            written_at TEXT NOT NULL,
+            PRIMARY KEY (block_id, day)
+        );
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

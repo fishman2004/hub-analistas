@@ -312,12 +312,12 @@ O calendário de rotinas do gestor não é compromisso (não tem horário) nem r
 - **Feita no dia:** guarda quem marcou primeiro e quando. Dá vida ao zoom da TV, que mostra o que já foi feito e o que falta.
 - **Na TV**, o mês por 40% do tempo da tela (de 3 a 10 s) e depois o zoom: o quadradinho de hoje cresce (um `transform` no mês inteiro, leve para o PC da sala) e a lista do dia aparece por cima. No mês, o que não cabe num dia vira "+ N". As marcas do MSL do modelo ficaram fora do repositório público.
 
-### Em aberto (o Kayo confirma)
+### Confirmado pelo Kayo (22/10/2026)
 
-- Padrão: cadastram o gestor e os administradores; qualquer pessoa marca feita, só no dia de hoje.
-- Padrão: dia fixo que cai no fim de semana ou feriado vai para o próximo dia útil.
-- Padrão: a semana das rotinas do modelo (Blacklist seg e qui; APEX e MSL seg, qua e sex; Campanhas e Gestão de equipe ter e qui; Desempenho e Acompanhamento do representante todo dia) e os dias úteis tirados do print de maio.
-- Padrão: a tela fica 25 s na rotação (mês e dia).
+- Cadastram o gestor e os administradores; qualquer pessoa marca feita, só no dia de hoje. Para o que não deu, há a **justificativa** (fase 23), que vale também para os dias que passaram.
+- Dia fixo que cai no fim de semana ou feriado vai para o próximo dia útil.
+- A semana das rotinas do modelo (Blacklist seg e qui; APEX e MSL seg, qua e sex; Campanhas e Gestão de equipe ter e qui; Desempenho e Acompanhamento do representante todo dia) e os dias úteis tirados do print de maio.
+- Na TV, o mês por uns 10 s e depois o zoom no dia; 25 s de tela.
 
 ## Trilha do dia: horários por pessoa, com a situação calculada (fase 20)
 
@@ -329,13 +329,13 @@ A trilha do modelo do gestor é a semana de cada analista em blocos de horário.
 - **Histórico justo:** um bloco só conta a partir do dia em que foi criado, e o dia de ausência (Calendário) e o feriado não contam como "sem marcar".
 - **Na TV**, o eixo vai da primeira à última hora das trilhas do dia, com o tempo de verdade (um bloco de 1 h é mais largo que um de 30 min). Ao aparecer, uma luz varre cada trilha do começo do dia até agora, acendendo os blocos no caminho; depois fica só o ponto de luz do agora. Quatro analistas por página, com fade. Os ícones são um SVG local, sem internet.
 
-### Em aberto (o Kayo confirma)
+### Confirmado pelo Kayo (22/10/2026)
 
-- Padrão: a própria pessoa, o gestor e os administradores montam e marcam; colegas não.
-- Padrão: marcar só vale para o dia de hoje; marcar depois do fim do bloco fica âmbar.
-- Padrão: quem está ausente no Calendário e os feriados ficam sem trilha (e não contam no resumo).
-- Padrão: a trilha do modelo usa o print de segunda para seg, qua e sex e o de terça para ter e qui.
-- Padrão: 4 analistas por página na TV e 25 s de tela.
+- A própria pessoa, o gestor e os administradores montam e marcam; colegas não.
+- Marcar só vale para o dia de hoje; feito no horário fica verde, feito depois fica âmbar e não feito fica vermelho. O bloco vermelho ou âmbar pode ganhar uma **justificativa** (fase 23).
+- Quem está ausente no Calendário e os feriados ficam sem trilha (e não contam no resumo).
+- A trilha do modelo usa o print de segunda para seg, qua e sex e o de terça para ter e qui.
+- 4 analistas por página na TV e 25 s de tela.
 
 ## Animações e UI/UX: movimento curto e só como extra (fase 21)
 
@@ -346,11 +346,11 @@ A trilha do modelo do gestor é a semana de cada analista em blocos de horário.
 - **Na TV, a comemoração aparece uma vez:** quando a demanda chega em "Concluído hoje", a coluna vai para a página dela e o cartão brilha com um ✓ na próxima vez que o Quadro está na tela.
 - **Menu:** Quadro e Trilha ficam à mão (o dia a dia de todo mundo); o resto em 5 grupos. O pedido de cadastro esperando aparece também no grupo Gestão, que fica fechado.
 
-### Em aberto (o Kayo confirma)
+### Confirmado pelo Kayo (22/10/2026)
 
-- Padrão: movimentos de 0,2 a 0,8 s (o zoom do calendário e a luz da trilha são mais longos) e nenhum com "menos movimento".
-- Padrão: os grupos do menu (Dia a dia: Demandas, Notas, Histórico; Planejamento: Rotinas, Prioridades, Calendário; Dados: Painéis, Banco de horas, Envios; TV e celular; Gestão).
-- Padrão: o aviso de sucesso some em 6 s (parado com o mouse em cima).
+- Movimentos de 0,2 a 0,8 s (o zoom do calendário e a luz da trilha são mais longos) e nenhum com "menos movimento".
+- Os grupos do menu (Dia a dia: Demandas, Notas, Histórico; Planejamento: Rotinas, Prioridades, Calendário; Dados: Painéis, Banco de horas, Envios; TV e celular; Gestão).
+- O aviso de sucesso some em 6 s (parado com o mouse em cima).
 
 ## Base 8081 automática do Google Drive (fase 22)
 
@@ -364,3 +364,14 @@ Pedido do Kayo (22/10/2026): o gestor fez uma automação no Google Sheets que s
 - **A hora do arquivo é a do Drive**, para o "atualizado às" e o aviso de dados velhos dizerem quando a automação gerou os números, e não quando o Hub baixou.
 - **Planilha do Google ou arquivo:** a ponte aceita os dois (a planilha do Google é exportada como `.xlsx`), e um `PASTA_ID` no lugar do `ARQUIVO_ID` cobre a automação que cria um arquivo novo a cada vez.
 - **Sem linha no histórico a cada download** (seriam dezenas por dia); fica no histórico quem ligou, desligou ou mudou a configuração.
+
+## Justificativas nas rotinas do mês e na trilha (fase 23)
+
+Ao confirmar os padrões da v5, o Kayo aceitou que marcar "feita" só vale no dia de hoje, mas pediu um campo de texto para a justificativa. Ganhou duas tabelas (migração 15), uma para cada lado, com um texto por item e por dia, quem escreveu e quando.
+
+- **Rotinas do mês:** qualquer pessoa justifica (como marca feita), no dia de hoje ou num dos **últimos 31 dias** em que a rotina aconteceu. Clicando no número de um dia que passou, o quadro do lado mostra as rotinas daquele dia, sem o botão de feita e com o 💬 Justificar. Na grade do mês, a rotina justificada ganha um 💬 com o texto ao passar o mouse.
+- **Trilha:** justificam os mesmos que marcam (a pessoa, o gestor e os administradores), só no dia de hoje e depois que o bloco começou. Serve para o vermelho (não deu) e para o âmbar (deu depois). O resumo dos 5 dias úteis ganha a coluna **Justificados**. A justificativa de outro dia não aparece na trilha de hoje.
+- **Na TV, nunca:** o texto é livre e pode ter motivo pessoal; a TV continua só com as luzes. No app, a equipe vê (como vê a trilha e as rotinas), e o histórico guarda quem escreveu.
+- Até 300 letras; escrever de novo troca o texto e o botão **Tirar** apaga.
+- Enquanto alguém escreve uma justificativa no Quadro, a atualização de 10 s espera, para não apagar o que se digita.
+

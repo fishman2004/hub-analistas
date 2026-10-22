@@ -584,7 +584,7 @@ def day_items(db: Database, viewer: Person, start: date, end: date, today: date,
             d += timedelta(days=1)
     if "rotinas_mes" in filters:  # fase 19: o calendário de rotinas do gestor, com a cor da categoria
         from .rotinas_mes import by_day
-        for d, occs in by_day(db, start, end).items():
+        for d, occs in by_day(db, start, end, with_notes=False).items():
             for o in occs:
                 add(d, Item("rotina_mes", f"{o.category.name}: {o.routine.title}", link="/calendario?visao=rotinas",
                             color=o.category.color, late=o.routine.highlight and not o.done,
