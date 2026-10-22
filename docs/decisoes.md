@@ -301,3 +301,20 @@ Ideia que chegou ao Kayo (21/10/2026): uma cópia do Hub feita por outra pessoa 
 - **Menu sem JavaScript:** o botão ☰ Menu é uma caixinha escondida com CSS. Funciona em qualquer navegador e não depende de script.
 - **Atalho, não app instalado:** o manifesto e os ícones deixam o Hub com nome e ícone na tela inicial. O "app instalado" completo (tela cheia, offline) exige HTTPS, que a rede interna não tem; fica como está.
 - **A TV não muda:** ela não usa o `base.html` e continua igual.
+
+## Rotinas do mês: um plano calculado, à parte das rotinas com aviso (fase 19)
+
+O calendário de rotinas do gestor não é compromisso (não tem horário) nem rotina com aviso (que vira cartão no Quadro: com 5 a 8 itens por dia, o quadro lotaria). Ganhou um cadastro próprio (migração 13) em que cada rotina guarda **uma regra**, e os dias são calculados na hora, como o resto do Hub: nenhum item por dia é gravado, e um feriado novo no Calendário já empurra as rotinas.
+
+- **Regras:** dias da semana (nunca em feriado); o N-ésimo dia útil do mês; o N-ésimo dia útil contando do fim (1 = o último); um dia fixo do mês; uma data só. Dia útil = segunda a sexta sem os feriados ligados (o mesmo cálculo das metas e dos modos). Com isso o print de maio de 2026 do gestor sai igual: o 1º de maio é feriado e o 1º dia útil cai no dia 4.
+- **Ordem dentro do dia:** primeiro as que acontecem uma vez no mês (as que não podem passar), depois as da semana; em cada grupo, a ordem do cadastro.
+- **Categorias** com cor, editáveis; o texto sobre a cor (claro ou escuro) é calculado pela luminância, para o amarelo e o azul-marinho do modelo ficarem legíveis. **Destaque** pinta de vermelho, como as críticas do modelo. Remover uma categoria só esconde (e só quando nenhuma rotina ativa a usa).
+- **Feita no dia:** guarda quem marcou primeiro e quando. Dá vida ao zoom da TV, que mostra o que já foi feito e o que falta.
+- **Na TV**, o mês por 40% do tempo da tela (de 3 a 10 s) e depois o zoom: o quadradinho de hoje cresce (um `transform` no mês inteiro, leve para o PC da sala) e a lista do dia aparece por cima. No mês, o que não cabe num dia vira "+ N". As marcas do MSL do modelo ficaram fora do repositório público.
+
+### Em aberto (o Kayo confirma)
+
+- Padrão: cadastram o gestor e os administradores; qualquer pessoa marca feita, só no dia de hoje.
+- Padrão: dia fixo que cai no fim de semana ou feriado vai para o próximo dia útil.
+- Padrão: a semana das rotinas do modelo (Blacklist seg e qui; APEX e MSL seg, qua e sex; Campanhas e Gestão de equipe ter e qui; Desempenho e Acompanhamento do representante todo dia) e os dias úteis tirados do print de maio.
+- Padrão: a tela fica 25 s na rotação (mês e dia).

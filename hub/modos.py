@@ -440,5 +440,9 @@ def mask_titles(payload: dict) -> None:
         elif s["id"] == "envios":
             for r in data["rodadas"]:
                 r["envio"] = "Envio"
+        elif s["id"] == "rotinas-mes":  # fica só a categoria e a cor
+            for d in [d for w in data["semanas"] for d in w] + [data["hoje"], data["proximo"]]:
+                for i in d["itens"]:
+                    i["titulo"] = ""
     for a in payload.get("avisos", []):
         a["name"] = "Rotina"

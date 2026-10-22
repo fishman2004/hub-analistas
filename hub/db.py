@@ -274,6 +274,40 @@ MIGRATIONS: list[tuple[int, str]] = [
             created_at TEXT NOT NULL
         );
     """),
+    (13, """
+        -- v5 · rotinas do mês (o calendário de rotinas do gestor): categorias com cor, as rotinas com a regra
+        -- de repetição (os dias são calculados, não gravados) e quem marcou cada rotina como feita no dia.
+        CREATE TABLE month_categories (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            color TEXT NOT NULL,                         -- "#a9d8e6"
+            position INTEGER NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1
+        );
+        INSERT INTO month_categories(name, color, position) VALUES
+            ('Acompanhamentos', '#a9d8e6', 1), ('Gestão de equipe', '#9fd8c4', 2), ('Metas', '#ffe14d', 3),
+            ('Fechamento', '#ffe14d', 4), ('Abertura', '#ffe14d', 5), ('Validações', '#ffe14d', 6),
+            ('Comissionamento', '#ffd23f', 7), ('APEX', '#14295a', 8);
+        CREATE TABLE month_routines (
+            id INTEGER PRIMARY KEY,
+            category_id INTEGER NOT NULL REFERENCES month_categories(id),
+            title TEXT NOT NULL,
+            rule TEXT NOT NULL,                          -- JSON: {"tipo": "semana", "dias": [0, 3]}...
+            highlight INTEGER NOT NULL DEFAULT 0,        -- em vermelho, como as críticas do modelo
+            owner_id INTEGER REFERENCES people(id),      -- responsável (opcional)
+            active INTEGER NOT NULL DEFAULT 1,
+            created_by INTEGER REFERENCES people(id),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE month_routine_marks (
+            routine_id INTEGER NOT NULL REFERENCES month_routines(id),
+            day TEXT NOT NULL,                           -- AAAA-MM-DD
+            done_by INTEGER REFERENCES people(id),
+            done_at TEXT NOT NULL,
+            PRIMARY KEY (routine_id, day)
+        );
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

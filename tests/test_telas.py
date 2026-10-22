@@ -34,7 +34,8 @@ def login(app, person):
 PANELS = {"metas-mes": "20", "metas-dia": "15", "produtos-foco": "15", "fornecedores": "15",  # telas da fase 5
           "prioridades": "15",  # fase 8
           "envios": "15",  # fase 9
-          "agenda": "15"}  # fase 13
+          "agenda": "15",  # fase 13
+          "rotinas-mes": "25"}  # fase 19
 
 
 def ids(db, now=at(12)):
