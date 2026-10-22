@@ -135,15 +135,22 @@ def save_upload(db: Database, now: datetime, actor: Person, key: str, filename: 
                 if size > MAX_UPLOAD_BYTES:
                     raise ValidationError("Arquivo grande demais (máximo 200 MB).")
                 out.write(chunk)
-        final = folder / (target.base + ext)
-        os.replace(partial, final)  # a TV nunca vê o arquivo pela metade
+        final = install_file(folder, target, partial, ext)
     finally:
         partial.unlink(missing_ok=True)
+    with db.connect() as conn:
+        log_event(conn, now, actor.id, "painel_arquivo", f"painel:{key}", target.label)
+    return final
+
+
+def install_file(folder: Path, target: Arquivo, partial: Path, ext: str) -> Path:
+    """Troca o arquivo da pasta pelo novo de uma vez (a TV nunca vê o arquivo pela metade) e apaga o
+    mesmo arquivo em outro formato, para não sobrar um .csv velho ao lado de um .xlsx novo."""
+    final = folder / (target.base + ext)
+    os.replace(partial, final)
     for other in EXTENSIONS:
         if other != ext:
             (folder / (target.base + other)).unlink(missing_ok=True)
-    with db.connect() as conn:
-        log_event(conn, now, actor.id, "painel_arquivo", f"painel:{key}", target.label)
     return final
 
 

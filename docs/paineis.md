@@ -6,10 +6,11 @@ A TV mostra as metas de venda e de positivação do mês, por pasta (A a G) e no
 
 As planilhas ficam numa pasta só delas. Sem configurar nada, é a pasta **`Painéis`** ao lado do banco do Hub (`%LOCALAPPDATA%\Hub\Painéis`). Um administrador pode trocar por outra pasta, inclusive da rede, em **Configurações → Painéis de dados**.
 
-Há dois jeitos de colocar os arquivos lá:
+Há três jeitos de colocar os arquivos lá:
 
 1. **Salvar ou exportar direto na pasta**, com os nomes abaixo (é o jeito para atualizar com frequência).
 2. **Enviar pelo app**, na página **Painéis** (só administradores). O Hub grava com o nome certo, seja qual for o nome do arquivo enviado.
+3. **A 8081 direto do Google Drive** (fase 22): o Hub baixa sozinho a planilha que a automação do gestor salva no Drive. Como ligar: [drive-8081.md](drive-8081.md).
 
 A página **Painéis** mostra a pasta, se cada planilha foi lida (e quantas linhas), quando foi atualizada e o motivo de qualquer erro. Quando um arquivo muda, a TV atualiza em poucos segundos.
 

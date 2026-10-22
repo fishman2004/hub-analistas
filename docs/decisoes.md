@@ -301,3 +301,16 @@ Ideia que chegou ao Kayo (21/10/2026): uma cópia do Hub feita por outra pessoa 
 - **Menu sem JavaScript:** o botão ☰ Menu é uma caixinha escondida com CSS. Funciona em qualquer navegador e não depende de script.
 - **Atalho, não app instalado:** o manifesto e os ícones deixam o Hub com nome e ícone na tela inicial. O "app instalado" completo (tela cheia, offline) exige HTTPS, que a rede interna não tem; fica como está.
 - **A TV não muda:** ela não usa o `base.html` e continua igual.
+
+## Base 8081 automática do Google Drive (fase 22)
+
+Pedido do Kayo (22/10/2026): o gestor fez uma automação no Google Sheets que salva a 8081 no Google Drive com frequência, e o Hub deve pegar esse arquivo sozinho. Escolhas técnicas:
+
+- **Ponte do Apps Script com chave**, em vez do Google Drive para computador (precisa de administrador do Windows para instalar), de um link "qualquer pessoa com o link" (qualquer um que achar o link baixa as vendas) ou da API do Drive com conta de serviço (projeto no Google Cloud, arquivo de credencial e, muitas vezes, bloqueada pela empresa). A ponte roda com a conta que já abre o arquivo; o arquivo continua **Restrito** no Drive.
+- **A chave** tem 43 letras e números aleatórios (`secrets.token_urlsafe`), é gerada pelo Hub e aparece **uma vez** na tela, para colar nas Propriedades do script (nunca no código da ponte nem no GitHub). Fica no `hub.db`, não vai para o `hub.log` nem para as mensagens de erro, e o endereço só pode ser de `script.google.com`, para a chave não ser mandada para outro lugar.
+- **Sem biblioteca nova:** o download usa o `urllib` do Python (que já respeita o proxy do Windows). A resposta da ponte é JSON com o arquivo em base64, porque o Apps Script só devolve texto.
+- **"Mudou?" antes de baixar:** o Hub manda a data do último arquivo e a ponte responde só "igual" quando nada mudou. Verificar a cada 10 minutos (de 2 a 120) quase não gasta internet nem a cota do Google.
+- **Confere antes de trocar:** o arquivo baixado é lido inteiro e só substitui o da TV se tiver as colunas da 8081. Assim, download pela metade ou planilha errada nunca chega à TV.
+- **A hora do arquivo é a do Drive**, para o "atualizado às" e o aviso de dados velhos dizerem quando a automação gerou os números, e não quando o Hub baixou.
+- **Planilha do Google ou arquivo:** a ponte aceita os dois (a planilha do Google é exportada como `.xlsx`), e um `PASTA_ID` no lugar do `ARQUIVO_ID` cobre a automação que cria um arquivo novo a cada vez.
+- **Sem linha no histórico a cada download** (seriam dezenas por dia); fica no histórico quem ligou, desligou ou mudou a configuração.

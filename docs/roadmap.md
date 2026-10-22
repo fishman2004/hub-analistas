@@ -23,6 +23,7 @@ flowchart LR
     F8 --> F16[16 · Prioridades por pasta e Assistente]
     F2 --> F17[17 · Entrar pelo nome e pedido de cadastro]
     F17 --> F18[18 · Hub no celular]
+    F5 --> F22[22 · Base 8081 do Google Drive]
 ```
 
 A fase 17 começa a **v4** (o Hub também no celular). As fases 10 a 16 são a **v3**, com as sugestões do gestor: o plano completo, com as regras e as escolhas de cada fase, está em [plano-v3.md](plano-v3.md).
@@ -48,6 +49,7 @@ A fase 17 começa a **v4** (o Hub também no celular). As fases 10 a 16 são a *
 | 16 | **Prioridades por pasta e o papel Assistente:** cada pessoa é ligada às suas pastas (página **Pessoas**) e marca a prioridade do mês pasta por pasta (quem tem várias escolhe qual concluiu); o item fica feito quando todas as pastas concluíram, e a página e a TV mostram quais pastas já concluíram e quais faltam. Item com **etapas**: as **Metas do mês** (enviar ao gerente, ajustes do gerente com a supervisão, devolução da planilha, upload na 375, 353 e 399) ficam à parte, numa tabela de etapas por pasta. O gestor e os administradores cobrem qualquer pasta. Papel **Assistente** (jovem aprendiz de meio período): pega demandas, tem jornada própria no banco de horas e fica fora das prioridades. | Pronto ([roteiro de teste](roteiros/fase-16-prioridades-por-pasta.md)) |
 | 17 | **Entrar pelo nome e pedido de cadastro:** a tela Entrar pede o nome (sem diferença de acento e maiúscula) e o PIN, sem a lista da equipe. Quem não tem cadastro pede pela própria tela, já criando o PIN, e um administrador aprova ou recusa em **Pessoas** (o menu mostra quantos pedidos esperam). Limite de erros por aparelho, além do bloqueio por nome. Num Hub vazio, o primeiro cadastro vira administrador. | Pronto ([roteiro de teste](roteiros/fase-17-login.md)) |
 | 18 | **Hub no celular:** pela **Wi-Fi da empresa**, sem internet. No celular, o menu fecha num botão **☰ Menu**, a presença fica em 2×2, tabelas largas rolam de lado e textos compridos quebram a linha. A página **No celular** mostra o endereço do PC da sala e um **QR Code** para apontar a câmera, e o Hub ganha ícone para **Adicionar à tela inicial** (Android e iPhone). | Pronto ([roteiro de teste](roteiros/fase-18-celular.md)) |
+| 22 | **Base 8081 automática do Google Drive:** a automação do gestor salva a 8081 no Drive e o Hub baixa sozinho, a cada 10 minutos, por uma **ponte do Apps Script** que só entrega o arquivo para quem tem a chave (o arquivo no Drive continua fechado). O Hub confere a planilha antes de trocar a da TV, guarda a hora em que ela foi gerada e mostra em **Painéis** a última verificação, o último download e o último problema, com **Baixar agora**. | Pronto ([roteiro de teste](roteiros/fase-22-drive-8081.md), [passo a passo](drive-8081.md)) |
 
 ### Ideias para depois
 
