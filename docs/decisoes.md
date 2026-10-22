@@ -289,3 +289,15 @@ Pedido do Kayo (21/10/2026): cada pessoa digita o nome e o PIN para entrar e, se
 - **Primeiro administrador:** num Hub vazio, o primeiro cadastro entra direto como administrador (o repositório é público e não pode trazer nomes). Num Hub com gente, continua valendo a regra da fase 2 (sem administrador, quem cria o primeiro PIN vira administrador).
 - **Sessão até a meia-noite**, como antes, também no celular.
 - **Nada muda para quem já entra:** quem tem PIN entra igual, os links `/entrar/{número}` continuam funcionando e a TV continua sem login.
+
+## Hub no celular, só pela rede da empresa (fase 18)
+
+Ideia que chegou ao Kayo (21/10/2026): uma cópia do Hub feita por outra pessoa abria um túnel público para a internet (um endereço `trycloudflare.com`), protegido por um PIN único da equipe, e avisava o link novo num canal público. Escolha técnica, aprovada pelo Kayo: **não usar túnel**.
+
+- **Por que não o túnel:** o Hub ficaria na internet para qualquer um com o link; um PIN único vaza fácil e não dá para tirar o acesso de uma pessoa só; demandas, nomes, banco de horas e porcentagens de metas sairiam da rede da empresa (contra a regra "nada sai da rede"); e o programa do túnel seria baixado e executado sozinho, sem conferência. Quem precisar do Hub fora da empresa deve usar a **VPN da empresa** (pedido para a TI): o celular entra na rede e o Hub continua fechado.
+- **O que foi aproveitado:** a ideia do QR Code para abrir o Hub no celular. O QR Code aqui só leva o endereço da rede e a tela Entrar: **nenhuma chave secreta**, e cada pessoa entra com o próprio nome e PIN (fase 17).
+- **QR Code sem biblioteca nova** (`hub/qr.py`): são umas 200 linhas em Python puro, seguindo a norma (modo byte, correção nível M, versões 1 a 10). O desenho foi conferido com um leitor de QR Code em todas as versões e máscaras, e os testes guardam a impressão digital de dois desenhos conferidos.
+- **Endereço com número, não com nome:** muitos celulares não acham nomes de PC Windows (`http://PC-SALA:8800`). A página usa o endereço pelo qual o PC abriu o Hub, trocando o nome do PC pelo número que o Windows informa.
+- **Menu sem JavaScript:** o botão ☰ Menu é uma caixinha escondida com CSS. Funciona em qualquer navegador e não depende de script.
+- **Atalho, não app instalado:** o manifesto e os ícones deixam o Hub com nome e ícone na tela inicial. O "app instalado" completo (tela cheia, offline) exige HTTPS, que a rede interna não tem; fica como está.
+- **A TV não muda:** ela não usa o `base.html` e continua igual.

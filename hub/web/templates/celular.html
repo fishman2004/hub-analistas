@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% set active = 'celular' %}
+{% block title %}No celular · Hub dos Analistas{% endblock %}
+{% block main %}
+<h1>Abrir o Hub no celular</h1>
+<p class="ajuda">O Hub funciona no navegador do celular, pela <strong>Wi-Fi da empresa</strong>. Cada pessoa entra com o próprio nome e PIN, como no PC.</p>
+
+{% if qr %}
+<div class="celular-qr">
+  <div class="qr">{{ qr | safe }}</div>
+  <div>
+    <p class="endereco-grande">{{ address }}</p>
+    <ol class="celular-passos">
+      <li>Ligue o celular na <strong>Wi-Fi da empresa</strong> (a dos funcionários; a de visitantes costuma não alcançar o PC da sala).</li>
+      <li>Abra a câmera e aponte para o QR Code (ou digite o endereço acima no navegador).</li>
+      <li>Entre com o seu nome e PIN.</li>
+      <li>Crie o atalho:
+        <strong>Android</strong> (Chrome): menu ⋮ → <em>Adicionar à tela inicial</em>.
+        <strong>iPhone</strong> (Safari): botão Compartilhar → <em>Adicionar à Tela de Início</em>.
+        O ícone do Hub aparece junto dos outros apps.</li>
+    </ol>
+    <p class="ajuda">Dica: imprima esta página (Ctrl+P) e cole o QR Code perto da TV.</p>
+  </div>
+</div>
+{% else %}
+<div class="aviso">Não consegui descobrir o endereço deste PC na rede. Abra esta página a partir de outro PC da sala (pelo endereço que vocês já usam) para ver o QR Code.</div>
+{% endif %}
+
+<section class="cartao-form" style="margin-top: 24px">
+  <h2>Não abriu?</h2>
+  <ul class="celular-passos">
+    <li>Confira se o celular está mesmo na Wi-Fi da empresa, e não nos dados móveis (4G/5G).</li>
+    <li>Pelos dados móveis ou de casa o Hub <strong>não abre, de propósito</strong>: ele fica só dentro da rede da empresa e não vai para a internet. Para usar de fora, o caminho é a VPN da empresa (pedido para a TI).</li>
+    <li>Se nenhum celular abre, a Wi-Fi pode estar separada da rede dos PCs, ou o firewall do PC da sala bloqueia a porta 8800 para ela. Isso é com a TI.</li>
+    <li>Os endereços com números (como 192.168.0.15) podem mudar quando o PC da sala reinicia. Se o atalho parar de abrir, leia o QR Code de novo.</li>
+  </ul>
+</section>
+{% endblock %}

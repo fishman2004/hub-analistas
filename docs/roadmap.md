@@ -22,6 +22,7 @@ flowchart LR
     F14 --> F15[15 · PDF de uma tela]
     F8 --> F16[16 · Prioridades por pasta e Assistente]
     F2 --> F17[17 · Entrar pelo nome e pedido de cadastro]
+    F17 --> F18[18 · Hub no celular]
 ```
 
 A fase 17 começa a **v4** (o Hub também no celular). As fases 10 a 16 são a **v3**, com as sugestões do gestor: o plano completo, com as regras e as escolhas de cada fase, está em [plano-v3.md](plano-v3.md).
@@ -46,6 +47,7 @@ A fase 17 começa a **v4** (o Hub também no celular). As fases 10 a 16 são a *
 | 15 | **Exportar a TV em PDF:** na página **TV da sala**, "Exportar PDF" em cada tela, "a tela que está na TV agora" e "todas as telas da rotação" (uma folha por tela, e cada página do Quadro numa folha). Abre a janela de impressão do navegador (**Salvar como PDF**), com a mesma regra da TV, rodapé com data e as iniciais de quem exportou e uma versão clara para imprimir. Fica no histórico. | Pronto ([roteiro de teste](roteiros/fase-15-pdf.md)) |
 | 16 | **Prioridades por pasta e o papel Assistente:** cada pessoa é ligada às suas pastas (página **Pessoas**) e marca a prioridade do mês pasta por pasta (quem tem várias escolhe qual concluiu); o item fica feito quando todas as pastas concluíram, e a página e a TV mostram quais pastas já concluíram e quais faltam. Item com **etapas**: as **Metas do mês** (enviar ao gerente, ajustes do gerente com a supervisão, devolução da planilha, upload na 375, 353 e 399) ficam à parte, numa tabela de etapas por pasta. O gestor e os administradores cobrem qualquer pasta. Papel **Assistente** (jovem aprendiz de meio período): pega demandas, tem jornada própria no banco de horas e fica fora das prioridades. | Pronto ([roteiro de teste](roteiros/fase-16-prioridades-por-pasta.md)) |
 | 17 | **Entrar pelo nome e pedido de cadastro:** a tela Entrar pede o nome (sem diferença de acento e maiúscula) e o PIN, sem a lista da equipe. Quem não tem cadastro pede pela própria tela, já criando o PIN, e um administrador aprova ou recusa em **Pessoas** (o menu mostra quantos pedidos esperam). Limite de erros por aparelho, além do bloqueio por nome. Num Hub vazio, o primeiro cadastro vira administrador. | Pronto ([roteiro de teste](roteiros/fase-17-login.md)) |
+| 18 | **Hub no celular:** pela **Wi-Fi da empresa**, sem internet. No celular, o menu fecha num botão **☰ Menu**, a presença fica em 2×2, tabelas largas rolam de lado e textos compridos quebram a linha. A página **No celular** mostra o endereço do PC da sala e um **QR Code** para apontar a câmera, e o Hub ganha ícone para **Adicionar à tela inicial** (Android e iPhone). | Pronto ([roteiro de teste](roteiros/fase-18-celular.md)) |
 
 ### Ideias para depois
 
