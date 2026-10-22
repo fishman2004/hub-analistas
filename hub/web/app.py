@@ -547,13 +547,13 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
                     qr=qr_svg(url) if url else None)
 
     @app.get("/", response_class=HTMLResponse)
-    def quadro(request: Request, todas: int = 0, concluida: str = ""):
+    def quadro(request: Request, todas: int = 0, concluida: str = "", ok: str = ""):
         user = me(request)
         if user is None:
             return to_login()
         done = find_demand(db, int(concluida)) if concluida.isdigit() else None
         done = done if done is not None and done.column == "done" and can_see(done, user) else None
-        return page(request, "quadro.html", user, concluida=done, **board_context(user, bool(todas)))
+        return page(request, "quadro.html", user, concluida=done, ok=ok, **board_context(user, bool(todas)))
 
     @app.get("/parcial/quadro", response_class=HTMLResponse)
     def quadro_parcial(request: Request, todas: int = 0):
@@ -1175,6 +1175,22 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         back = safe_back(volta, "/trilha")
         return RedirectResponse(back + ("#minha-trilha" if back == "/" else ""), status_code=303)
 
+    @app.post("/trilha/{block_id}/justificar")
+    def trilha_justificar(request: Request, block_id: int, texto: str = Form(""), tirar: str = Form(""),
+                          volta: str = Form("/trilha")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        try:
+            trilha.justify(db, clock(), user, block_id, "" if tirar == "1" else texto)
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError as exc:
+            return trail_page(request, user, 422, error=str(exc))
+        back = safe_back(volta, "/trilha")
+        message = quote("Justificativa tirada." if tirar == "1" or not texto.strip() else "Justificativa salva.")
+        return RedirectResponse(f"{back}?ok={message}" + ("#minha-trilha" if back == "/" else ""), status_code=303)
+
     def block_values(b=None, person_id: int | None = None) -> dict:
         if b is None:
             return {"id": "", "person_id": person_id, "weekdays": [0, 1, 2, 3, 4], "starts_at": "", "ends_at": "",
@@ -1338,28 +1354,31 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         return tuple(f for f in calendario.FILTERS if f in request.query_params.getlist("f"))
 
     @app.get("/calendario", response_class=HTMLResponse)
-    def calendario_ver(request: Request, visao: str = "mes", data: str = "", ok: str = ""):
+    def calendario_ver(request: Request, visao: str = "mes", data: str = "", ok: str = "", ver: str = ""):
         user = me(request)
         if user is None:
             return to_login()
         if visao == "rotinas":
-            return month_routines_page(request, user, dia=data, ok=ok)
+            return month_routines_page(request, user, dia=data, ver=ver, ok=ok)
         return calendar_page(request, user, visao=visao, dia=data, filtros=cal_filters(request), ok=ok)
 
     # ---------- rotinas do mês (fase 19): o calendário de rotinas do gestor ----------
 
-    def month_routines_page(request: Request, user: Person, status_code: int = 200, dia: str = "",
+    def month_routines_page(request: Request, user: Person, status_code: int = 200, dia: str = "", ver: str = "",
                             **ctx) -> HTMLResponse:
         today = clock().date()
-        ref = (cal_day(dia) or today).replace(day=1)
+        picked = cal_day(ver)  # o quadro do lado mostra o dia escolhido (um dia que passou, para justificar) ou hoje
+        selected = picked if picked and picked < today else today
+        ref = (cal_day(dia) or picked or today).replace(day=1)
         weeks = rotinas_mes.month_weeks(ref.year, ref.month)
-        items = rotinas_mes.by_day(db, weeks[0][0], max(weeks[-1][-1], today))
+        items = rotinas_mes.by_day(db, min(weeks[0][0], selected), max(weeks[-1][-1], today))
         hol = calendario.holidays(db)
         last = date(ref.year, ref.month, monthrange(ref.year, ref.month)[1])
         return page(request, "rotinas-mes.html", user, status_code, weeks=weeks, items=items, today=today,
                     ref=ref, month=ref.month, title=f"{MONTHS[ref.month - 1]} de {ref.year}",
                     prev=(ref - timedelta(days=1)).replace(day=1), nxt=last + timedelta(days=1),
-                    holidays=hol.between(weeks[0][0], weeks[-1][-1]), today_items=items.get(today, []),
+                    holidays=hol.between(weeks[0][0], weeks[-1][-1]), today_items=items.get(selected, []),
+                    selected=selected, can_justify=(today - selected).days <= rotinas_mes.NOTE_DAYS,
                     categories=rotinas_mes.list_categories(db, active_only=True),
                     by_id={p.id: p for p in list_people(db, active_only=False)},
                     can_manage=rotinas_mes.can_manage(user), **ctx)
@@ -1484,6 +1503,22 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return month_routines_page(request, user, 422, error=str(exc))
         return RedirectResponse("/calendario?visao=rotinas#hoje", status_code=303)
+
+    @app.post("/calendario/rotinas-do-mes/{routine_id}/justificar")
+    def rotinas_mes_justificar(request: Request, routine_id: int, dia: str = Form(""), texto: str = Form(""),
+                               tirar: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        day = cal_day(dia) or clock().date()
+        try:
+            rotinas_mes.justify(db, clock(), user, routine_id, day, "" if tirar == "1" else texto)
+        except ValidationError as exc:
+            return month_routines_page(request, user, 422, dia=day.isoformat(), ver=day.isoformat(), error=str(exc))
+        message = "Justificativa tirada." if tirar == "1" or not texto.strip() else "Justificativa salva."
+        ver = f"&ver={day.isoformat()}" if day != clock().date() else ""
+        return RedirectResponse(f"/calendario?visao=rotinas&data={day.isoformat()}{ver}&ok={quote(message)}#hoje",
+                                status_code=303)
 
     def back_to_calendar(message: str = "", day: date | None = None) -> RedirectResponse:
         qs = {k: v for k, v in (("data", day.isoformat() if day else ""), ("ok", message)) if v}
@@ -2299,4 +2334,22 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "prioridade_desfeita": f"{who} desmarcou a prioridade “{detail}”",
         "prioridade_removida": f"{who} removeu “{detail}” das prioridades do mês",
         "prioridades_padrao": f"{who} criou a lista padrão de prioridades de {month_label(detail) if is_month(detail) else detail}",
+        # v5: rotinas do mês, trilha do dia e justificativas
+        "categoria_criada": f"{who} criou a categoria “{detail}” das rotinas do mês",
+        "categoria_editada": f"{who} mudou a categoria “{detail}” das rotinas do mês",
+        "categoria_removida": f"{who} removeu a categoria “{detail}” das rotinas do mês",
+        "rotina_mes_criada": f"{who} cadastrou a rotina do mês “{detail}”",
+        "rotina_mes_editada": f"{who} mudou a rotina do mês “{detail}”",
+        "rotina_mes_desativada": f"{who} desativou a rotina do mês “{detail}”",
+        "rotina_mes_reativada": f"{who} reativou a rotina do mês “{detail}”",
+        "rotina_mes_feita": f"{who} marcou a rotina do mês “{detail}” como feita",
+        "rotina_mes_desfeita": f"{who} desmarcou a rotina do mês “{detail}”",
+        "rotina_mes_justificada": f"{who} justificou a rotina do mês “{detail}”",
+        "rotina_mes_justificativa_tirada": f"{who} tirou a justificativa da rotina do mês “{detail}”",
+        "trilha_modelo": f"{who} criou a trilha do modelo para {name}",
+        "trilha_copiada": f"{who} copiou uma trilha para {name}",
+        "trilha_feito": f"{who} marcou como feito o bloco {detail} da trilha de {name}",
+        "trilha_desfeito": f"{who} desmarcou o bloco {detail} da trilha de {name}",
+        "trilha_justificada": f"{who} justificou o bloco {detail} da trilha de {name}",
+        "trilha_justificativa_tirada": f"{who} tirou a justificativa do bloco {detail} da trilha de {name}",
     }.get(kind, f"{who}: {kind}")

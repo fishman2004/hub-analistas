@@ -29,6 +29,7 @@ RULES = {"semana": "Toda semana", "dia_util": "Dia útil do mês", "dia_util_fim
          "dia": "Dia do mês", "data": "Uma data só"}
 WEEKDAYS = ("seg", "ter", "qua", "qui", "sex", "sáb", "dom")
 MAX_TITLE, MAX_CATEGORY = 120, 40
+MAX_NOTE, NOTE_DAYS = 300, 31  # justificativa: até 300 letras, para hoje e os últimos 31 dias
 _COLOR = re.compile(r"#[0-9a-fA-F]{6}")
 
 
@@ -289,20 +290,27 @@ class Occurrence:
     category: Category
     done_by: int | None = None
     done_at: datetime | None = None
+    note: str = ""  # justificativa do dia (fase de justificativas)
+    note_by: int | None = None
+    note_at: datetime | None = None
 
     @property
     def done(self) -> bool:
         return self.done_at is not None
 
 
-def by_day(db: Database, start: date, end: date) -> dict[date, list[Occurrence]]:
-    """As rotinas do mês ativas de cada dia do período (dia sem rotina fica de fora), já em ordem."""
+def by_day(db: Database, start: date, end: date, with_notes: bool = True) -> dict[date, list[Occurrence]]:
+    """As rotinas do mês ativas de cada dia do período (dia sem rotina fica de fora), já em ordem.
+    A TV pede with_notes=False: as justificativas nem são lidas lá."""
     with db.connect() as conn:
         hol = load_holidays(conn)
         cats = {r["id"]: _category(r) for r in conn.execute("SELECT * FROM month_categories")}
         routines = [_routine(r) for r in conn.execute("SELECT * FROM month_routines WHERE active = 1")]
         marks = {(r["routine_id"], r["day"]): r for r in conn.execute(
             "SELECT * FROM month_routine_marks WHERE day BETWEEN ? AND ?", (start.isoformat(), end.isoformat()))}
+        notes = {(r["routine_id"], r["day"]): r for r in conn.execute(
+            "SELECT * FROM month_routine_notes WHERE day BETWEEN ? AND ?",
+            (start.isoformat(), end.isoformat()))} if with_notes else {}
     routines.sort(key=lambda r: (_RULE_ORDER.get(r.rule.get("tipo"), 3), r.id))
     out: dict[date, list[Occurrence]] = {}
     cache: dict = {}
@@ -311,8 +319,11 @@ def by_day(db: Database, start: date, end: date) -> dict[date, list[Occurrence]]
         for r in routines:
             if occurs_on(r.rule, d, hol, cache):
                 m = marks.get((r.id, d.isoformat()))
-                out.setdefault(d, []).append(Occurrence(r, cats[r.category_id], m["done_by"] if m else None,
-                                                        datetime.fromisoformat(m["done_at"]) if m else None))
+                n = notes.get((r.id, d.isoformat()))
+                out.setdefault(d, []).append(Occurrence(
+                    r, cats[r.category_id], m["done_by"] if m else None,
+                    datetime.fromisoformat(m["done_at"]) if m else None, n["text"] if n else "",
+                    n["written_by"] if n else None, datetime.fromisoformat(n["written_at"]) if n else None))
         d += timedelta(days=1)
     return out
 
@@ -337,6 +348,37 @@ def mark_done(db: Database, now: datetime, actor: Person, routine_id: int, done:
                                (routine_id, today.isoformat()))
             if cur.rowcount:
                 log_event(conn, now, actor.id, "rotina_mes_desfeita", f"rotina_mes:{routine_id}", r["title"])
+
+
+def justify(db: Database, now: datetime, actor: Person, routine_id: int, day: date, text: str) -> None:
+    """Escreve (ou troca) a justificativa da rotina num dia: hoje ou um dos últimos 31 dias em que ela aconteceu.
+    Marcar feita continua só hoje; a justificativa explica o que ficou sem fazer, atrasou ou saiu em parte.
+    Texto vazio tira a justificativa."""
+    text = "\n".join(x.strip() for x in (text or "").replace("\r\n", "\n").split("\n")).strip()
+    if len(text) > MAX_NOTE:
+        raise ValidationError(f"Justificativa muito longa (máximo {MAX_NOTE} letras).")
+    today = now.date()
+    if day > today:
+        raise ValidationError("Só dá para justificar hoje ou um dia que já passou.")
+    if (today - day).days > NOTE_DAYS:
+        raise ValidationError(f"Só dá para justificar os últimos {NOTE_DAYS} dias.")
+    with db.connect() as conn:
+        r = conn.execute("SELECT * FROM month_routines WHERE id = ? AND active = 1", (routine_id,)).fetchone()
+        if r is None:
+            raise ValidationError("Rotina não encontrada.")
+        if not occurs_on(json.loads(r["rule"]), day, load_holidays(conn)):
+            raise ValidationError("Essa rotina não acontece nesse dia.")
+        if text:
+            conn.execute("INSERT INTO month_routine_notes(routine_id, day, text, written_by, written_at) "
+                         "VALUES (?, ?, ?, ?, ?) ON CONFLICT(routine_id, day) DO UPDATE SET text = excluded.text, "
+                         "written_by = excluded.written_by, written_at = excluded.written_at",
+                         (routine_id, day.isoformat(), text, actor.id, now.isoformat(timespec="seconds")))
+            log_event(conn, now, actor.id, "rotina_mes_justificada", f"rotina_mes:{routine_id}",
+                      f"{r['title']} ({day.strftime('%d/%m')})")
+        elif conn.execute("DELETE FROM month_routine_notes WHERE routine_id = ? AND day = ?",
+                          (routine_id, day.isoformat())).rowcount:
+            log_event(conn, now, actor.id, "rotina_mes_justificativa_tirada", f"rotina_mes:{routine_id}",
+                      f"{r['title']} ({day.strftime('%d/%m')})")
 
 
 def month_weeks(year: int, month: int) -> list[list[date]]:
@@ -418,7 +460,7 @@ def tv_rotinas_mes(db: Database, now: datetime) -> dict | None:
     with db.connect() as conn:
         hol = load_holidays(conn)
     nxt = next_business_day(today + timedelta(days=1), hol)
-    items = by_day(db, weeks[0][0], max(weeks[-1][-1], nxt))
+    items = by_day(db, weeks[0][0], max(weeks[-1][-1], nxt), with_notes=False)
     if not any(items.values()):
         return None
     people = {p.id: p for p in list_people(db, active_only=False)}

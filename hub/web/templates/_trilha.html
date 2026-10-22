@@ -2,7 +2,7 @@
 {% set STATUS_TEXT = {'futuro': 'ainda não começou', 'agora': 'agora', 'feito': 'feito no horário',
                       'feito_atrasado': 'feito depois do horário', 'nao_feito': 'não feito', 'pausa': 'intervalo'} %}
 {% macro no(s, pode, volta) %}
-<li class="tr-no st-{{ s.status }}" style="--bloco: {{ s.block.color }}" data-vivo="t:{{ s.block.id }}" data-estado="{{ s.status }}" title="{{ s.block.starts_at }} às {{ s.block.ends_at }} · {{ s.block.title }} · {{ STATUS_TEXT[s.status] }}{% if s.auto %} (pela rotina){% endif %}{% if s.block.lines %}&#10;{{ s.block.lines|join('&#10;') }}{% endif %}">
+<li class="tr-no st-{{ s.status }}" style="--bloco: {{ s.block.color }}" data-vivo="t:{{ s.block.id }}" data-estado="{{ s.status }}" title="{{ s.block.starts_at }} às {{ s.block.ends_at }} · {{ s.block.title }} · {{ STATUS_TEXT[s.status] }}{% if s.auto %} (pela rotina){% endif %}{% if s.block.lines %}&#10;{{ s.block.lines|join('&#10;') }}{% endif %}{% if s.note %}&#10;Justificativa: {{ s.note }}{% endif %}">
   <span class="tr-icone"><svg aria-hidden="true"><use href="/static/trilha-icones.svg?v={{ version }}#{{ s.block.icon }}"></use></svg>
     {% if s.status in ('feito', 'feito_atrasado') %}<span class="tr-selo">✓</span>{% elif s.status == 'nao_feito' %}<span class="tr-selo">✕</span>{% endif %}</span>
   <span class="tr-hora">{{ s.block.starts_at }}<span class="tr-ate">–{{ s.block.ends_at }}</span></span>
@@ -15,6 +15,18 @@
     <button class="tr-marcar{{ ' discreto' if s.done_at else '' }}" title="{{ 'Desfazer' if s.done_at else 'Marcar como feito' }}">{{ 'Desfazer' if s.done_at else '✓ Feito' }}</button>
   </form>
   {% endif %}
+  {# justificativa: por que ficou vermelho (sem marcar) ou âmbar (depois do horário); só hoje #}
+  {% if pode and (s.status in ('nao_feito', 'feito_atrasado') or s.note) %}
+  <details class="tr-just{{ ' tem' if s.note else '' }}">
+    <summary title="{{ 'Ver ou mudar a justificativa' if s.note else 'Escrever uma justificativa' }}">💬 {{ 'Justificado' if s.note else 'Justificar' }}</summary>
+    <form method="post" action="/trilha/{{ s.block.id }}/justificar" class="tr-just-caixa">
+      <input type="hidden" name="volta" value="{{ volta }}">
+      <label for="just-{{ s.block.id }}-{{ volta|length }}">Justificativa de {{ s.block.starts_at }} · {{ s.block.title }}</label>
+      <textarea id="just-{{ s.block.id }}-{{ volta|length }}" name="texto" rows="3" maxlength="300" placeholder="Ex.: reunião com o gerente até 10:30">{{ s.note }}</textarea>
+      <div class="tr-just-acoes"><button>Salvar</button>{% if s.note %}<button name="tirar" value="1" class="discreto">Tirar</button>{% endif %}</div>
+    </form>
+  </details>
+  {% elif s.note %}<span class="tr-just-ver" title="{{ s.note }}">💬 Justificado</span>{% endif %}
 </li>
 {% endmacro %}
 {% macro trilha(steps, pode, volta) %}

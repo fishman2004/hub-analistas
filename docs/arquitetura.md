@@ -122,8 +122,8 @@ Como na tela Hoje do Pombo, o que já foi enviado ou tentado vale mais que as li
 | `hub/people.py` | Equipe: nome, iniciais, cor |
 | `hub/demands.py` | Demandas, quadro, ordem, atrasadas, cartão da TV, e o cartão de cada rotina (calculado, vira demanda na primeira ação, pastas e espera) |
 | `hub/rotinas.py` | Cadastro das rotinas, quando cada uma vale, as rotinas sugeridas e os avisos da TV |
-| `hub/trilha.py` | Trilha do dia (fase 20): os blocos de horário de cada pessoa, a situação de cada bloco no dia (futuro, agora, feito, feito depois, não feito, intervalo), a marcação de hoje, a trilha do modelo, o resumo da semana e a tela da TV. Os ícones ficam em `static/trilha-icones.svg` (um `<symbol>` por ícone, sem internet) |
-| `hub/rotinas_mes.py` | Rotinas do mês (fase 19): categorias com cor, as regras de repetição por dia útil, "feita" no dia, as rotinas do modelo do gestor e a tela da TV (o mês e o dia) |
+| `hub/trilha.py` | Trilha do dia (fase 20): os blocos de horário de cada pessoa, a situação de cada bloco no dia (futuro, agora, feito, feito depois, não feito, intervalo), a marcação de hoje, a justificativa de hoje (fase 23, `trail_notes`), a trilha do modelo, o resumo da semana e a tela da TV. Os ícones ficam em `static/trilha-icones.svg` (um `<symbol>` por ícone, sem internet) |
+| `hub/rotinas_mes.py` | Rotinas do mês (fase 19): categorias com cor, as regras de repetição por dia útil, "feita" no dia, a justificativa (fase 23, `month_routine_notes`: hoje e os últimos 31 dias), as rotinas do modelo do gestor e a tela da TV (o mês e o dia) |
 | `hub/presence.py` | Presença e a virada do dia |
 | `hub/backup.py` | Cópia de segurança diária (14 dias) |
 | `hub/winsys.py` | Abrir com o Windows, não dormir, TV em tela cheia |
