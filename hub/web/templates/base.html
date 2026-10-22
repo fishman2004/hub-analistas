@@ -24,6 +24,7 @@
     <label for="menu-abrir" class="menu-botao" aria-hidden="true">☰ Menu</label>
     <nav aria-label="Menu principal">
       <a href="/" {% if active == 'quadro' %}aria-current="page"{% endif %}>Quadro</a>
+      <a href="/trilha" {% if active == 'trilha' %}aria-current="page"{% endif %}>Trilha</a>
       <a href="/demandas" {% if active == 'demandas' %}aria-current="page"{% endif %}>Demandas</a>
       {% if can_open_gestor(user) %}<a href="/gestor" {% if active == 'gestor' %}aria-current="page"{% endif %}>Gestor</a>{% endif %}
       <a href="/rotinas" {% if active == 'rotinas' %}aria-current="page"{% endif %}>Rotinas</a>

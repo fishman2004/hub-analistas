@@ -308,6 +308,34 @@ MIGRATIONS: list[tuple[int, str]] = [
             PRIMARY KEY (routine_id, day)
         );
     """),
+    (14, """
+        -- v5 · trilha do dia: os blocos de horário de cada pessoa (por dia da semana) e quem marcou cada bloco
+        -- como feito no dia. "Não feito" não é gravado: é calculado quando o horário do bloco termina.
+        CREATE TABLE trail_blocks (
+            id INTEGER PRIMARY KEY,
+            person_id INTEGER NOT NULL REFERENCES people(id),
+            weekdays TEXT NOT NULL,                      -- "0,2,4": segunda = 0
+            starts_at TEXT NOT NULL,                     -- "HH:MM"
+            ends_at TEXT NOT NULL,                       -- "HH:MM"
+            title TEXT NOT NULL,
+            details TEXT NOT NULL DEFAULT '',            -- o que fazer, um item por linha
+            icon TEXT NOT NULL,
+            color TEXT NOT NULL,
+            kind TEXT NOT NULL DEFAULT 'tarefa',         -- 'tarefa' ou 'pausa' (o intervalo nunca fica "não feito")
+            routine_id INTEGER REFERENCES routines(id),  -- rotina ligada: concluída no quadro, o bloco acende
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE INDEX trail_blocks_person ON trail_blocks(person_id);
+        CREATE TABLE trail_marks (
+            block_id INTEGER NOT NULL REFERENCES trail_blocks(id),
+            day TEXT NOT NULL,
+            done_by INTEGER REFERENCES people(id),
+            done_at TEXT NOT NULL,
+            PRIMARY KEY (block_id, day)
+        );
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

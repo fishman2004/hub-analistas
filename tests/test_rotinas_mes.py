@@ -265,7 +265,7 @@ def test_database_from_1_10_gains_the_tables(tmp_path):
     d.init()
     add_person(d, at(7), None, "Kayo")
     with sqlite3.connect(path) as conn:
-        for table in ("month_routine_marks", "month_routines", "month_categories"):
+        for table in ("trail_marks", "trail_blocks", "month_routine_marks", "month_routines", "month_categories"):
             conn.execute(f"DROP TABLE {table}")
         conn.execute("PRAGMA user_version = 12")
     d.init()

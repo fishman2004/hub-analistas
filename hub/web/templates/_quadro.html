@@ -1,3 +1,4 @@
+{% from "_trilha.html" import trilha with context %}
 {# pastas de uma rotina: cada letra é um botão; qualquer pessoa marca a sua e o histórico guarda quem #}
 {% macro pastas(d) %}
 <div class="pastas-rotina" aria-label="Pastas da rotina">
@@ -23,6 +24,17 @@
     {% endfor %}
   </div>
 </section>
+
+{% if trail %}
+{# trilha do dia (fase 20): os blocos de hoje, com o de agora em destaque e o botão de feito #}
+<section class="minha-trilha" id="minha-trilha" aria-labelledby="h-trilha">
+  <div class="barra">
+    <h2 id="h-trilha">Minha trilha de hoje</h2>
+    <span class="ajuda">{{ trail_counts.feitos }} de {{ trail_counts.total }} feitos{% if trail_counts.perdidos %} · <span class="tr-perdidos">{{ trail_counts.perdidos }} sem marcar</span>{% endif %} · <a href="/trilha">ver a equipe</a></span>
+  </div>
+  {{ trilha(trail, True, '/') }}
+</section>
+{% endif %}
 
 {% if shared %}
 <section class="rotinas-equipe" aria-labelledby="h-pastas">

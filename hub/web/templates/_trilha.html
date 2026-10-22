@@ -1,0 +1,22 @@
+{# trilha do dia (fase 20): um bloco da trilha. status: futuro, agora, feito, feito_atrasado, nao_feito, pausa #}
+{% set STATUS_TEXT = {'futuro': 'ainda não começou', 'agora': 'agora', 'feito': 'feito no horário',
+                      'feito_atrasado': 'feito depois do horário', 'nao_feito': 'não feito', 'pausa': 'intervalo'} %}
+{% macro no(s, pode, volta) %}
+<li class="tr-no st-{{ s.status }}" style="--bloco: {{ s.block.color }}" title="{{ s.block.starts_at }} às {{ s.block.ends_at }} · {{ s.block.title }} · {{ STATUS_TEXT[s.status] }}{% if s.auto %} (pela rotina){% endif %}{% if s.block.lines %}&#10;{{ s.block.lines|join('&#10;') }}{% endif %}">
+  <span class="tr-icone"><svg aria-hidden="true"><use href="/static/trilha-icones.svg?v={{ version }}#{{ s.block.icon }}"></use></svg>
+    {% if s.status in ('feito', 'feito_atrasado') %}<span class="tr-selo">✓</span>{% elif s.status == 'nao_feito' %}<span class="tr-selo">✕</span>{% endif %}</span>
+  <span class="tr-hora">{{ s.block.starts_at }}<span class="tr-ate">–{{ s.block.ends_at }}</span></span>
+  <span class="tr-titulo">{{ s.block.title }}</span>
+  <span class="visualmente-oculto">{{ STATUS_TEXT[s.status] }}</span>
+  {% if pode and s.status != 'pausa' and not s.auto %}
+  <form method="post" action="/trilha/{{ s.block.id }}/feito">
+    <input type="hidden" name="volta" value="{{ volta }}">
+    <input type="hidden" name="feito" value="{{ '0' if s.done_at else '1' }}">
+    <button class="tr-marcar{{ ' discreto' if s.done_at else '' }}" title="{{ 'Desfazer' if s.done_at else 'Marcar como feito' }}">{{ 'Desfazer' if s.done_at else '✓ Feito' }}</button>
+  </form>
+  {% endif %}
+</li>
+{% endmacro %}
+{% macro trilha(steps, pode, volta) %}
+<ol class="tr-trilha">{% for s in steps %}{{ no(s, pode, volta) }}{% endfor %}</ol>
+{% endmacro %}

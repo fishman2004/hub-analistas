@@ -318,3 +318,21 @@ O calendário de rotinas do gestor não é compromisso (não tem horário) nem r
 - Padrão: dia fixo que cai no fim de semana ou feriado vai para o próximo dia útil.
 - Padrão: a semana das rotinas do modelo (Blacklist seg e qui; APEX e MSL seg, qua e sex; Campanhas e Gestão de equipe ter e qui; Desempenho e Acompanhamento do representante todo dia) e os dias úteis tirados do print de maio.
 - Padrão: a tela fica 25 s na rotação (mês e dia).
+
+## Trilha do dia: horários por pessoa, com a situação calculada (fase 20)
+
+A trilha do modelo do gestor é a semana de cada analista em blocos de horário. Ela ganhou duas tabelas (migração 14): os blocos de cada pessoa (dias da semana, início, fim, nome, o que fazer, ícone, cor, tipo e, se quiser, uma rotina ligada) e as marcas do dia. Como o resto do Hub, nada é agendado: a situação de cada bloco é calculada na hora, pelo relógio.
+
+- **Situações:** ainda não começou (apagado), agora (pulsando), feito no horário (verde, aceso), feito depois do fim (âmbar) e **não feito** quando o fim passa sem marca (a "luz negativa" vermelha). Marcar antes do horário também conta como feito no horário. O intervalo não é marcado.
+- **Rotina ligada:** um bloco pode apontar para uma rotina com aviso (fase 7). Quando o cartão dela é concluído no Quadro, o bloco acende sozinho, sem marcar duas vezes.
+- **Sem sobreposição:** dois blocos da mesma pessoa no mesmo dia da semana não podem se cruzar (encostar pode), para a linha do tempo não quebrar.
+- **Histórico justo:** um bloco só conta a partir do dia em que foi criado, e o dia de ausência (Calendário) e o feriado não contam como "sem marcar".
+- **Na TV**, o eixo vai da primeira à última hora das trilhas do dia, com o tempo de verdade (um bloco de 1 h é mais largo que um de 30 min). Ao aparecer, uma luz varre cada trilha do começo do dia até agora, acendendo os blocos no caminho; depois fica só o ponto de luz do agora. Quatro analistas por página, com fade. Os ícones são um SVG local, sem internet.
+
+### Em aberto (o Kayo confirma)
+
+- Padrão: a própria pessoa, o gestor e os administradores montam e marcam; colegas não.
+- Padrão: marcar só vale para o dia de hoje; marcar depois do fim do bloco fica âmbar.
+- Padrão: quem está ausente no Calendário e os feriados ficam sem trilha (e não contam no resumo).
+- Padrão: a trilha do modelo usa o print de segunda para seg, qua e sex e o de terça para ter e qui.
+- Padrão: 4 analistas por página na TV e 25 s de tela.

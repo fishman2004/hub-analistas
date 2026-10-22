@@ -24,7 +24,7 @@ from hub.paineis import panel_folder
 from hub.people import add_person, get_person, list_people
 from hub.presence import set_status
 from hub.prioridades import add_priority, create_default_list, mark_done
-from hub import rotinas_mes
+from hub import rotinas_mes, trilha
 from hub.rotinas import create_suggested, list_routines
 
 TEAM = ["Ana Souza", "Bianca Lima", "Carla Dias", "Diego Rocha", "Elisa Prado"]
@@ -124,6 +124,22 @@ def seed(now: datetime | None = None) -> Database:
     today_routines = rotinas_mes.by_day(db, today, today).get(today, [])
     for k, o in enumerate(today_routines[:2]):
         rotinas_mes.mark_done(db, min(now, early + timedelta(minutes=50 + 10 * k)), get_person(db, diego.id), o.routine.id)
+    # trilha do dia (fase 20): a do modelo para quatro analistas, com o que já passou marcado como a
+    # equipe faria (a maioria no horário, alguns depois e um ou outro sem marcar)
+    for k, person in enumerate((ana, carla, diego, elisa)):
+        trilha.create_suggested(db, early, gestora, person.id)
+        if today.weekday() > 4:
+            continue
+        for n, step in enumerate(trilha.my_trail(db, person.id, now)):
+            b = step.block
+            if step.status != "nao_feito" or (n + k) % 5 == 4:
+                continue  # futuro, agora, pausa ou "esqueceu de marcar"
+            late = (n + k) % 4 == 3
+            when = b.end(today) + timedelta(minutes=12) if late else b.start(today) + timedelta(minutes=20)
+            if when <= now:
+                with db.connect() as conn:  # marca no passado direto no banco (o Hub só deixa marcar hoje, agora)
+                    conn.execute("INSERT INTO trail_marks(block_id, day, done_by, done_at) VALUES (?, ?, ?, ?)",
+                                 (b.id, today.isoformat(), person.id, when.isoformat(timespec="seconds")))
     # planilhas fictícias dos painéis (tools/exemplos), para as telas de metas aparecerem na TV
     for f in (Path(__file__).parent / "exemplos").iterdir():
         shutil.copy(f, panel_folder(db) / f.name)
