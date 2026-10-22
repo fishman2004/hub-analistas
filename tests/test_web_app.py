@@ -31,7 +31,9 @@ def test_without_cookie_goes_to_entrar(env):
     c, *_ = env
     r = c.get("/", follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"] == "/entrar"
-    assert "Kayo" in c.get("/entrar").text
+    page = c.get("/entrar").text
+    # fase 17: a tela pede o nome e o PIN, sem a lista de nomes da equipe
+    assert 'name="nome"' in page and 'name="pin"' in page and "Kayo" not in page
 
 
 def test_create_demand_and_see_it(env):

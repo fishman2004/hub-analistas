@@ -1,17 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Entrar · Hub dos Analistas{% endblock %}
 {% block main %}
-<h1>Quem é você?</h1>
-{% if people %}
-<p class="ajuda">Escolha seu nome e digite o seu PIN.</p>
-<div class="pessoas-entrar">
-  {% for p in people %}
-  <a class="botao pessoa-botao" href="/entrar/{{ p.id }}" style="--cor: {{ p.color }}">
-    <span class="bolinha grande">{{ p.initials }}</span>{{ p.name }}
-  </a>
-  {% endfor %}
-</div>
+{% if empty %}
+<h1>Bem-vindo ao Hub</h1>
+<p class="ajuda">Ainda não há ninguém cadastrado. Quem se cadastrar primeiro vira <strong>administrador</strong> e depois aprova o cadastro do resto da equipe.</p>
+<p><a class="botao" href="/entrar/cadastro">Criar o primeiro administrador</a></p>
 {% else %}
-<p class="ajuda">Ainda não há ninguém cadastrado. <a href="/pessoas">Cadastre a equipe</a> primeiro.</p>
+<h1>Entrar</h1>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+<form class="ficha cartao-form ficha-pin" method="post" action="/entrar">
+  <div>
+    <label for="nome">Seu nome</label>
+    <input type="text" id="nome" name="nome" value="{{ nome or '' }}" autocomplete="username" autocapitalize="words" required {% if not nome %}autofocus{% endif %}>
+  </div>
+  <div>
+    <label for="pin">PIN</label>
+    <input type="password" id="pin" name="pin" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="current-password" {% if nome %}autofocus{% endif %}>
+  </div>
+  <p class="ajuda">Primeiro acesso depois que um administrador te cadastrou? Digite só o nome e crie o seu PIN na próxima tela. Esqueceu o PIN? Peça a um administrador para redefinir.</p>
+  <div><button>Entrar</button></div>
+</form>
+<p class="entrar-cadastro"><a href="/entrar/cadastro{% if nome %}?nome={{ nome | urlencode }}{% endif %}">{% if unknown %}<strong>Ainda não tenho cadastro: pedir agora</strong>{% else %}Ainda não tenho cadastro{% endif %}</a></p>
 {% endif %}
 {% endblock %}

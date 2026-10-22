@@ -18,7 +18,7 @@ from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, calendario, modos, notas, pastas
+from .. import anexos, cadastro, calendario, modos, notas, pastas
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -41,6 +41,9 @@ HERE = Path(__file__).parent
 MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro",
           "Novembro", "Dezembro"]
 COOKIE = "hub_sessao"
+LOGIN_MAX_FAILURES = 10  # erros seguidos de um mesmo aparelho, em qualquer nome...
+LOGIN_WINDOW_MINUTES = 15  # ...dentro deste tempo: o aparelho espera até o erro mais antigo sair da conta
+SIGNUPS_PER_DEVICE = 3  # pedidos de cadastro por aparelho, por hora
 
 
 def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> FastAPI:
@@ -343,6 +346,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     templates.env.globals.update(ROLES=ROLES, WEEKDAY_LABELS=WEEKDAY_LABELS, weekdays_label=weekdays_label,
                                  can_manage_routines=can_manage)
+    # pedidos de cadastro esperando: o número aparece no menu Pessoas dos administradores
+    templates.env.globals["signups_waiting"] = lambda: len(cadastro.pending(db, clock()))
 
     def me(request: Request) -> Person | None:
         # a sessão é criada ao entrar com o PIN e acaba à meia-noite (ou ao clicar em Sair)
@@ -376,9 +381,78 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
     def forbidden(request: Request, user: Person, message: str = "") -> HTMLResponse:
         return page(request, "sem-permissao.html", user, 403, message=message)
 
+    # erros de PIN e nomes que não existem, contados por aparelho (em qualquer nome), e pedidos de cadastro
+    login_limiter = cadastro.DeviceLimiter(LOGIN_MAX_FAILURES, LOGIN_WINDOW_MINUTES * 60)
+    signup_limiter = cadastro.DeviceLimiter(SIGNUPS_PER_DEVICE, 3600)
+
+    def device(request: Request) -> str:
+        return request.client.host if request.client else "?"
+
+    def login_page(request: Request, status_code: int = 200, **ctx) -> HTMLResponse:
+        return page(request, "entrar.html", None, status_code, empty=cadastro.hub_is_empty(db), **ctx)
+
+    def blocked_page(request: Request, minutes: int) -> HTMLResponse:
+        return login_page(request, 429, error=f"Muitas tentativas erradas neste aparelho. Tente de novo daqui a "
+                                              f"{minutes} minuto{'s' if minutes > 1 else ''}.")
+
+    def signed_in(now: datetime, person_id: int) -> RedirectResponse:
+        token = start_session(db, now, person_id)
+        r = RedirectResponse("/", status_code=303)
+        seconds = int((session_end(now) - now).total_seconds())
+        r.set_cookie(COOKIE, token, max_age=max(seconds, 60), httponly=True, samesite="lax")
+        return r
+
     @app.get("/entrar", response_class=HTMLResponse)
     def entrar(request: Request):
-        return page(request, "entrar.html", None, people=list_people(db))
+        return login_page(request)
+
+    @app.post("/entrar")
+    def entrar_nome(request: Request, nome: str = Form(""), pin: str = Form("")):
+        """Fase 17: a pessoa digita o nome (sem diferença de acento e maiúscula) e o PIN."""
+        minutes = login_limiter.wait_minutes(device(request))
+        if minutes:
+            return blocked_page(request, minutes)
+        now = clock()
+        person = cadastro.find_by_name(db, nome)
+        if person is None:
+            if cadastro.is_pending(db, now, nome):
+                return login_page(request, 422, nome=nome, error="Seu pedido de cadastro ainda está esperando um "
+                                                                 "administrador aprovar.")
+            login_limiter.hit(device(request))
+            return login_page(request, 422, nome=nome, unknown=True, error="Não achei ninguém com esse nome no Hub.")
+        if not person.has_pin:
+            # cadastrado por um administrador e ainda sem PIN: vai criar o PIN, como no primeiro acesso
+            return RedirectResponse(f"/entrar/{person.id}", status_code=303)
+        try:
+            verify_pin(db, now, person.id, pin)
+        except ValidationError as exc:
+            login_limiter.hit(device(request))
+            return login_page(request, 422, nome=nome, error=str(exc))
+        return signed_in(now, person.id)
+
+    @app.get("/entrar/cadastro", response_class=HTMLResponse)
+    def cadastro_form(request: Request, nome: str = ""):
+        return page(request, "cadastro.html", None, empty=cadastro.hub_is_empty(db), v={"nome": nome})
+
+    @app.post("/entrar/cadastro")
+    def cadastro_pedir(request: Request, nome: str = Form(""), iniciais: str = Form(""), pin: str = Form(""),
+                       confirmar: str = Form("")):
+        now = clock()
+        empty = cadastro.hub_is_empty(db)
+        v = {"nome": nome, "iniciais": iniciais}
+        minutes = signup_limiter.wait_minutes(device(request))
+        if minutes and not empty:
+            return page(request, "cadastro.html", None, 429, empty=empty, v=v,
+                        error="Este aparelho já mandou pedidos demais. Tente de novo mais tarde.")
+        try:
+            if empty:
+                person = cadastro.create_first_admin(db, now, nome, iniciais, pin, confirmar)
+                return signed_in(now, person.id)
+            cadastro.request_signup(db, now, nome, iniciais, pin, confirmar)
+        except ValidationError as exc:
+            return page(request, "cadastro.html", None, 422, empty=empty, v=v, error=str(exc))
+        signup_limiter.hit(device(request))
+        return page(request, "cadastro.html", None, sent=True, v=v)
 
     def pin_page(request: Request, person: Person, status_code: int = 200, error: str = "") -> HTMLResponse:
         return page(request, "pin.html", None, status_code, person=person, error=error,
@@ -396,6 +470,9 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         person = get_person(db, person_id)
         if person is None or not person.active:
             return to_login()
+        minutes = login_limiter.wait_minutes(device(request))
+        if minutes:
+            return blocked_page(request, minutes)
         now = clock()
         try:
             if person.has_pin:
@@ -403,12 +480,10 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             else:
                 create_pin(db, now, person_id, pin, confirmar)
         except ValidationError as exc:
+            if person.has_pin:
+                login_limiter.hit(device(request))
             return pin_page(request, get_person(db, person_id), 422, str(exc))
-        token = start_session(db, now, person_id)
-        r = RedirectResponse("/", status_code=303)
-        seconds = int((session_end(now) - now).total_seconds())
-        r.set_cookie(COOKIE, token, max_age=max(seconds, 60), httponly=True, samesite="lax")
-        return r
+        return signed_in(now, person_id)
 
     @app.post("/sair")
     def sair(request: Request):
@@ -1662,8 +1737,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         # quem saiu da equipe e deixou notas: o administrador só vê quantas são e pode apagar de vez
         left = [(p, notas.count_for(db, p.id)) for p in list_people(db, active_only=False) if not p.active]
         return page(request, "pessoas.html", user, status_code, people=list_people(db), palette=PALETTE,
-                    folders_of=pastas.folders_by_person(db),
-                    left_notes=[(p, n) for p, n in left if n], **ctx)
+                    folders_of=pastas.folders_by_person(db), signups=cadastro.pending(db, clock()),
+                    SIGNUP_ROLES=cadastro.SIGNUP_ROLES, left_notes=[(p, n) for p, n in left if n], **ctx)
 
     @app.get("/pessoas", response_class=HTMLResponse)
     def pessoas(request: Request):
@@ -1695,6 +1770,23 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         if not user.is_admin:
             return user, forbidden(request, user)
         return user, None
+
+    @app.post("/pessoas/pedidos/{request_id}/{acao}")
+    def pessoas_pedido(request: Request, request_id: int, acao: str, role: str = Form("analista")):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            if acao == "aprovar":
+                person = cadastro.approve(db, clock(), user, request_id, role)
+                return people_page(request, user, ok=f"{person.name} entrou na equipe como {ROLES[person.role]}. "
+                                                     "Já pode entrar com o nome e o PIN que escolheu.")
+            if acao == "recusar":
+                cadastro.reject(db, clock(), user, request_id)
+                return people_page(request, user, ok="Pedido recusado.")
+        except ValidationError as exc:
+            return people_page(request, user, 422, error=str(exc))
+        return Response(status_code=404)
 
     @app.post("/pessoas/{person_id}/acesso")
     def pessoas_acesso(request: Request, person_id: int, role: str = Form(...), admin: str = Form("")):
@@ -1793,6 +1885,9 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "demanda_excluida": f"{who} excluiu “{title}”",
         "presenca": f"{who} ficou: {detail}",
         "pessoa_criada": f"{who} cadastrou {name}",
+        "cadastro_pedido": f"{detail} pediu cadastro no Hub",
+        "cadastro_aprovado": f"{who} aprovou o cadastro de {name} ({detail})",
+        "cadastro_recusado": f"{who} recusou o pedido de cadastro de {detail}",
         "pessoa_editada": f"{who} editou o cadastro de {name}",
         "pessoa_desativada": f"{who} desativou {name}",
         "pessoa_reativada": f"{who} reativou {name}",

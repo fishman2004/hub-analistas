@@ -21,9 +21,10 @@ flowchart LR
     F13 --> F14
     F14 --> F15[15 · PDF de uma tela]
     F8 --> F16[16 · Prioridades por pasta e Assistente]
+    F2 --> F17[17 · Entrar pelo nome e pedido de cadastro]
 ```
 
-As fases 10 a 16 são a **v3**, com as sugestões do gestor: o plano completo, com as regras e as escolhas de cada fase, está em [plano-v3.md](plano-v3.md).
+A fase 17 começa a **v4** (o Hub também no celular). As fases 10 a 16 são a **v3**, com as sugestões do gestor: o plano completo, com as regras e as escolhas de cada fase, está em [plano-v3.md](plano-v3.md).
 
 | Fase | Entrega | Estado |
 |---|---|---|
@@ -44,6 +45,7 @@ As fases 10 a 16 são a **v3**, com as sugestões do gestor: o plano completo, c
 | 14 | **Modos da TV:** cada modo diz quais telas passam, em que ordem e por quanto tempo, com o som do aviso e os títulos ligados ou não. Vêm prontos o **Padrão** (o que estava em Configurações), **Início de mês** e **Fim de mês** (ligam sozinhos nos 5 primeiros e nos 5 últimos dias úteis) e, sem ligar sozinhos, Fechamento do dia, Hora das transferências, Sábado, Campanha, Reunião na sala, Apresentação dos painéis, Visita e Só o quadro. Qualquer pessoa troca o modo na página **TV da sala**; gestor e administradores criam e editam em **Modos da TV**, com pré-visualização no próprio PC. | Pronto ([roteiro de teste](roteiros/fase-14-modos.md)) |
 | 15 | **Exportar a TV em PDF:** na página **TV da sala**, "Exportar PDF" em cada tela, "a tela que está na TV agora" e "todas as telas da rotação" (uma folha por tela, e cada página do Quadro numa folha). Abre a janela de impressão do navegador (**Salvar como PDF**), com a mesma regra da TV, rodapé com data e as iniciais de quem exportou e uma versão clara para imprimir. Fica no histórico. | Pronto ([roteiro de teste](roteiros/fase-15-pdf.md)) |
 | 16 | **Prioridades por pasta e o papel Assistente:** cada pessoa é ligada às suas pastas (página **Pessoas**) e marca a prioridade do mês pasta por pasta (quem tem várias escolhe qual concluiu); o item fica feito quando todas as pastas concluíram, e a página e a TV mostram quais pastas já concluíram e quais faltam. Item com **etapas**: as **Metas do mês** (enviar ao gerente, ajustes do gerente com a supervisão, devolução da planilha, upload na 375, 353 e 399) ficam à parte, numa tabela de etapas por pasta. O gestor e os administradores cobrem qualquer pasta. Papel **Assistente** (jovem aprendiz de meio período): pega demandas, tem jornada própria no banco de horas e fica fora das prioridades. | Pronto ([roteiro de teste](roteiros/fase-16-prioridades-por-pasta.md)) |
+| 17 | **Entrar pelo nome e pedido de cadastro:** a tela Entrar pede o nome (sem diferença de acento e maiúscula) e o PIN, sem a lista da equipe. Quem não tem cadastro pede pela própria tela, já criando o PIN, e um administrador aprova ou recusa em **Pessoas** (o menu mostra quantos pedidos esperam). Limite de erros por aparelho, além do bloqueio por nome. Num Hub vazio, o primeiro cadastro vira administrador. | Pronto ([roteiro de teste](roteiros/fase-17-login.md)) |
 
 ### Ideias para depois
 

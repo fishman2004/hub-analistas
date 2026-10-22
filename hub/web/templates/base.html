@@ -24,7 +24,7 @@
       <a href="/envios" {% if active == 'envios' %}aria-current="page"{% endif %}>Envios</a>
       <a href="/notas" {% if active == 'notas' %}aria-current="page"{% endif %}>Notas</a>
       <a href="/historico" {% if active == 'historico' %}aria-current="page"{% endif %}>Histórico</a>
-      {% if user.is_admin %}<a href="/pessoas" {% if active == 'pessoas' %}aria-current="page"{% endif %}>Pessoas</a>
+      {% if user.is_admin %}{% set waiting = signups_waiting() %}<a href="/pessoas" {% if active == 'pessoas' %}aria-current="page"{% endif %}>Pessoas{% if waiting %} <span class="contador" title="Pedidos de cadastro esperando">{{ waiting }}</span>{% endif %}</a>
       <a href="/configuracoes" {% if active == 'config' %}aria-current="page"{% endif %}>Configurações</a>{% endif %}
       <a href="/tv-da-sala" {% if active == 'tv' %}aria-current="page"{% endif %}>TV da sala</a>
     </nav>

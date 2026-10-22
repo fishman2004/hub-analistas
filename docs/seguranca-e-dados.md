@@ -52,7 +52,9 @@ Nada sai da rede da empresa: sem nuvem, sem telemetria, sem terceiros.
 ## Acesso
 
 - **Nome + PIN (desde a fase 2).** Cada pessoa cria um PIN de 4 a 6 números no primeiro acesso. O Hub guarda só um resumo do PIN, com sal, e ninguém consegue ver o PIN de ninguém. A entrada vale até a meia-noite. Cinco PINs errados seguidos bloqueiam aquele nome por 5 minutos.
-- **Papéis:** analista ou gestor, mais a marcação de administrador. Só administradores gerenciam Pessoas, mudam papéis e redefinem PINs. Toda mudança de acesso fica no histórico, com quem fez.
+- **Entrar digitando o nome (fase 17).** A tela Entrar não lista mais a equipe: a pessoa digita o nome (sem diferença de acento e maiúscula) e o PIN. Além do bloqueio por nome, **um mesmo aparelho** que errar 10 vezes em 15 minutos, em qualquer nome, espera até o erro mais antigo sair da conta. Nome que não existe também conta como erro.
+- **Pedido de cadastro (fase 17).** Quem não está no Hub pede o cadastro pela tela Entrar, já criando o PIN (guardado só como resumo, como os outros). A pessoa **só entra depois que um administrador aprova** em Pessoas, como analista ou assistente; gestor e administrador só se dão depois, em Pessoas. No máximo 5 pedidos esperando, 3 por aparelho por hora, nome repetido recusado, e o pedido some em 7 dias. Pedir, aprovar e recusar ficam no histórico. Só num Hub vazio (instalação nova) o primeiro cadastro entra direto, já como administrador.
+- **Papéis:** analista, assistente ou gestor, mais a marcação de administrador. Só administradores gerenciam Pessoas, mudam papéis e redefinem PINs. Toda mudança de acesso fica no histórico, com quem fez.
 - **A TV continua sem login,** porque só mostra o que já é público, e o endereço da TV não lê nada de PIN, papel ou sessão.
 - Formulários enviados a partir de **outro site** são recusados (verificação de mesma origem).
 - O Hub fica acessível a quem estiver na rede da empresa e souber o endereço, mas só entra quem tem o PIN de alguém da equipe.

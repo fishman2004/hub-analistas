@@ -263,6 +263,17 @@ MIGRATIONS: list[tuple[int, str]] = [
         );
         ALTER TABLE priorities ADD COLUMN steps TEXT NOT NULL DEFAULT '';  -- as etapas, uma por linha
     """),
+    (12, """
+        -- v4 · entrar pelo nome: quem não tem cadastro pede, já com o PIN (só o resumo), e um
+        -- administrador aprova. Pedido não aprovado em 7 dias some.
+        CREATE TABLE signup_requests (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            initials TEXT NOT NULL,
+            pin_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

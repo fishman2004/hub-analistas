@@ -5,6 +5,7 @@
 - **Depende do PC reserva ligado.** Ele abre o Hub com o Windows e impede a suspensão e o descanso de tela. Se ele desligar, o app dos analistas para e a TV mostra "sem atualização".
 - **Firewall:** os outros PCs precisam alcançar a porta 8800 do PC reserva. Se o Windows exigir administrador, a TI precisa criar uma regra (ver [primeiro-uso.md](primeiro-uso.md)).
 - **PIN curto:** protege contra alguém agir no nome de outra pessoa pelo app, não contra quem tiver acesso ao arquivo do banco no PC reserva. Até cada pessoa criar o próprio PIN, outra pessoa poderia criá-lo no lugar dela (o administrador redefine se acontecer).
+- **Entrar pelo nome (fase 17):** o limite por aparelho usa o endereço do aparelho na rede e fica só na memória (reiniciar o Hub zera a contagem). A mensagem "Não achei ninguém com esse nome" mostra se um nome existe ou não, como a lista de nomes da tela antiga já mostrava. Quem pedir cadastro com o nome de outra pessoa só entra se um administrador aprovar: confira com a pessoa antes.
 - **A sessão acaba à meia-noite:** quem deixa o app aberto de um dia para o outro precisa digitar o PIN de novo.
 - **Atualização a cada 5 s na TV e 10 s no app**, não instantânea.
 - **Mover cartões é por botões** (Começar, Concluir, Voltar). Arrastar e soltar fica para quando a equipe pedir.
