@@ -26,6 +26,7 @@
     {% for key, label in (('mes', 'Mês'), ('semana', 'Semana'), ('lista', 'Lista')) %}
     <a href="/calendario?visao={{ key }}&data={{ ref.isoformat() }}{{ filtro_qs() }}" {% if key == visao %}aria-current="page"{% endif %}>{{ label }}</a>
     {% endfor %}
+    <a href="/calendario?visao=rotinas&data={{ ref.isoformat() }}">Rotinas do mês</a>
   </nav>
   <nav class="cal-setas" aria-label="Período">
     <a class="botao discreto" href="/calendario?visao={{ visao }}&data={{ prev.isoformat() }}{{ filtro_qs() }}" title="Anterior">◀</a>

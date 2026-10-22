@@ -23,10 +23,14 @@ flowchart LR
     F8 --> F16[16 · Prioridades por pasta e Assistente]
     F2 --> F17[17 · Entrar pelo nome e pedido de cadastro]
     F17 --> F18[18 · Hub no celular]
+    F13 --> F19[19 · Rotinas do mês]
+    F7 --> F20[20 · Trilha do dia]
+    F19 --> F20
+    F20 --> F21[21 · Animações e UI/UX]
     F5 --> F22[22 · Base 8081 do Google Drive]
 ```
 
-A fase 17 começa a **v4** (o Hub também no celular). As fases 10 a 16 são a **v3**, com as sugestões do gestor: o plano completo, com as regras e as escolhas de cada fase, está em [plano-v3.md](plano-v3.md).
+As fases 19 a 22 são a **v5** (o calendário de rotinas e a trilha do dia do gestor, animações e a 8081 automática do Google Drive): o plano está em [plano-v5.md](plano-v5.md). A fase 17 começa a **v4** (o Hub também no celular). As fases 10 a 16 são a **v3**, com as sugestões do gestor: o plano completo, com as regras e as escolhas de cada fase, está em [plano-v3.md](plano-v3.md).
 
 | Fase | Entrega | Estado |
 |---|---|---|
@@ -49,9 +53,14 @@ A fase 17 começa a **v4** (o Hub também no celular). As fases 10 a 16 são a *
 | 16 | **Prioridades por pasta e o papel Assistente:** cada pessoa é ligada às suas pastas (página **Pessoas**) e marca a prioridade do mês pasta por pasta (quem tem várias escolhe qual concluiu); o item fica feito quando todas as pastas concluíram, e a página e a TV mostram quais pastas já concluíram e quais faltam. Item com **etapas**: as **Metas do mês** (enviar ao gerente, ajustes do gerente com a supervisão, devolução da planilha, upload na 375, 353 e 399) ficam à parte, numa tabela de etapas por pasta. O gestor e os administradores cobrem qualquer pasta. Papel **Assistente** (jovem aprendiz de meio período): pega demandas, tem jornada própria no banco de horas e fica fora das prioridades. | Pronto ([roteiro de teste](roteiros/fase-16-prioridades-por-pasta.md)) |
 | 17 | **Entrar pelo nome e pedido de cadastro:** a tela Entrar pede o nome (sem diferença de acento e maiúscula) e o PIN, sem a lista da equipe. Quem não tem cadastro pede pela própria tela, já criando o PIN, e um administrador aprova ou recusa em **Pessoas** (o menu mostra quantos pedidos esperam). Limite de erros por aparelho, além do bloqueio por nome. Num Hub vazio, o primeiro cadastro vira administrador. | Pronto ([roteiro de teste](roteiros/fase-17-login.md)) |
 | 18 | **Hub no celular:** pela **Wi-Fi da empresa**, sem internet. No celular, o menu fecha num botão **☰ Menu**, a presença fica em 2×2, tabelas largas rolam de lado e textos compridos quebram a linha. A página **No celular** mostra o endereço do PC da sala e um **QR Code** para apontar a câmera, e o Hub ganha ícone para **Adicionar à tela inicial** (Android e iPhone). | Pronto ([roteiro de teste](roteiros/fase-18-celular.md)) |
+| 19 | **Rotinas do mês:** o calendário de rotinas do gestor. Cada rotina tem uma categoria com cor (Acompanhamentos, Metas, Comissionamento, APEX...) e uma regra (dias da semana, N-ésimo dia útil, N-ésimo dia útil antes do fim, dia fixo ou uma data), com os dias calculados sem os feriados. No Calendário, a visão **Rotinas do mês** igual ao modelo, com "feita" no dia de hoje; o cadastro e as categorias para o gestor e os administradores, e as rotinas do modelo com um clique. Na TV, a tela **Rotinas do mês**: o mês inteiro e, depois, um **zoom no dia de hoje**, com o que já foi feito e o próximo dia útil. | Pronto ([roteiro de teste](roteiros/fase-19-rotinas-do-mes.md)) |
+| 20 | **Trilha do dia:** os horários de cada analista no dia (como as rotinas semanais do gestor), em blocos com ícone e cor, montados por cada um (ou pelo gestor), com a trilha do modelo e "copiar de outra pessoa". Cada bloco se acende quando é marcado: **verde** no horário, **âmbar** depois e a **luz negativa** vermelha quando o horário passa sem marcar. Um bloco pode ser ligado a uma rotina com aviso e acende sozinho quando o cartão é concluído. No Quadro, a faixa **Minha trilha de hoje**; no menu, **Trilha**, com a equipe e o resumo dos últimos 5 dias úteis. Na TV, a tela **Trilhas do dia**: uma linha por analista no eixo das horas, com uma luz que varre do começo do dia até agora e o bloco de agora por extenso. | Pronto ([roteiro de teste](roteiros/fase-20-trilha.md)) |
+| 21 | **Animações e UI/UX:** no app, o menu em 5 grupos (Dia a dia, Planejamento, Dados, TV e celular, Gestão) com Quadro e Trilha à mão, o **Ir para…** (Ctrl+K), a troca de página deslizando, os avisos de sucesso que somem sozinhos, o botão que mostra que está enviando (sem envio duplo), o **quadro vivo** (o cartão que chegou ou mudou brilha; o concluído ganha um ✓), números que contam e barras que crescem. Na TV, a troca de tela com um leve zoom, os itens em cascata, as barras dos painéis crescendo e as porcentagens contando, a demanda concluída comemorando, a presença piscando quando muda e o fundo que anda devagar. Nada disso com "menos movimento" ligado no Windows. | Pronto ([roteiro de teste](roteiros/fase-21-animacoes.md)) |
 | 22 | **Base 8081 automática do Google Drive:** a automação do gestor salva a 8081 no Drive e o Hub baixa sozinho, a cada 10 minutos, por uma **ponte do Apps Script** que só entrega o arquivo para quem tem a chave (o arquivo no Drive continua fechado). O Hub confere a planilha antes de trocar a da TV, guarda a hora em que ela foi gerada e mostra em **Painéis** a última verificação, o último download e o último problema, com **Baixar agora**. | Pronto ([roteiro de teste](roteiros/fase-22-drive-8081.md), [passo a passo](drive-8081.md)) |
 
 ### Ideias para depois
+
+- **Importar as rotinas do mês de uma planilha**, se os analistas mandarem as demandas num Excel.
 
 - **Modos da TV por pasta** (só a pasta B nos painéis, para a reunião daquela gerência) e com **layout diferente** (por exemplo, a faixa de presença menor).
 - **Exportar o calendário** em `.ics` para o Outlook.

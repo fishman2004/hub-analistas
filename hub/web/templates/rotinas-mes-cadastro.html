@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% set active = 'calendario' %}
+{% block title %}Cadastrar rotinas do mês · Hub dos Analistas{% endblock %}
+{% block main %}
+<div class="barra">
+  <h1>Rotinas do mês</h1>
+  <div class="acoes">
+    <a class="botao discreto" href="/calendario?visao=rotinas">Ver o calendário de rotinas</a>
+    {% if can_manage %}
+    <form method="post" action="/calendario/rotinas-do-mes/sugeridas">
+      <button class="discreto" title="As rotinas do calendário do gestor (Acompanhamentos, Metas, Comissionamento...). Dá para mudar ou desativar depois.">Criar as rotinas do modelo</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+<p class="ajuda">O plano do que a equipe acompanha em cada dia, como o calendário de rotinas do gestor. Os dias são calculados pela regra: dia útil é de segunda a sexta, sem os feriados do Calendário.{% if not can_manage %} Só o gestor e os administradores mudam esta lista.{% endif %}</p>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+
+{% if routines %}
+<div class="tabela-rolagem">
+<table class="tabela">
+  <thead><tr><th>Categoria</th><th>Rotina</th><th>Quando</th><th>Responsável</th>{% if can_manage %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for r in routines %}
+  {% set c = cats[r.category_id] %}
+  <tr class="{{ '' if r.active else 'desativada' }}">
+    <td class="sem-quebra"><span class="rm-chip" style="--cat: {{ c.color }}; --cat-texto: {{ c.text_color }}">{{ c.name }}</span></td>
+    <td>{{ r.title }}{% if r.highlight %} <span class="etiqueta rm-etiqueta-destaque">destaque</span>{% endif %}{% if not r.active %} <span class="etiqueta">Desativada</span>{% endif %}</td>
+    <td>{{ r.rule_text }}</td>
+    <td class="sem-quebra">{% if r.owner_id in by_id %}{% set p = by_id[r.owner_id] %}<span class="bolinha" style="--cor: {{ p.color }}">{{ p.initials }}</span> {{ p.name }}{% else %}<span class="ajuda">—</span>{% endif %}</td>
+    {% if can_manage %}
+    <td class="acoes-linha">
+      <a class="botao discreto" href="/calendario/rotinas-do-mes?editar={{ r.id }}#form">Editar</a>
+      <form method="post" action="/calendario/rotinas-do-mes/{{ r.id }}/ativa">
+        <input type="hidden" name="active" value="{{ '0' if r.active else '1' }}">
+        <button class="{{ 'perigo' if r.active else 'discreto' }}">{{ 'Desativar' if r.active else 'Reativar' }}</button>
+      </form>
+    </td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="vazio">Nenhuma rotina do mês cadastrada.{% if can_manage %} Comece com "Criar as rotinas do modelo" ou pelo formulário abaixo.{% endif %}</p>
+{% endif %}
+
+{% if can_manage %}
+<form class="ficha cartao-form" id="form" method="post" action="/calendario/rotinas-do-mes{{ '/' ~ v.id if v.id else '' }}">
+  <h2>{{ 'Editar rotina do mês' if v.id else 'Nova rotina do mês' }}</h2>
+  <div class="linha">
+    <div>
+      <label for="category_id">Categoria</label>
+      <select id="category_id" name="category_id" required>
+        {% for c in categories if c.active or c.id|string == v.category_id|string %}<option value="{{ c.id }}" {% if c.id|string == v.category_id|string %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="owner_id">Responsável <span class="opcional">(opcional)</span></label>
+      <select id="owner_id" name="owner_id">
+        <option value="">Ninguém em especial</option>
+        {% for p in team %}<option value="{{ p.id }}" {% if p.id|string == v.owner_id|string %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  <div>
+    <label for="title">O que é</label>
+    <input type="text" id="title" name="title" value="{{ v.title }}" maxlength="120" required placeholder="Desempenho Pasta Diário">
+  </div>
+  <fieldset class="escolhas rm-regra">
+    <legend>Quando acontece</legend>
+    {% for key, label in RULES.items() %}
+    <label class="check"><input type="radio" name="tipo" value="{{ key }}" {% if v.tipo == key %}checked{% endif %}> {{ label }}</label>
+    {% endfor %}
+    <div class="rm-regra-campos">
+      <div class="rm-campo" data-tipo="semana">
+        {% for label in WEEKDAYS[:6] %}<label class="check"><input type="checkbox" name="dias" value="{{ loop.index0 }}" {% if loop.index0 in v.dias %}checked{% endif %}> {{ label }}</label>{% endfor %}
+      </div>
+      <div class="rm-campo" data-tipo="dia_util dia_util_fim">
+        <label for="n">Qual dia útil <span class="opcional">(1 = o primeiro; antes do fim, 1 = o último)</span></label>
+        <input type="number" id="n" name="n" min="1" max="23" value="{{ v.n }}" class="curto">
+      </div>
+      <div class="rm-campo" data-tipo="dia">
+        <label for="dia">Dia do mês <span class="opcional">(caindo em fim de semana ou feriado, vai para o próximo dia útil)</span></label>
+        <input type="number" id="dia" name="dia" min="1" max="31" value="{{ v.dia }}" class="curto">
+      </div>
+      <div class="rm-campo" data-tipo="data">
+        <label for="data">Data</label>
+        <input type="date" id="data" name="data" value="{{ v.data }}">
+      </div>
+    </div>
+  </fieldset>
+  <label class="check"><input type="checkbox" name="highlight" value="1" {% if v.highlight %}checked{% endif %}> Destaque (em vermelho, como as críticas do modelo)</label>
+  <div class="acoes">
+    <button>Salvar</button>
+    {% if v.id %}<a class="botao discreto" href="/calendario/rotinas-do-mes">Cancelar</a>{% endif %}
+  </div>
+</form>
+
+<section class="ficha cartao-form rm-categorias" aria-labelledby="cat-titulo">
+  <h2 id="cat-titulo">Categorias</h2>
+  <p class="ajuda">A cor de cada categoria aparece no calendário e na TV. O texto fica claro ou escuro sozinho, conforme a cor.</p>
+  <ul class="rm-cat-lista">
+    {% for c in categories if c.active %}
+    <li>
+      <form method="post" action="/calendario/rotinas-do-mes/categorias/{{ c.id }}" class="ficha-inline">
+        <input type="color" name="cor" value="{{ c.color }}" aria-label="Cor de {{ c.name }}">
+        <input type="text" name="nome" value="{{ c.name }}" maxlength="40" aria-label="Nome da categoria">
+        <span class="rm-chip" style="--cat: {{ c.color }}; --cat-texto: {{ c.text_color }}">{{ c.name }}</span>
+        <button class="discreto" name="acao" value="salvar">Salvar</button>
+        <button class="perigo" name="acao" value="remover">Remover</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="/calendario/rotinas-do-mes/categorias" class="ficha-inline">
+    <input type="color" name="cor" value="#a9d8e6" aria-label="Cor da nova categoria">
+    <input type="text" name="nome" maxlength="40" placeholder="Nova categoria" aria-label="Nome da nova categoria" required>
+    <button>Criar categoria</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+// mostra só o campo da regra escolhida (sem JavaScript, todos aparecem e o servidor usa o da regra marcada)
+(function () {
+  const campos = document.querySelectorAll(".rm-campo");
+  function atualizar() {
+    const marcada = document.querySelector('input[name="tipo"]:checked');
+    for (const c of campos) c.hidden = !marcada || !c.dataset.tipo.split(" ").includes(marcada.value);
+  }
+  for (const r of document.querySelectorAll('input[name="tipo"]')) r.addEventListener("change", atualizar);
+  atualizar();
+})();
+</script>
+{% endblock %}

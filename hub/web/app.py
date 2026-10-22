@@ -18,7 +18,7 @@ from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, cadastro, calendario, celular, drive, modos, notas, pastas
+from .. import anexos, cadastro, calendario, celular, drive, modos, notas, pastas, rotinas_mes, trilha
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -378,6 +378,9 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             "today": now.date(),
             "show_all": show_all,
             "clips": anexos.counts(db, "demanda"),  # 📎 no cartão (só no app, nunca na TV)
+            # trilha do dia (fase 20): a faixa "Minha trilha de hoje" em cima do quadro
+            "trail": [] if show_all else trilha.my_trail(db, user.id, now),
+            "trail_counts": trilha.counts(trilha.my_trail(db, user.id, now)) if not show_all else {},
         }
 
     def forbidden(request: Request, user: Person, message: str = "") -> HTMLResponse:
@@ -1133,6 +1136,159 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             return routines_page(request, user, 422, error=str(exc))
         return RedirectResponse("/rotinas", status_code=303)
 
+    # ---------- trilha do dia (fase 20) ----------
+
+    def trail_page(request: Request, user: Person, status_code: int = 200, **ctx) -> HTMLResponse:
+        now = clock()
+        people = {p.id: p for p in list_people(db)}
+        away = calendario.absent_today(db, now.date())
+        trails = {pid: steps for pid, steps in trilha.trails_on(db, now.date(), now).items() if pid in people}
+        order = sorted(trails, key=lambda pid: (pid != user.id, people[pid].name.lower()))
+        summary = trilha.week_summary(db, now)
+        if not trilha.can_see_summary(user):
+            summary = [x for x in summary if x["pessoa"].id == user.id]
+        return page(request, "trilha.html", user, status_code, trails=[(people[pid], trails[pid]) for pid in order],
+                    away=away, counts=trilha.counts, summary=summary, can_edit=trilha.can_edit, now=now,
+                    has_mine=bool(trilha.list_blocks(db, user.id)), **ctx)
+
+    @app.get("/trilha", response_class=HTMLResponse)
+    def trilha_ver(request: Request, ok: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        return trail_page(request, user, ok=ok)
+
+    def safe_back(volta: str, fallback: str) -> str:
+        return volta if volta in ("/", "/trilha") else fallback
+
+    @app.post("/trilha/{block_id}/feito")
+    def trilha_feito(request: Request, block_id: int, feito: str = Form("1"), volta: str = Form("/trilha")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        try:
+            trilha.mark(db, clock(), user, block_id, feito == "1")
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError as exc:
+            return trail_page(request, user, 422, error=str(exc))
+        back = safe_back(volta, "/trilha")
+        return RedirectResponse(back + ("#minha-trilha" if back == "/" else ""), status_code=303)
+
+    def block_values(b=None, person_id: int | None = None) -> dict:
+        if b is None:
+            return {"id": "", "person_id": person_id, "weekdays": [0, 1, 2, 3, 4], "starts_at": "", "ends_at": "",
+                    "title": "", "details": "", "icon": "lista", "color": "", "kind": "tarefa", "routine_id": ""}
+        return {"id": b.id, "person_id": b.person_id, "weekdays": list(b.weekdays), "starts_at": b.starts_at,
+                "ends_at": b.ends_at, "title": b.title, "details": b.details, "icon": b.icon, "color": b.color,
+                "kind": b.kind, "routine_id": b.routine_id or ""}
+
+    def build_page(request: Request, user: Person, person: Person, status_code: int = 200, v: dict | None = None,
+                   **ctx) -> HTMLResponse:
+        people = list_people(db)
+        blocks = trilha.list_blocks(db, person.id)
+        return page(request, "trilha-montar.html", user, status_code, person=person, blocks=blocks,
+                    v=v or block_values(person_id=person.id), WEEKDAYS=trilha.WEEKDAYS, ICONS=trilha.ICONS,
+                    COLORS=trilha.COLORS, KINDS=trilha.KINDS, routines=[r for r in list_routines(db) if r.active],
+                    choices=[p for p in people if trilha.can_edit(user, p.id)],
+                    sources=[p for p in people if p.id != person.id and trilha.list_blocks(db, p.id)],
+                    weekday_label=weekdays_label, **ctx)
+
+    def build_target(request: Request, user: Person, raw) -> Person | Response:
+        person = get_person(db, int(raw)) if str(raw).isdigit() else user
+        if person is None:
+            return RedirectResponse("/trilha/montar", status_code=303)
+        if not trilha.can_edit(user, person.id):
+            return forbidden(request, user, "Monta a trilha a própria pessoa, o gestor e os administradores.")
+        return person
+
+    def back_to_build(person_id: int, message: str) -> RedirectResponse:
+        return RedirectResponse(f"/trilha/montar?pessoa={person_id}&ok={quote(message)}", status_code=303)
+
+    @app.get("/trilha/montar", response_class=HTMLResponse)
+    def trilha_montar(request: Request, pessoa: str = "", editar: str = "", ok: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        person = build_target(request, user, pessoa)
+        if not isinstance(person, Person):
+            return person
+        b = trilha.get_block(db, int(editar)) if editar.isdigit() else None
+        return build_page(request, user, person, v=block_values(b, person.id) if b and b.person_id == person.id
+                          else None, ok=ok)
+
+    async def save_trail_block(request: Request, block_id: int | None):
+        user = me(request)
+        if user is None:
+            return to_login()
+        form = await request.form()
+        person = build_target(request, user, form.get("pessoa", ""))
+        if not isinstance(person, Person):
+            return person
+        routine = str(form.get("routine_id", ""))
+        v = {"id": block_id or "", "person_id": person.id,
+             "weekdays": [int(d) for d in form.getlist("weekdays") if str(d).isdigit()],
+             **{k: str(form.get(k, "")) for k in ("starts_at", "ends_at", "title", "details", "icon", "color", "kind")},
+             "routine_id": routine}
+        try:
+            trilha.save_block(db, clock(), user, block_id, person_id=person.id, weekdays=v["weekdays"],
+                              starts_at=v["starts_at"], ends_at=v["ends_at"], title=v["title"], details=v["details"],
+                              icon=v["icon"], color=v["color"], kind=v["kind"],
+                              routine_id=int(routine) if routine.isdigit() else None)
+        except ValidationError as exc:
+            return build_page(request, user, person, 422, v=v, error=str(exc))
+        return back_to_build(person.id, "Bloco salvo.")
+
+    @app.post("/trilha/montar")
+    async def trilha_bloco_criar(request: Request):
+        return await save_trail_block(request, None)
+
+    @app.post("/trilha/montar/modelo")
+    def trilha_modelo(request: Request, pessoa: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        person = build_target(request, user, pessoa)
+        if not isinstance(person, Person):
+            return person
+        try:
+            n = trilha.create_suggested(db, clock(), user, person.id)
+        except ValidationError as exc:
+            return build_page(request, user, person, 422, error=str(exc))
+        return back_to_build(person.id, f"Trilha do modelo criada ({n} blocos). Ajuste o que for diferente.")
+
+    @app.post("/trilha/montar/copiar")
+    def trilha_copiar(request: Request, pessoa: str = Form(""), de: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        person = build_target(request, user, pessoa)
+        if not isinstance(person, Person):
+            return person
+        try:
+            n = trilha.copy_trail(db, clock(), user, int(de) if de.isdigit() else 0, person.id)
+        except ValidationError as exc:
+            return build_page(request, user, person, 422, error=str(exc))
+        return back_to_build(person.id, f"{n} blocos copiados.")
+
+    @app.post("/trilha/montar/{block_id}")
+    async def trilha_bloco_salvar(request: Request, block_id: int):
+        return await save_trail_block(request, block_id)
+
+    @app.post("/trilha/montar/{block_id}/tirar")
+    def trilha_bloco_tirar(request: Request, block_id: int):
+        user = me(request)
+        if user is None:
+            return to_login()
+        b = trilha.get_block(db, block_id)
+        try:
+            trilha.remove_block(db, clock(), user, block_id)
+        except PermissionError as exc:
+            return forbidden(request, user, str(exc))
+        except ValidationError:
+            return RedirectResponse("/trilha/montar", status_code=303)
+        return back_to_build(b.person_id, f"“{b.title}” saiu da trilha.")
+
     # ---------- calendário (fase 13) ----------
 
     def cal_day(text: str) -> date | None:
@@ -1186,7 +1342,148 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         user = me(request)
         if user is None:
             return to_login()
+        if visao == "rotinas":
+            return month_routines_page(request, user, dia=data, ok=ok)
         return calendar_page(request, user, visao=visao, dia=data, filtros=cal_filters(request), ok=ok)
+
+    # ---------- rotinas do mês (fase 19): o calendário de rotinas do gestor ----------
+
+    def month_routines_page(request: Request, user: Person, status_code: int = 200, dia: str = "",
+                            **ctx) -> HTMLResponse:
+        today = clock().date()
+        ref = (cal_day(dia) or today).replace(day=1)
+        weeks = rotinas_mes.month_weeks(ref.year, ref.month)
+        items = rotinas_mes.by_day(db, weeks[0][0], max(weeks[-1][-1], today))
+        hol = calendario.holidays(db)
+        last = date(ref.year, ref.month, monthrange(ref.year, ref.month)[1])
+        return page(request, "rotinas-mes.html", user, status_code, weeks=weeks, items=items, today=today,
+                    ref=ref, month=ref.month, title=f"{MONTHS[ref.month - 1]} de {ref.year}",
+                    prev=(ref - timedelta(days=1)).replace(day=1), nxt=last + timedelta(days=1),
+                    holidays=hol.between(weeks[0][0], weeks[-1][-1]), today_items=items.get(today, []),
+                    categories=rotinas_mes.list_categories(db, active_only=True),
+                    by_id={p.id: p for p in list_people(db, active_only=False)},
+                    can_manage=rotinas_mes.can_manage(user), **ctx)
+
+    def month_routine_values(r=None) -> dict:
+        if r is None:
+            return {"id": "", "category_id": "", "title": "", "tipo": "semana", "dias": [], "n": "", "dia": "",
+                    "data": "", "highlight": False, "owner_id": ""}
+        return {"id": r.id, "category_id": r.category_id, "title": r.title, "tipo": r.rule["tipo"],
+                "dias": r.rule.get("dias", []), "n": str(r.rule.get("n", "")), "dia": str(r.rule.get("dia", "")),
+                "data": r.rule.get("data", ""), "highlight": r.highlight, "owner_id": r.owner_id or ""}
+
+    def month_routines_admin(request: Request, user: Person, status_code: int = 200, v: dict | None = None,
+                             **ctx) -> HTMLResponse:
+        routines = rotinas_mes.list_routines(db)
+        categories = rotinas_mes.list_categories(db)
+        people = list_people(db, active_only=False)
+        return page(request, "rotinas-mes-cadastro.html", user, status_code, routines=routines,
+                    categories=categories, cats={c.id: c for c in categories}, v=v or month_routine_values(),
+                    team=[p for p in people if p.active or (v and str(p.id) == str(v.get("owner_id")))],
+                    by_id={p.id: p for p in people}, RULES=rotinas_mes.RULES, WEEKDAYS=rotinas_mes.WEEKDAYS,
+                    can_manage=rotinas_mes.can_manage(user), **ctx)
+
+    def back_to_month_admin(message: str) -> RedirectResponse:
+        return RedirectResponse(f"/calendario/rotinas-do-mes?ok={quote(message)}", status_code=303)
+
+    def month_manager(request: Request) -> tuple[Person | None, Response | None]:
+        user = me(request)
+        if user is None:
+            return None, to_login()
+        if not rotinas_mes.can_manage(user):
+            return user, forbidden(request, user, "Só o gestor e os administradores mudam as rotinas do mês.")
+        return user, None
+
+    @app.get("/calendario/rotinas-do-mes", response_class=HTMLResponse)
+    def rotinas_mes_cadastro(request: Request, editar: str = "", ok: str = ""):
+        user = me(request)
+        if user is None:
+            return to_login()
+        r = rotinas_mes.get_routine(db, int(editar)) if editar.isdigit() else None
+        return month_routines_admin(request, user, v=month_routine_values(r), ok=ok)
+
+    async def save_month_routine(request: Request, routine_id: int | None):
+        user, refused = month_manager(request)
+        if refused:
+            return refused
+        form = await request.form()
+        v = {"id": routine_id or "", "category_id": str(form.get("category_id", "")), "title": str(form.get("title", "")),
+             "tipo": str(form.get("tipo", "")), "dias": [int(d) for d in form.getlist("dias") if str(d).isdigit()],
+             "n": str(form.get("n", "")), "dia": str(form.get("dia", "")), "data": str(form.get("data", "")),
+             "highlight": form.get("highlight") == "1", "owner_id": str(form.get("owner_id", ""))}
+        try:
+            rule = rotinas_mes.parse_rule(v["tipo"], [str(d) for d in v["dias"]], v["n"], v["dia"], v["data"])
+            rotinas_mes.save_routine(db, clock(), user, routine_id, category_id=int(v["category_id"] or 0),
+                                     title=v["title"], rule=rule, highlight=v["highlight"],
+                                     owner_id=int(v["owner_id"]) if v["owner_id"].isdigit() else None)
+        except ValidationError as exc:
+            return month_routines_admin(request, user, 422, v=v, error=str(exc))
+        return back_to_month_admin("Rotina do mês salva.")
+
+    @app.post("/calendario/rotinas-do-mes")
+    async def rotinas_mes_criar(request: Request):
+        return await save_month_routine(request, None)
+
+    @app.post("/calendario/rotinas-do-mes/sugeridas")
+    def rotinas_mes_sugeridas(request: Request):
+        user, refused = month_manager(request)
+        if refused:
+            return refused
+        n = rotinas_mes.create_suggested(db, clock(), user)
+        return back_to_month_admin(f"{n} rotina{'s' if n != 1 else ''} do modelo criada{'s' if n != 1 else ''}."
+                                   if n else "As rotinas do modelo já existem.")
+
+    @app.post("/calendario/rotinas-do-mes/categorias")
+    def rotinas_mes_categoria_criar(request: Request, nome: str = Form(""), cor: str = Form("")):
+        user, refused = month_manager(request)
+        if refused:
+            return refused
+        try:
+            rotinas_mes.save_category(db, clock(), user, None, nome, cor)
+        except ValidationError as exc:
+            return month_routines_admin(request, user, 422, error=str(exc))
+        return back_to_month_admin("Categoria criada.")
+
+    @app.post("/calendario/rotinas-do-mes/categorias/{category_id}")
+    def rotinas_mes_categoria_salvar(request: Request, category_id: int, nome: str = Form(""), cor: str = Form(""),
+                                     acao: str = Form("salvar")):
+        user, refused = month_manager(request)
+        if refused:
+            return refused
+        try:
+            if acao == "remover":
+                rotinas_mes.remove_category(db, clock(), user, category_id)
+            else:
+                rotinas_mes.save_category(db, clock(), user, category_id, nome, cor)
+        except ValidationError as exc:
+            return month_routines_admin(request, user, 422, error=str(exc))
+        return back_to_month_admin("Categoria removida." if acao == "remover" else "Categoria salva.")
+
+    @app.post("/calendario/rotinas-do-mes/{routine_id}")
+    async def rotinas_mes_salvar(request: Request, routine_id: int):
+        return await save_month_routine(request, routine_id)
+
+    @app.post("/calendario/rotinas-do-mes/{routine_id}/ativa")
+    def rotinas_mes_ativa(request: Request, routine_id: int, active: str = Form("1")):
+        user, refused = month_manager(request)
+        if refused:
+            return refused
+        try:
+            rotinas_mes.set_active(db, clock(), user, routine_id, active == "1")
+        except ValidationError as exc:
+            return month_routines_admin(request, user, 422, error=str(exc))
+        return back_to_month_admin("Rotina reativada." if active == "1" else "Rotina desativada.")
+
+    @app.post("/calendario/rotinas-do-mes/{routine_id}/feita")
+    def rotinas_mes_feita(request: Request, routine_id: int, feita: str = Form("1")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        try:
+            rotinas_mes.mark_done(db, clock(), user, routine_id, feita == "1")
+        except ValidationError as exc:
+            return month_routines_page(request, user, 422, error=str(exc))
+        return RedirectResponse("/calendario?visao=rotinas#hoje", status_code=303)
 
     def back_to_calendar(message: str = "", day: date | None = None) -> RedirectResponse:
         qs = {k: v for k, v in (("data", day.isoformat() if day else ""), ("ok", message)) if v}

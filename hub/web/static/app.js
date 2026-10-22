@@ -1,5 +1,6 @@
 // Quadro do analista: recarrega o trecho do quadro (presença + colunas) a cada 10 s.
 // Fica só nesta página: nos formulários nada se atualiza sozinho, para não apagar o que se digita.
+// Fase 21: o cartão que chegou ou mudou de coluna (e o bloco da trilha que acendeu) brilha um instante (hub.js).
 (function () {
   "use strict";
   const quadro = document.getElementById("quadro");
@@ -12,7 +13,11 @@
       if (!r.ok) return;
       const html = await r.text();
       // só troca se algo mudou: trocar à toa tira o foco e pode engolir um clique
-      if (html !== atual) quadro.innerHTML = html;  // HTML do próprio servidor, já escapado
+      if (html !== atual) {
+        const antes = window.HubVivo ? window.HubVivo.foto(quadro) : null;
+        quadro.innerHTML = html;  // HTML do próprio servidor, já escapado
+        if (window.HubVivo) window.HubVivo.atualizou(quadro, antes);
+      }
       atual = html;
     } catch (e) {
       // sem rede: mantém o que está na tela e tenta de novo no próximo ciclo

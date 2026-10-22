@@ -302,6 +302,56 @@ Ideia que chegou ao Kayo (21/10/2026): uma cópia do Hub feita por outra pessoa 
 - **Atalho, não app instalado:** o manifesto e os ícones deixam o Hub com nome e ícone na tela inicial. O "app instalado" completo (tela cheia, offline) exige HTTPS, que a rede interna não tem; fica como está.
 - **A TV não muda:** ela não usa o `base.html` e continua igual.
 
+## Rotinas do mês: um plano calculado, à parte das rotinas com aviso (fase 19)
+
+O calendário de rotinas do gestor não é compromisso (não tem horário) nem rotina com aviso (que vira cartão no Quadro: com 5 a 8 itens por dia, o quadro lotaria). Ganhou um cadastro próprio (migração 13) em que cada rotina guarda **uma regra**, e os dias são calculados na hora, como o resto do Hub: nenhum item por dia é gravado, e um feriado novo no Calendário já empurra as rotinas.
+
+- **Regras:** dias da semana (nunca em feriado); o N-ésimo dia útil do mês; o N-ésimo dia útil contando do fim (1 = o último); um dia fixo do mês; uma data só. Dia útil = segunda a sexta sem os feriados ligados (o mesmo cálculo das metas e dos modos). Com isso o print de maio de 2026 do gestor sai igual: o 1º de maio é feriado e o 1º dia útil cai no dia 4.
+- **Ordem dentro do dia:** primeiro as que acontecem uma vez no mês (as que não podem passar), depois as da semana; em cada grupo, a ordem do cadastro.
+- **Categorias** com cor, editáveis; o texto sobre a cor (claro ou escuro) é calculado pela luminância, para o amarelo e o azul-marinho do modelo ficarem legíveis. **Destaque** pinta de vermelho, como as críticas do modelo. Remover uma categoria só esconde (e só quando nenhuma rotina ativa a usa).
+- **Feita no dia:** guarda quem marcou primeiro e quando. Dá vida ao zoom da TV, que mostra o que já foi feito e o que falta.
+- **Na TV**, o mês por 40% do tempo da tela (de 3 a 10 s) e depois o zoom: o quadradinho de hoje cresce (um `transform` no mês inteiro, leve para o PC da sala) e a lista do dia aparece por cima. No mês, o que não cabe num dia vira "+ N". As marcas do MSL do modelo ficaram fora do repositório público.
+
+### Em aberto (o Kayo confirma)
+
+- Padrão: cadastram o gestor e os administradores; qualquer pessoa marca feita, só no dia de hoje.
+- Padrão: dia fixo que cai no fim de semana ou feriado vai para o próximo dia útil.
+- Padrão: a semana das rotinas do modelo (Blacklist seg e qui; APEX e MSL seg, qua e sex; Campanhas e Gestão de equipe ter e qui; Desempenho e Acompanhamento do representante todo dia) e os dias úteis tirados do print de maio.
+- Padrão: a tela fica 25 s na rotação (mês e dia).
+
+## Trilha do dia: horários por pessoa, com a situação calculada (fase 20)
+
+A trilha do modelo do gestor é a semana de cada analista em blocos de horário. Ela ganhou duas tabelas (migração 14): os blocos de cada pessoa (dias da semana, início, fim, nome, o que fazer, ícone, cor, tipo e, se quiser, uma rotina ligada) e as marcas do dia. Como o resto do Hub, nada é agendado: a situação de cada bloco é calculada na hora, pelo relógio.
+
+- **Situações:** ainda não começou (apagado), agora (pulsando), feito no horário (verde, aceso), feito depois do fim (âmbar) e **não feito** quando o fim passa sem marca (a "luz negativa" vermelha). Marcar antes do horário também conta como feito no horário. O intervalo não é marcado.
+- **Rotina ligada:** um bloco pode apontar para uma rotina com aviso (fase 7). Quando o cartão dela é concluído no Quadro, o bloco acende sozinho, sem marcar duas vezes.
+- **Sem sobreposição:** dois blocos da mesma pessoa no mesmo dia da semana não podem se cruzar (encostar pode), para a linha do tempo não quebrar.
+- **Histórico justo:** um bloco só conta a partir do dia em que foi criado, e o dia de ausência (Calendário) e o feriado não contam como "sem marcar".
+- **Na TV**, o eixo vai da primeira à última hora das trilhas do dia, com o tempo de verdade (um bloco de 1 h é mais largo que um de 30 min). Ao aparecer, uma luz varre cada trilha do começo do dia até agora, acendendo os blocos no caminho; depois fica só o ponto de luz do agora. Quatro analistas por página, com fade. Os ícones são um SVG local, sem internet.
+
+### Em aberto (o Kayo confirma)
+
+- Padrão: a própria pessoa, o gestor e os administradores montam e marcam; colegas não.
+- Padrão: marcar só vale para o dia de hoje; marcar depois do fim do bloco fica âmbar.
+- Padrão: quem está ausente no Calendário e os feriados ficam sem trilha (e não contam no resumo).
+- Padrão: a trilha do modelo usa o print de segunda para seg, qua e sex e o de terça para ter e qui.
+- Padrão: 4 analistas por página na TV e 25 s de tela.
+
+## Animações e UI/UX: movimento curto e só como extra (fase 21)
+
+- **Sem JavaScript, tudo funciona:** o menu em grupos usa `<details>`, o aviso de sucesso continua na página e o quadro continua atualizando. O `hub.js` só acrescenta.
+- **Leve para o PC da sala:** só `transform`, `opacity` e brilho curto; nada de biblioteca de animação nem nada da internet.
+- **Menos movimento:** com "Mostrar animações" desligado no Windows (`prefers-reduced-motion`), nada se mexe, no app e na TV.
+- **Quadro vivo sem servidor novo:** a comparação é feita no navegador, com uma foto do que estava na tela (por página, por 10 minutos). Depois de um clique em Concluir, a página recarrega e o cartão brilha na coluna nova.
+- **Na TV, a comemoração aparece uma vez:** quando a demanda chega em "Concluído hoje", a coluna vai para a página dela e o cartão brilha com um ✓ na próxima vez que o Quadro está na tela.
+- **Menu:** Quadro e Trilha ficam à mão (o dia a dia de todo mundo); o resto em 5 grupos. O pedido de cadastro esperando aparece também no grupo Gestão, que fica fechado.
+
+### Em aberto (o Kayo confirma)
+
+- Padrão: movimentos de 0,2 a 0,8 s (o zoom do calendário e a luz da trilha são mais longos) e nenhum com "menos movimento".
+- Padrão: os grupos do menu (Dia a dia: Demandas, Notas, Histórico; Planejamento: Rotinas, Prioridades, Calendário; Dados: Painéis, Banco de horas, Envios; TV e celular; Gestão).
+- Padrão: o aviso de sucesso some em 6 s (parado com o mouse em cima).
+
 ## Base 8081 automática do Google Drive (fase 22)
 
 Pedido do Kayo (22/10/2026): o gestor fez uma automação no Google Sheets que salva a 8081 no Google Drive com frequência, e o Hub deve pegar esse arquivo sozinho. Escolhas técnicas:
