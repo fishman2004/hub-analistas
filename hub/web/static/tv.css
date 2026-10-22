@@ -385,6 +385,74 @@ body.clara .etapas-grade .col.concluida { background: rgba(26, 127, 55, .12); }
 .pessoa.st-ausente { --st: var(--fora); }
 .pessoa.st-ausente .nome, .pessoa.st-ausente .ini { opacity: .55; }
 
+/* ---------- rotinas do mês (fase 19): o mês e o zoom no dia ---------- */
+.rm-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 2rem; flex: none; }
+.rm-topo .tela-titulo::first-letter { text-transform: uppercase; }
+.rm-fase { display: flex; gap: 1rem; font-size: 1.35rem; color: var(--suave); font-variant-numeric: tabular-nums; }
+.rm-passo { text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+.rm-palco { flex: 1; min-height: 0; position: relative; overflow: hidden; border-radius: 1rem; }
+.rm-mes { position: absolute; inset: 0; display: grid; grid-template-rows: auto repeat(var(--semanas, 5), minmax(0, 1fr));
+  background: var(--painel); border-radius: 1rem; overflow: hidden; transform-origin: 0 0;
+  transition: transform 1.6s cubic-bezier(.65, 0, .25, 1), opacity .7s ease .9s; }
+.rmt-linha { display: grid; grid-template-columns: minmax(0, .42fr) repeat(5, minmax(0, 1fr)) minmax(0, .42fr); min-height: 0; }
+.rmt-cabeca { background: #24507f; }
+.rmt-cabeca div { padding: .35rem .6rem; font-size: 1.2rem; font-weight: 700; text-align: center; color: #eaf2fb; }
+.rmt-dia { min-width: 0; min-height: 0; overflow: hidden; padding: .3rem .35rem; display: flex; flex-direction: column; gap: .18rem;
+  border-right: .08rem solid var(--linha); border-bottom: .08rem solid var(--linha); }
+.rmt-linha .rmt-dia:last-child { border-right: none; }
+.rmt-dia.fora { background: #111920; }
+.rmt-dia.fora .rmt-num { opacity: .45; }
+.rmt-num { align-self: flex-start; min-width: 2rem; padding: 0 .35rem; border-radius: .35rem; border: .1rem solid var(--linha);
+  font-size: 1rem; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; flex: none; }
+.rmt-dia.feriado { background: #3f8f2a; }
+.rmt-feriado { font-size: 1.05rem; font-weight: 800; text-transform: uppercase; text-align: center; color: #eaffdf; }
+.rmt-dia.hoje { box-shadow: inset 0 0 0 .25rem var(--pausa); animation: rm-hoje 2.4s ease-in-out infinite; }
+.rmt-dia.hoje .rmt-num { background: var(--pausa); color: var(--fundo); border-color: var(--pausa); }
+@keyframes rm-hoje { 50% { box-shadow: inset 0 0 0 .25rem var(--pausa), inset 0 0 1.8rem rgb(127 178 229 / 35%); } }
+.rmt-item { display: flex; align-items: center; gap: .5rem; min-width: 0; flex: none; border-radius: .25rem;
+  padding: .08rem .4rem; background: var(--cat); color: var(--cat-texto); font-size: .82rem; line-height: 1.2; }
+.rmt-item b { text-transform: uppercase; letter-spacing: .02em; }
+.rmt-texto { min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rmt-item.destaque { background: #d93025; color: #fff; }
+.rmt-dia .rmt-item.feita { opacity: .5; }
+.rmt-mais { flex: none; font-size: .85rem; font-weight: 700; color: var(--suave); padding-left: .3rem; }
+/* entrada: os dias aparecem em cascata */
+.rm-palco.entrando .rmt-dia { animation: rm-entra .5s ease-out both; animation-delay: calc(var(--i) * 18ms); }
+.rm-palco.entrando .rmt-dia.hoje { animation: rm-entra .5s ease-out both, rm-hoje 2.4s ease-in-out .9s infinite; animation-delay: calc(var(--i) * 18ms), .9s; }
+@keyframes rm-entra { from { opacity: 0; transform: translateY(.6rem); } }
+/* o dia em destaque, por cima do mês, depois do zoom */
+.rm-zoom { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 1rem;
+  opacity: 0; transform: scale(.97); pointer-events: none; transition: opacity .7s ease, transform .7s ease; }
+.rm-palco.no-dia .rm-zoom { opacity: 1; transform: none; transition-delay: 1s; }
+.rm-palco.no-dia .rm-mes { opacity: 0; }
+.rm-palco.sem-animacao .rm-mes, .rm-palco.sem-animacao .rm-zoom { transition: none; }
+.rmt-col { background: var(--painel); border-radius: 1rem; padding: 1.1rem 1.4rem; display: flex; flex-direction: column; gap: .9rem; min-height: 0; overflow: hidden; }
+.rmt-hoje { box-shadow: inset 0 .35rem 0 var(--pausa); }
+.rmt-col-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.rmt-col-topo h2 { margin: 0; font-size: 2.3rem; }
+.rmt-proximo .rmt-col-topo h2 { font-size: 1.7rem; color: var(--suave); }
+.rmt-conta { font-size: 1.6rem; color: var(--suave); white-space: nowrap; }
+.rmt-conta strong { color: var(--texto); font-variant-numeric: tabular-nums; }
+.rmt-progresso { height: .8rem; border-radius: .4rem; background: var(--linha); overflow: hidden; flex: none; }
+.rmt-progresso .cheio { height: 100%; background: var(--sala); border-radius: .4rem; transition: width .8s ease 1.4s; }
+.rmt-lista { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .6rem; overflow: hidden; }
+.rmt-lista .rmt-item { font-size: 1.85rem; padding: .7rem 1rem; border-radius: .6rem; gap: 1rem; }
+.rmt-lista.muitos .rmt-item { font-size: 1.4rem; padding: .45rem .9rem; }
+.rmt-proximo .rmt-lista .rmt-item { font-size: 1.3rem; padding: .45rem .8rem; }
+.rmt-lista .rmt-texto { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.rmt-marca { flex: none; width: 2.4rem; height: 2.4rem; border-radius: 50%; border: .22rem solid currentColor; opacity: .55; display: grid; place-items: center; }
+.rmt-marca svg { width: 1.7rem; height: 1.7rem; }
+.rmt-item.feita .rmt-marca { opacity: 1; background: var(--sala); border-color: var(--sala); color: #0e141a; }
+.rmt-lista .rmt-item.feita { box-shadow: 0 0 0 .2rem var(--sala), 0 0 1.4rem rgb(76 192 109 / 45%); }
+.rmt-proximo .rmt-marca { width: 1.7rem; height: 1.7rem; }
+.rmt-proximo .rmt-marca svg { width: 1.2rem; height: 1.2rem; }
+.rmt-lista .ini { flex: none; min-width: 2.6rem; height: 2.6rem; padding: 0 .4rem; border-radius: .6rem; display: grid; place-items: center;
+  background: var(--cor); color: #0e141a; font-weight: 800; font-size: 1.15rem; box-shadow: 0 0 0 .12rem rgb(0 0 0 / 25%); }
+.rmt-por { flex: none; font-size: 1.1rem; font-weight: 700; opacity: .8; white-space: nowrap; }
+.rmt-feriado-grande { font-size: 1.8rem; font-weight: 800; color: #9ee07f; }
+/* as linhas do dia entram uma a uma, depois do zoom */
+.rm-palco.no-dia:not(.sem-animacao) .rmt-hoje .rmt-item { animation: rm-entra .5s ease-out both; animation-delay: calc(1.1s + var(--i) * 90ms); }
+
 /* modo da TV (fase 14): o nome do modo, discreto, quando não é o Padrão */
 .selo-modo { font-size: 1.2rem; font-weight: 600; color: var(--suave); border: .12rem solid var(--linha);
   border-radius: 999px; padding: .15rem .9rem; white-space: nowrap; }

@@ -24,6 +24,7 @@ from hub.paineis import panel_folder
 from hub.people import add_person, get_person, list_people
 from hub.presence import set_status
 from hub.prioridades import add_priority, create_default_list, mark_done
+from hub import rotinas_mes
 from hub.rotinas import create_suggested, list_routines
 
 TEAM = ["Ana Souza", "Bianca Lima", "Carla Dias", "Diego Rocha", "Elisa Prado"]
@@ -114,6 +115,15 @@ def seed(now: datetime | None = None) -> Database:
         mark_done(db, min(now, early + timedelta(minutes=60 + 5 * minutes)), get_person(db, person.id), comissoes.id,
                   folder)
     add_priority(db, early, carla, "Novos acompanhamentos da pasta B", folder="B", due_day=25)
+    # rotinas do mês (fase 19): as do modelo do gestor, algumas com dono e as primeiras de hoje já feitas
+    rotinas_mes.create_suggested(db, early, gestora)
+    for r in rotinas_mes.list_routines(db):
+        if r.title in ("Blacklist", "Campanhas"):
+            rotinas_mes.save_routine(db, early, gestora, r.id, category_id=r.category_id, title=r.title, rule=r.rule,
+                                     owner_id=carla.id)
+    today_routines = rotinas_mes.by_day(db, today, today).get(today, [])
+    for k, o in enumerate(today_routines[:2]):
+        rotinas_mes.mark_done(db, min(now, early + timedelta(minutes=50 + 10 * k)), get_person(db, diego.id), o.routine.id)
     # planilhas fictícias dos painéis (tools/exemplos), para as telas de metas aparecerem na TV
     for f in (Path(__file__).parent / "exemplos").iterdir():
         shutil.copy(f, panel_folder(db) / f.name)

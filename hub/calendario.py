@@ -504,7 +504,8 @@ class Item:
 
 
 FILTERS = {"compromissos": "Compromissos", "feriados": "Feriados", "ausencias": "Ausências",
-           "prazos": "Prazos das demandas", "prioridades": "Prioridades do mês", "rotinas": "Rotinas"}
+           "prazos": "Prazos das demandas", "prioridades": "Prioridades do mês", "rotinas": "Rotinas",
+           "rotinas_mes": "Rotinas do mês"}
 DEFAULT_FILTERS = ("compromissos", "feriados", "ausencias", "prazos", "prioridades")  # rotinas lotariam o mês
 
 
@@ -581,7 +582,14 @@ def day_items(db: Database, viewer: Person, start: date, end: date, today: date,
                     add(d, Item("rotina", r.name, time=r.starts_at, link="/rotinas", color=p.color if p else "",
                                 initials=p.initials if p else "", note="rotina"))
             d += timedelta(days=1)
-    order = {"feriado": 0, "ausencia": 1, "compromisso": 2, "rotina": 3, "prazo": 4, "prioridade": 5}
+    if "rotinas_mes" in filters:  # fase 19: o calendário de rotinas do gestor, com a cor da categoria
+        from .rotinas_mes import by_day
+        for d, occs in by_day(db, start, end).items():
+            for o in occs:
+                add(d, Item("rotina_mes", f"{o.category.name}: {o.routine.title}", link="/calendario?visao=rotinas",
+                            color=o.category.color, late=o.routine.highlight and not o.done,
+                            note="feita" if o.done else "rotina do mês"))
+    order = {"feriado": 0, "ausencia": 1, "compromisso": 2, "rotina_mes": 3, "rotina": 4, "prazo": 5, "prioridade": 6}
     for items in out.values():
         items.sort(key=lambda i: (order[i.kind], i.time or "99", i.title.lower()))
     return out

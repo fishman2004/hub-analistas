@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% set active = 'calendario' %}
+{% block title %}Rotinas do mês · Hub dos Analistas{% endblock %}
+{% macro rotina(o, mark=False) %}
+<li class="rm-item{{ ' destaque' if o.routine.highlight else '' }}{{ ' feita' if o.done else '' }}" style="--cat: {{ o.category.color }}; --cat-texto: {{ o.category.text_color }}">
+  <span class="rm-texto"><b>{{ o.category.name }}:</b> {{ o.routine.title }}</span>
+  {% if o.routine.owner_id and o.routine.owner_id in by_id %}{% set p = by_id[o.routine.owner_id] %}<span class="bolinha rm-dono" style="--cor: {{ p.color }}" title="{{ p.name }}">{{ p.initials }}</span>{% endif %}
+  {% if o.done %}<span class="rm-ok" title="Feita{{ ' por ' ~ by_id[o.done_by].name if o.done_by in by_id else '' }} às {{ o.done_at.strftime('%H:%M') }}">✓</span>{% endif %}
+  {% if mark %}
+  <form method="post" action="/calendario/rotinas-do-mes/{{ o.routine.id }}/feita">
+    <input type="hidden" name="feita" value="{{ '0' if o.done else '1' }}">
+    <button class="{{ 'discreto' if o.done else '' }}">{{ 'Desfazer' if o.done else '✓ Feita' }}</button>
+  </form>
+  {% endif %}
+</li>
+{% endmacro %}
+{% block main %}
+<div class="barra">
+  <h1>Calendário de rotinas · {{ title }}</h1>
+  <div class="acoes">
+    {% if can_manage %}<a class="botao" href="/calendario/rotinas-do-mes">Cadastrar rotinas do mês</a>{% endif %}
+  </div>
+</div>
+{% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
+{% if ok %}<div class="sucesso" role="status">{{ ok }}</div>{% endif %}
+
+<div class="cal-controles">
+  <nav class="meses" aria-label="Visão">
+    {% for key, label in (('mes', 'Mês'), ('semana', 'Semana'), ('lista', 'Lista')) %}
+    <a href="/calendario?visao={{ key }}&data={{ ref.isoformat() }}">{{ label }}</a>
+    {% endfor %}
+    <a href="/calendario?visao=rotinas&data={{ ref.isoformat() }}" aria-current="page">Rotinas do mês</a>
+  </nav>
+  <nav class="cal-setas" aria-label="Mês">
+    <a class="botao discreto" href="/calendario?visao=rotinas&data={{ prev.isoformat() }}" title="Mês anterior">◀</a>
+    <a class="botao discreto" href="/calendario?visao=rotinas">Hoje</a>
+    <a class="botao discreto" href="/calendario?visao=rotinas&data={{ nxt.isoformat() }}" title="Mês seguinte">▶</a>
+  </nav>
+  {% if categories %}
+  <ul class="rm-legenda" aria-label="Categorias">
+    {% for c in categories %}<li style="--cat: {{ c.color }}; --cat-texto: {{ c.text_color }}">{{ c.name }}</li>{% endfor %}
+    <li class="destaque">Destaque</li>
+  </ul>
+  {% endif %}
+</div>
+
+{% if not items %}
+<div class="cartao-form rm-vazio">
+  <p class="vazio">Nenhuma rotina do mês cadastrada ainda.{% if can_manage %} Use <a href="/calendario/rotinas-do-mes">Cadastrar rotinas do mês</a> (dá para criar as do modelo do gestor com um clique).{% else %} O gestor e os administradores cadastram.{% endif %}</p>
+</div>
+{% else %}
+<section class="rm-hoje cartao-form" id="hoje" aria-labelledby="rm-hoje-titulo">
+  <div class="barra">
+    <h2 id="rm-hoje-titulo">Hoje, {{ today.strftime('%d/%m') }}</h2>
+    {% if today_items %}<span class="rm-conta">{{ today_items|selectattr('done')|list|length }} de {{ today_items|length }} feitas</span>{% endif %}
+  </div>
+  {% if today_items %}
+  <ul class="rm-lista">{% for o in today_items %}{{ rotina(o, True) }}{% endfor %}</ul>
+  <p class="ajuda">Qualquer pessoa marca uma rotina como feita no dia; o Hub guarda quem marcou. Na TV, a tela "Rotinas do mês" mostra o mês e depois dá um zoom no dia de hoje.</p>
+  {% else %}<p class="vazio">Nenhuma rotina do mês hoje.</p>{% endif %}
+</section>
+
+<div class="rm-grade" role="table" aria-label="Calendário de rotinas de {{ title }}">
+  <div class="rm-cabeca" role="row">{% for w in ('Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado') %}<div role="columnheader">{{ w }}</div>{% endfor %}</div>
+  {% for week in weeks %}
+  <div class="rm-semana" role="row">
+    {% for d in week %}
+    {% set lista = items.get(d, []) %}
+    {% set h = holidays.get(d) %}
+    <div role="cell" class="rm-dia{{ ' fora' if d.month != month else '' }}{{ ' hoje' if d == today else '' }}{{ ' fds' if d.weekday() >= 5 else '' }}{{ ' feriado' if h else '' }}{{ ' vazio-dia' if not lista and not h else '' }}">
+      <span class="rm-num">{{ d.day }}</span>
+      {% if h %}<span class="rm-feriado">{{ h.name }}</span>{% endif %}
+      {% if lista and d.month == month %}<ul class="rm-lista">{% for o in lista %}{{ rotina(o) }}{% endfor %}</ul>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

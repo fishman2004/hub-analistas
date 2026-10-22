@@ -419,6 +419,62 @@ a.nota-item:hover { background: var(--fundo); border-radius: 8px; }
 .cartao-descricao summary { cursor: pointer; color: var(--azul); width: max-content; }
 .cartao-descricao p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 0; padding: 8px 10px; background: var(--fundo); border-radius: 8px; max-height: 260px; overflow: auto; }
 
+/* rotinas do mês (fase 19): o calendário de rotinas do gestor, com a cor de cada categoria */
+.cal-rotinas_mes { --tipo: #d4a900; }
+.cal-rotina_mes { --tipo: var(--cor); }
+.rm-legenda { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.rm-legenda li, .rm-chip { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  padding: 1px 8px; border-radius: 4px; background: var(--cat); color: var(--cat-texto); white-space: nowrap; }
+.rm-legenda li.destaque { --cat: #d93025; --cat-texto: #fff; }
+.rm-etiqueta-destaque { background: #d93025; color: #fff; }
+.rm-hoje { margin-bottom: 16px; border-left: 5px solid var(--azul); }
+.rm-hoje .barra { margin-bottom: 6px; }
+.rm-hoje h2 { margin: 0; }
+.rm-conta { font-weight: 700; font-variant-numeric: tabular-nums; }
+.rm-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.rm-item { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 6px; border-radius: 3px;
+  background: var(--cat); color: var(--cat-texto); font-size: .76rem; line-height: 1.25; }
+.rm-item b { text-transform: uppercase; letter-spacing: .02em; }
+.rm-item.destaque { background: #d93025; color: #fff; }
+.rm-item.feita { opacity: .55; }
+.rm-item.feita .rm-texto { text-decoration: line-through; }
+.rm-texto { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.rm-ok { font-weight: 800; }
+.rm-dono { min-width: 22px; height: 20px; font-size: .68rem; padding: 0 4px; border-radius: 5px; }
+.rm-hoje .rm-item { font-size: .95rem; padding: 6px 8px; gap: 10px; }
+.rm-hoje .rm-item form { margin-left: auto; }
+.rm-hoje .rm-item button { padding: 3px 10px; font-size: .85rem; }
+.rm-hoje .rm-item button.discreto { background: var(--cartao); }
+.rm-grade { background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio); overflow: hidden; }
+.rm-cabeca { background: #2f5d8f; color: #fff; }
+.rm-cabeca div { padding: 6px 8px; font-size: .82rem; font-weight: 600; text-align: center; }
+/* como o modelo: segunda a sexta largas, sábado e domingo estreitos */
+.rm-cabeca, .rm-semana { display: grid; grid-template-columns: minmax(0, .45fr) repeat(5, minmax(0, 1fr)) minmax(0, .45fr); }
+.rm-dia { min-height: 96px; padding: 4px; border-right: 1px solid var(--linha); border-bottom: 1px solid var(--linha); min-width: 0; display: grid; align-content: start; gap: 3px; }
+.rm-semana .rm-dia:nth-child(7) { border-right: none; }
+.rm-semana:last-child .rm-dia { border-bottom: none; }
+.rm-dia.fora { background: color-mix(in srgb, var(--linha) 45%, var(--cartao)); }
+.rm-dia.fora .rm-num { opacity: .6; }
+.rm-num { justify-self: start; min-width: 24px; padding: 0 5px; border: 1px solid var(--linha); border-radius: 4px; font-size: .78rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.rm-dia.hoje { box-shadow: inset 0 0 0 2px var(--azul); }
+.rm-dia.hoje .rm-num { background: var(--azul); color: var(--sobre-cor); border-color: var(--azul); }
+.rm-dia.feriado { background: #8fd16a; }
+.rm-feriado { font-weight: 800; text-transform: uppercase; color: #10361a; font-size: .85rem; text-align: center; }
+.rm-vazio { margin-top: 8px; }
+.rm-regra-campos { flex-basis: 100%; display: grid; gap: 8px; }
+.rm-campo { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.rm-campo[hidden] { display: none; }
+.rm-cat-lista { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+input[type=color] { width: 44px; height: 36px; padding: 2px; border: 1px solid var(--linha); border-radius: 8px; background: var(--cartao); }
+@media (max-width: 860px) {
+  /* no celular, o mês vira uma lista: só os dias com alguma rotina */
+  .rm-cabeca { display: none; }
+  .rm-semana { display: block; }
+  .rm-dia { border-right: none; min-height: 0; }
+  .rm-dia.fora, .rm-dia.vazio-dia { display: none; }
+  .rm-item { font-size: .85rem; }
+}
+
 /* celular (fase 18) */
 .menu-abrir { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
 .menu-botao { display: none; }

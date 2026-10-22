@@ -45,6 +45,8 @@ def test_old_database_gains_the_table_and_keeps_people(tmp_path):
     add_person(d, at(7), None, "Kayo")
     with sqlite3.connect(path) as conn:
         conn.execute("DROP TABLE signup_requests")
+        for table in ("month_routine_marks", "month_routines", "month_categories"):  # migrações seguintes (v5)
+            conn.execute(f"DROP TABLE {table}")
         conn.execute("PRAGMA user_version = 11")
     d.init()
     assert [p.name for p in list_people(d)] == ["Kayo"]

@@ -120,6 +120,7 @@ Como na tela Hoje do Pombo, o que já foi enviado ou tentado vale mais que as li
 | `hub/people.py` | Equipe: nome, iniciais, cor |
 | `hub/demands.py` | Demandas, quadro, ordem, atrasadas, cartão da TV, e o cartão de cada rotina (calculado, vira demanda na primeira ação, pastas e espera) |
 | `hub/rotinas.py` | Cadastro das rotinas, quando cada uma vale, as rotinas sugeridas e os avisos da TV |
+| `hub/rotinas_mes.py` | Rotinas do mês (fase 19): categorias com cor, as regras de repetição por dia útil, "feita" no dia, as rotinas do modelo do gestor e a tela da TV (o mês e o dia) |
 | `hub/presence.py` | Presença e a virada do dia |
 | `hub/backup.py` | Cópia de segurança diária (14 dias) |
 | `hub/winsys.py` | Abrir com o Windows, não dormir, TV em tela cheia |

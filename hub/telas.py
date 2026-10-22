@@ -17,6 +17,7 @@ from .envios import tv_envios
 from .paineis import tv_focos, tv_fornecedores, tv_metas_dia, tv_metas_mes
 from .people import Person, ValidationError, list_people
 from .prioridades import tv_prioridades
+from .rotinas_mes import tv_rotinas_mes
 
 @dataclass(frozen=True)
 class Screen:
@@ -69,6 +70,8 @@ SCREENS: list[Screen] = [
     Screen("prazos", "Prazos da semana", 15, _prazos),
     # calendário (fase 13): compromissos da equipe, feriados e ausências de hoje e dos próximos dias
     Screen("agenda", "Agenda", 15, tv_agenda),
+    # rotinas do mês (fase 19): o calendário de rotinas inteiro e, depois, um zoom no dia de hoje
+    Screen("rotinas-mes", "Rotinas do mês", 25, tv_rotinas_mes),
     # prioridades do início do mês (fase 8): fica na rotação até tudo estar feito
     Screen("prioridades", "Prioridades do mês", 15, tv_prioridades),
     # painéis de dados (fase 5): só porcentagens, e só entram quando as planilhas estão na pasta
