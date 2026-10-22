@@ -75,16 +75,20 @@ def test_id_column_is_optional(tmp_path):
     assert mes.pastas["B"][0].rca_id == ""
 
 
-def test_media_counts_sales_days_until_yesterday(tmp_path):
+def test_media_is_the_week_until_yesterday_without_sunday(tmp_path):
     mes = phd.compute(phd.read_8081(write_8081(tmp_path)))
     ana = next(v for v in mes.pastas["B"] if v.nome.startswith("B-LT"))
-    # outubro/2026: de 1 a 21 há 18 dias de venda (seg a sáb); hoje (22) ainda não conta
-    assert phd.media(ana, mes, date(2026, 10, 22)) == round(3 / 18, 2)
+    # quinta 22: seg 19 (2), ter 20 (1), qua 21 (0); hoje ainda não conta
+    assert phd.week_days(date(2026, 10, 22)) == [date(2026, 10, d) for d in (19, 20, 21)]
+    assert phd.media(ana, mes, date(2026, 10, 22)) == 1.0
+    # segunda 26: a semana do sábado 24, de seg a sáb
+    assert phd.reference_day(date(2026, 10, 26)) == date(2026, 10, 24)
+    assert phd.media(ana, mes, date(2026, 10, 26)) == round(4 / 6, 2)
 
     class Feriado:
         def __contains__(self, d):
-            return d == date(2026, 10, 12)
-    assert phd.media(ana, mes, date(2026, 10, 22), Feriado()) == round(3 / 17, 2)
+            return d == date(2026, 10, 21)
+    assert phd.media(ana, mes, date(2026, 10, 22), Feriado()) == 1.5
 
 
 def test_areas_by_supervisor_code():
@@ -140,6 +144,16 @@ def test_generate_writes_one_file_per_pasta_with_the_8081_time(db, tmp_path):
     assert phd.generate(db, NOW).message == "O PHD já está em dia com a 8081."
     write_8081(panel_folder(db), LINES[:3], when=datetime(2026, 10, 22, 9, 30))
     assert phd.generate(db, NOW).files == ("PHD - Pasta B.xlsx",)
+
+
+def test_supervisor_marked_out_is_left_out(db, people):
+    kayo, _, _ = people
+    write_8081(panel_folder(db))
+    phd.save_phd_config(db, NOW, kayo, "", "B-AG = FORA\nC-XX = FORA")
+    result = phd.generate(db, NOW)
+    assert set(result.files) == {"PHD - Pasta B.xlsx", "PHD - Televendas.xlsx"}
+    ws = load_workbook(phd.output_folder(db) / "PHD - Pasta B.xlsx").active
+    assert [ws.cell(r, 4).value for r in (16, 17)] == ["B-LT-01- ANA FICTICIA", None]
 
 
 def test_generate_without_8081_or_with_a_broken_one(db):

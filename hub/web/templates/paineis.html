@@ -74,8 +74,8 @@
     <form class="ficha" method="post" action="/paineis/phd/configurar">
       <label for="phd-pasta">Pasta onde gravar <span class="ajuda">(de preferência a pasta de rede que os analistas abrem; vazio = {{ phd.default_folder }})</span></label>
       <input type="text" id="phd-pasta" name="pasta" value="{{ phd.folder }}" placeholder="\\servidor\Analistas\PHD">
-      <label for="phd-areas">Área de cada supervisor <span class="ajuda">(uma linha por supervisor; sem linha, a área é o código do supervisor)</span></label>
-      <textarea id="phd-areas" name="areas" rows="5" placeholder="B-BJ = CAMPINA GRANDE&#10;B-JP = JOÃO PESSOA">{{ phd.areas }}</textarea>
+      <label for="phd-areas">Área de cada supervisor <span class="ajuda">(uma linha por supervisor; sem linha, a área é o código do supervisor; <code>= FORA</code> tira o supervisor do PHD)</span></label>
+      <textarea id="phd-areas" name="areas" rows="5" placeholder="B-BJ = CAMPINA GRANDE&#10;B-JP = JOÃO PESSOA&#10;B-JP-P = FORA">{{ phd.areas }}</textarea>
       <button>Salvar e gerar</button>
     </form>
   </details>

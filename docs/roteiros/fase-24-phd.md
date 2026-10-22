@@ -17,8 +17,7 @@ do Pombo atualizado (com "Print da planilha") no PC de um analista.
 ## Conferir com o PHD de hoje (uma vez)
 4. Escolha 3 vendedores e 2 dias e compare com a sua planilha do PHD: os números de positivação têm de bater.
    Se não baterem, anote o vendedor, o dia e os dois números e mande para ajustar a regra.
-5. Compare a coluna **MÉDIA**: aqui é a média por dia de venda do mês até ontem. Se a sua planilha usa outra
-   conta, anote qual.
+5. Compare a coluna **MÉDIA**: aqui é a média da semana do resultado (segunda até ontem, sem domingo).
 
 ## Ligar no Pombo
 6. No Pombo: Envios › Novo envio › **Preencher com o modelo do PHD**, Planilha = o PHD da sua pasta na rede,

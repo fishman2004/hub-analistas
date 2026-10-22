@@ -25,7 +25,7 @@ import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from .calendario import NO_HOLIDAYS, holidays
@@ -37,7 +37,8 @@ from .planilhas import PlanilhaError, code, day, normalize, read_rows
 log = logging.getLogger("hub.phd")
 
 SETTING_FOLDER = "phd.pasta"  # vazio = "PHD" ao lado do banco do Hub
-SETTING_AREAS = "phd.areas"  # uma linha por supervisor: "B-BJ = CAMPINA GRANDE"
+SETTING_AREAS = "phd.areas"  # uma linha por supervisor: "B-BJ = CAMPINA GRANDE"; "= FORA" tira do PHD
+OUT = "FORA"
 SETTING_STATE = "phd.estado"  # JSON: a 8081 usada, quando gerou, os arquivos e o último problema
 DEFAULT_FOLDER_NAME = "PHD"
 TICK_SECONDS = 60
@@ -117,10 +118,26 @@ def compute(rows: list[dict]) -> Mes:
     return Mes(last.year, last.month, last, pastas)
 
 
+def reference_day(today: date) -> date:
+    """O dia do resultado: ontem, e na segunda o sábado (domingo não tem venda)."""
+    prev = today - timedelta(days=1)
+    return prev - timedelta(days=1) if prev.weekday() == 6 else prev
+
+
+def week_days(today: date, hol=NO_HOLIDAYS) -> list[date]:
+    """Os dias da média: de segunda até o dia do resultado, sem domingo e sem feriado.
+
+    É a conta da planilha dos analistas (=MÉDIASE(...;"<>DOM";...) com o intervalo da semana),
+    sem precisar mudar o intervalo à mão a cada dia."""
+    ref = reference_day(today)
+    monday = ref - timedelta(days=ref.weekday())
+    return [monday + timedelta(days=i) for i in range((ref - monday).days + 1)
+            if is_sales_day(monday + timedelta(days=i), hol)]
+
+
 def media(v: Vendedor, mes: Mes, today: date, hol=NO_HOLIDAYS) -> float:
-    """Média de positivação por dia de venda do mês, até ontem (hoje ainda está acontecendo)."""
-    days = [d for d in (date(mes.year, mes.month, n) for n in range(1, mes.last.day + 1))
-            if is_sales_day(d, hol) and d < today]
+    """Média de positivação por dia na semana do resultado (dias do mês da planilha)."""
+    days = [d for d in week_days(today, hol) if (d.year, d.month) == (mes.year, mes.month)]
     return round(sum(v.dia(d.day) for d in days) / len(days), 2) if days else 0.0
 
 
@@ -339,6 +356,9 @@ def generate(db: Database, now: datetime, force: bool = False) -> Resultado:
             base_time = source.stat().st_mtime
             names = []
             for pasta, sellers in mes.pastas.items():
+                sellers = [v for v in sellers if areas.get(supervisor_code(v.supervisor)) != OUT]
+                if not sellers:
+                    continue
                 path = folder / file_name(pasta)
                 write_workbook(path, pasta, mes, sellers, areas, now.date(), hol)
                 os.utime(path, (base_time, base_time))  # a hora do PHD é a hora da 8081

@@ -27,10 +27,20 @@ flowchart LR
 - O mês é o da venda mais recente da 8081.
 - A **pasta** do vendedor é a do supervisor ("B-BJ (NOME)" é da B; "P-TELEVENDAS (NOME)" é o Televendas),
   igual aos painéis. Vendedor sem pasta fica de fora.
-- **MÉDIA** (coluna AK) = positivações do mês ÷ dias de venda (seg a sáb, sem feriados) **até ontem**:
-  hoje ainda está acontecendo.
+- **MÉDIA** (coluna AK) = média de positivação por dia **na semana do resultado**: de segunda até ontem
+  (na segunda, até o sábado), sem domingo e sem feriado. É a conta da planilha dos analistas
+  (`=MÉDIASE(X13:Y13;"<>DOM";X16:Y16)`), sem mudar o intervalo à mão a cada dia.
 - **ÁREA** vem do quadro "Área de cada supervisor" em Painéis (ex.: `B-BJ = CAMPINA GRANDE`). Sem linha, a
-  área é o código do supervisor.
+  área é o código do supervisor. `B-JP-P = FORA` tira o supervisor (e os vendedores dele) do PHD.
+- Vendedor sem nenhuma venda no mês não aparece (a 8081 só traz quem vendeu).
+
+### Conferido com o PHD real (22/10/2026)
+
+Com a 8081 da própria planilha de acompanhamento da pasta B (até 21/10), o Hub bateu em **99%** das
+células de positivação (8 diferenças de 1 cliente em cerca de 800). A planilha dos analistas soma a
+positivação da rotina **8065** do Winthor, e o Hub conta clientes distintos na 8081: a pequena diferença
+vem de como cada rotina conta. Se a automação do gestor passar a salvar também a 8065 no Drive, o Hub pode
+usar a mesma fonte.
 
 ## A planilha
 
