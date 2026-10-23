@@ -452,7 +452,9 @@ def _tv_item(o: Occurrence, people: dict) -> dict:
 
 def tv_rotinas_mes(db: Database, now: datetime) -> dict | None:
     """O mês inteiro (como o modelo do gestor) e o dia de hoje em destaque, com o próximo dia útil.
-    Sem nenhuma rotina do mês cadastrada, a tela sai da rotação."""
+    Desde a fase 24, com as rotinas do mês e os compromissos da equipe da Agenda (as rotinas primeiro).
+    Sem nenhuma rotina do mês e nenhum compromisso no mês, a tela sai da rotação."""
+    from .calendario import tv_team_events
     from .people import list_people
 
     today = now.date()
@@ -460,20 +462,24 @@ def tv_rotinas_mes(db: Database, now: datetime) -> dict | None:
     with db.connect() as conn:
         hol = load_holidays(conn)
     nxt = next_business_day(today + timedelta(days=1), hol)
-    items = by_day(db, weeks[0][0], max(weeks[-1][-1], nxt), with_notes=False)
-    if not any(items.values()):
-        return None
+    start, end = weeks[0][0], max(weeks[-1][-1], nxt)
+    routines = by_day(db, start, end, with_notes=False)
     people = {p.id: p for p in list_people(db, active_only=False)}
+    events = tv_team_events(db, start, end, people)
+    if not any(routines.values()) and not any(events.values()):
+        return None
+    items = {d: [_tv_item(o, people) for o in routines.get(d, [])] + events.get(d, [])
+             for d in set(routines) | set(events)}
 
     def day(d: date) -> dict:
         h = hol.get(d)
         return {"data": d.isoformat(), "dia": d.day, "fora": d.month != today.month, "hoje": d == today,
                 "fds": d.weekday() >= 5, "feriado": h.name if h else "",
-                "itens": [_tv_item(o, people) for o in items.get(d, [])]}
+                "itens": items.get(d, [])}
 
-    today_items = items.get(today, [])
+    today_items = routines.get(today, [])
     return {
-        "titulo": f"Calendário de rotinas · {cal_month(today)}",
+        "titulo": f"Calendário do mês · {cal_month(today)}",
         "semanas": [[day(d) for d in w] for w in weeks],
         "hoje": {**day(today), "rotulo": f"Hoje · {WEEKDAY_NAMES[today.weekday()]}, {today:%d/%m}",
                  "feitas": sum(o.done for o in today_items), "total": len(today_items)},

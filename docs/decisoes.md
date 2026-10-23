@@ -375,3 +375,11 @@ Ao confirmar os padrões da v5, o Kayo aceitou que marcar "feita" só vale no di
 - Até 300 letras; escrever de novo troca o texto e o botão **Tirar** apaga.
 - Enquanto alguém escreve uma justificativa no Quadro, a atualização de 10 s espera, para não apagar o que se digita.
 
+## Calendário do mês na TV com os compromissos da Agenda (fase 25)
+
+O Kayo cadastrou um compromisso na Agenda e esperava ver na TV o mês inteiro com o zoom no dia, mas a tela do mês só entrava com rotinas do mês cadastradas. Escolha técnica:
+
+- A tela do mês (o id continua `rotinas-mes`, para não mexer nos modos já salvos) passa a se chamar **Calendário do mês** e mostra as rotinas do mês e os **compromissos da equipe** da Agenda. As rotinas vêm primeiro, cada uma na cor da categoria; os compromissos vêm depois, em cinza, com a hora.
+- Entra na rotação com alguma rotina do mês **ou** algum compromisso no mês. A conta "X de Y feitas" do dia continua só das rotinas.
+- Como na Agenda: sem descrição, compromisso reservado vira "Compromisso reservado", os pessoais nunca aparecem e, no modo Visita, fica só o tipo (Reunião, Entrega...).
+- A tela **Agenda** continua igual (hoje e os próximos dias úteis, com as ausências).

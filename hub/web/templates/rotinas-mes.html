@@ -70,7 +70,7 @@
   </div>
   {% if today_items %}
   <ul class="rm-lista">{% for o in today_items %}{{ rotina(o, selected == today, can_justify, selected) }}{% endfor %}</ul>
-  <p class="ajuda">{% if selected == today %}Qualquer pessoa marca uma rotina como feita no dia; o Hub guarda quem marcou.{% else %}Marcar feita só vale no dia; num dia que passou, dá para escrever a justificativa.{% endif %} Clique no número de um dia que passou para ver e justificar as rotinas dele. Na TV, a tela "Rotinas do mês" mostra o mês e depois dá um zoom no dia de hoje.</p>
+  <p class="ajuda">{% if selected == today %}Qualquer pessoa marca uma rotina como feita no dia; o Hub guarda quem marcou.{% else %}Marcar feita só vale no dia; num dia que passou, dá para escrever a justificativa.{% endif %} Clique no número de um dia que passou para ver e justificar as rotinas dele. Na TV, a tela "Calendário do mês" mostra o mês (com os compromissos da equipe da Agenda) e depois dá um zoom no dia de hoje.</p>
   {% else %}<p class="vazio">Nenhuma rotina do mês {{ 'hoje' if selected == today else 'nesse dia' }}.</p>{% endif %}
 </section>
 

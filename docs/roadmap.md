@@ -30,6 +30,7 @@ flowchart LR
     F5 --> F22[22 · Base 8081 do Google Drive]
     F20 --> F23[23 · Justificativas]
     F19 --> F23
+    F19 --> F25[25 · Calendário do mês com a Agenda]
 ```
 
 As fases 19 a 22 são a **v5** (o calendário de rotinas e a trilha do dia do gestor, animações e a 8081 automática do Google Drive): o plano está em [plano-v5.md](plano-v5.md). A fase 17 começa a **v4** (o Hub também no celular). As fases 10 a 16 são a **v3**, com as sugestões do gestor: o plano completo, com as regras e as escolhas de cada fase, está em [plano-v3.md](plano-v3.md).
@@ -61,6 +62,7 @@ As fases 19 a 22 são a **v5** (o calendário de rotinas e a trilha do dia do ge
 | 22 | **Base 8081 automática do Google Drive:** a automação do gestor salva a 8081 no Drive e o Hub baixa sozinho, a cada 10 minutos, por uma **ponte do Apps Script** que só entrega o arquivo para quem tem a chave (o arquivo no Drive continua fechado). O Hub confere a planilha antes de trocar a da TV, guarda a hora em que ela foi gerada e mostra em **Painéis** a última verificação, o último download e o último problema, com **Baixar agora**. | Pronto ([roteiro de teste](roteiros/fase-22-drive-8081.md), [passo a passo](drive-8081.md)) |
 | 23 | **Justificativas:** marcar feita continua só no dia, mas agora dá para escrever **por que** não deu: nas **rotinas do mês**, hoje ou num dos últimos 31 dias (clicando no número do dia); na **trilha**, no bloco vermelho ou âmbar de hoje. O resumo da trilha conta os justificados. A TV não mostra o texto. | Pronto ([roteiro de teste](roteiros/fase-23-justificativas.md)) |
 | 24 | **PHD automático:** quando a 8081 muda, o Hub calcula a positivação de cada vendedor por dia (clientes distintos) e grava uma planilha por pasta, `PHD - Pasta B.xlsx`, no desenho do PHD dos analistas, na pasta de rede escolhida. O Pombo de cada analista lê com o **modelo do PHD** e manda um print com legenda por supervisor no horário. Em **Painéis**: quando gerou, os arquivos para baixar, as áreas de cada supervisor e **Gerar agora**. Nunca na TV. | Pronto ([roteiro de teste](roteiros/fase-24-phd.md), [como funciona](phd.md)) |
+| 25 | **Calendário do mês na TV com a Agenda:** a tela do mês com o zoom no dia (fase 19) passa a se chamar **Calendário do mês** e mostra também os **compromissos da equipe** da Agenda, em cinza com a hora, depois das rotinas do mês. Entra na TV com alguma rotina do mês ou algum compromisso no mês (antes, só com rotinas). Compromisso reservado aparece como "Compromisso reservado"; os pessoais nunca. | Pronto ([roteiro de teste](roteiros/fase-25-calendario-tv.md)) |
 
 ### Ideias para depois
 
