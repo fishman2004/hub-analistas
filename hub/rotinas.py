@@ -5,6 +5,9 @@ calcula o cartão dela em "A fazer" do responsável (ver demands.board). Ele só
 de verdade quando alguém mexe nele. Se o PC passar a noite desligado, nada fica para trás.
 
 Só o gestor e os administradores cadastram e mudam rotinas; todo mundo vê a lista.
+Uma rotina pode ter vários responsáveis: o cartão é um só, aparece no quadro de cada um e
+qualquer um deles conclui (o primeiro é o dono do cartão). Remover uma rotina a esconde da lista,
+mas ela fica guardada para as demandas e o histórico de antes.
 """
 
 import re
@@ -37,7 +40,13 @@ class Routine:
     waits_for: tuple[int, ...]
     active: bool
     on_holidays: bool = False  # roda também em feriado (fase 13)
+    owner_ids: tuple[int, ...] = ()  # todos os responsáveis, na ordem; o primeiro é owner_id
+    removed: bool = False  # tirada da lista em "Remover" (fica guardada)
     holidays: object = field(default=(), repr=False, compare=False)  # calendario.Holidays (os feriados ativos)
+
+    @property
+    def owners(self) -> tuple[int, ...]:
+        return self.owner_ids or (self.owner_id,)
 
     @property
     def label(self) -> str:
@@ -59,24 +68,28 @@ class Routine:
         return datetime.combine(day, time.fromisoformat(self.deadline)) if self.deadline else None
 
 
-def _row(r, hol) -> Routine:
+def _row(r, hol, owners: dict[int, list[int]]) -> Routine:
     return Routine(
         r["id"], r["name"], tuple(int(x) for x in r["weekdays"].split(",") if x), r["starts_at"], r["deadline"],
         r["owner_id"], tuple(r["folders"]), tuple(int(x) for x in r["waits_for"].split(",") if x), bool(r["active"]),
-        bool(r["on_holidays"]), hol,
+        bool(r["on_holidays"]), tuple(owners.get(r["id"]) or (r["owner_id"],)), bool(r["removed"]), hol,
     )
 
 
 def load_routines(conn) -> dict[int, Routine]:
-    """Todas as rotinas (inclusive as desativadas), por número. Para quem já tem uma conexão aberta.
+    """Todas as rotinas (inclusive as desativadas e as removidas), por número. Para quem já tem uma conexão aberta.
     Cada uma já sabe os feriados do calendário: num feriado, só aparece a que roda também em feriado."""
     hol = load_holidays(conn)
-    return {r["id"]: _row(r, hol) for r in conn.execute("SELECT * FROM routines")}
+    owners: dict[int, list[int]] = {}
+    for r in conn.execute("SELECT routine_id, person_id FROM routine_people ORDER BY routine_id, position"):
+        owners.setdefault(r["routine_id"], []).append(r["person_id"])
+    return {r["id"]: _row(r, hol, owners) for r in conn.execute("SELECT * FROM routines")}
 
 
 def list_routines(db: Database) -> list[Routine]:
+    """As rotinas da lista (sem as removidas): as ativas primeiro, por horário."""
     with db.connect() as conn:
-        routines = load_routines(conn).values()
+        routines = [r for r in load_routines(conn).values() if not r.removed]
     return sorted(routines, key=lambda r: (not r.active, r.starts_at, r.name.lower()))
 
 
@@ -118,9 +131,11 @@ def _check_cycle(routines: dict[int, Routine], routine_id: int, waits_for: tuple
 
 
 def save_routine(db: Database, now: datetime, actor: Person, routine_id: int | None, *, name: str,
-                 weekdays: list[int], starts_at: str, deadline: str | None, owner_id: int, folders: list[str],
-                 waits_for: list[int], on_holidays: bool = False) -> Routine:
-    """Cria (routine_id None) ou muda uma rotina. Vale a partir do próximo cálculo do quadro."""
+                 weekdays: list[int], starts_at: str, deadline: str | None, owner_id: int | None = None,
+                 folders: list[str], waits_for: list[int], on_holidays: bool = False,
+                 owner_ids: list[int] | None = None) -> Routine:
+    """Cria (routine_id None) ou muda uma rotina. Vale a partir do próximo cálculo do quadro.
+    Os responsáveis vêm em owner_ids (na ordem; o primeiro é o dono do cartão) ou, um só, em owner_id."""
     if not can_manage(actor):
         raise PermissionError("Só o gestor e os administradores mudam as rotinas.")
     name = " ".join((name or "").split())
@@ -145,20 +160,25 @@ def save_routine(db: Database, now: datetime, actor: Person, routine_id: int | N
         raise ValidationError("Pasta inválida.")
     chosen_folders = "".join(f for f in FOLDERS if f in folders)
     waits = tuple(sorted({int(w) for w in waits_for}))
+    owners = list(dict.fromkeys(int(o) for o in (owner_ids if owner_ids is not None else [owner_id]) if o))
+    if not owners:
+        raise ValidationError("Escolha pelo menos um responsável pela rotina.")
     with db.connect() as conn:
         routines = load_routines(conn)
         current = routines.get(routine_id) if routine_id is not None else None
-        if routine_id is not None and current is None:
+        if routine_id is not None and (current is None or current.removed):
             raise ValidationError("Rotina não encontrada.")
-        owner = conn.execute("SELECT active FROM people WHERE id = ?", (owner_id,)).fetchone()
-        # manter o responsável atual vale mesmo se ele foi desativado; só não dá para escolher um desativado novo
-        if owner is None or (not owner["active"] and (current is None or owner_id != current.owner_id)):
-            raise ValidationError("Escolha o responsável pela rotina.")
-        if any(w not in routines for w in waits):
+        for pid in owners:
+            person = conn.execute("SELECT active FROM people WHERE id = ?", (pid,)).fetchone()
+            # manter um responsável atual vale mesmo se ele foi desativado; só não dá para escolher um desativado novo
+            if person is None or (not person["active"] and (current is None or pid not in current.owners)):
+                raise ValidationError("Escolha o responsável pela rotina.")
+        owner_id = owners[0]
+        if any(w not in routines or routines[w].removed for w in waits):
             raise ValidationError("Rotina não encontrada em “Liberada depois de”.")
         if routine_id is not None:
             _check_cycle(routines, routine_id, waits)
-        clash = next((r for r in routines.values() if r.id != routine_id and r.starts_at == starts_at
+        clash = next((r for r in routines.values() if r.id != routine_id and not r.removed and r.starts_at == starts_at
                       and r.name.lower() == name.lower()), None)
         if clash:
             raise ValidationError(f"Já existe a rotina “{name}” às {starts_at}.")
@@ -172,6 +192,9 @@ def save_routine(db: Database, now: datetime, actor: Person, routine_id: int | N
             conn.execute("UPDATE routines SET name = ?, weekdays = ?, starts_at = ?, deadline = ?, owner_id = ?, "
                          "folders = ?, waits_for = ?, on_holidays = ? WHERE id = ?", (*values, routine_id))
             kind = "rotina_editada"
+        conn.execute("DELETE FROM routine_people WHERE routine_id = ?", (routine_id,))
+        conn.executemany("INSERT INTO routine_people(routine_id, person_id, position) VALUES (?, ?, ?)",
+                         [(routine_id, pid, i) for i, pid in enumerate(owners)])
         log_event(conn, now, actor.id, kind, f"rotina:{routine_id}", f"{name} {starts_at}")
         return load_routines(conn)[routine_id]
 
@@ -182,13 +205,32 @@ def set_routine_active(db: Database, now: datetime, actor: Person, routine_id: i
         raise PermissionError("Só o gestor e os administradores mudam as rotinas.")
     with db.connect() as conn:
         routine = load_routines(conn).get(routine_id)
-        if routine is None:
+        if routine is None or routine.removed:
             raise ValidationError("Rotina não encontrada.")
         if routine.active == active:
             return
         conn.execute("UPDATE routines SET active = ? WHERE id = ?", (int(active), routine_id))
         log_event(conn, now, actor.id, "rotina_reativada" if active else "rotina_desativada", f"rotina:{routine_id}",
                   routine.label)
+
+
+def remove_routine(db: Database, now: datetime, actor: Person, routine_id: int) -> Routine:
+    """Remover (pedido do Kayo): a rotina sai da lista, do quadro e da TV. Ela não é apagada, porque as
+    demandas que já gerou e o histórico apontam para ela; as outras rotinas param de esperar por ela."""
+    if not can_manage(actor):
+        raise PermissionError("Só o gestor e os administradores mudam as rotinas.")
+    with db.connect() as conn:
+        routines = load_routines(conn)
+        routine = routines.get(routine_id)
+        if routine is None or routine.removed:
+            raise ValidationError("Rotina não encontrada.")
+        conn.execute("UPDATE routines SET active = 0, removed = 1 WHERE id = ?", (routine_id,))
+        for r in routines.values():
+            if routine_id in r.waits_for:
+                conn.execute("UPDATE routines SET waits_for = ? WHERE id = ?",
+                             (",".join(str(w) for w in r.waits_for if w != routine_id), r.id))
+        log_event(conn, now, actor.id, "rotina_removida", f"rotina:{routine_id}", routine.label)
+        return routine
 
 
 # As rotinas que o Kayo passou (outubro de 2026). O responsável é quem clica em "Criar rotinas

@@ -187,6 +187,19 @@ def remove_block(db: Database, now: datetime, actor: Person, block_id: int) -> N
                      (now.isoformat(timespec="seconds"), block_id))
 
 
+def remove_all(db: Database, now: datetime, actor: Person, person_id: int) -> int:
+    """Tira todos os blocos da trilha da pessoa de uma vez (como "Tirar" em cada um: as marcas dos dias que
+    passaram ficam guardadas). Devolve quantos tirou."""
+    if not can_edit(actor, person_id):
+        raise PermissionError("Monta a trilha a própria pessoa, o gestor e os administradores.")
+    with db.connect() as conn:
+        n = conn.execute("UPDATE trail_blocks SET active = 0, updated_at = ? WHERE person_id = ? AND active = 1",
+                         (now.isoformat(timespec="seconds"), person_id)).rowcount
+        if n:
+            log_event(conn, now, actor.id, "trilha_limpa", f"pessoa:{person_id}", str(n))
+        return n
+
+
 def copy_trail(db: Database, now: datetime, actor: Person, source_id: int, target_id: int) -> int:
     """Copia a trilha de uma pessoa para outra que ainda não tem nenhum bloco. Devolve quantos copiou."""
     if not can_edit(actor, target_id):

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from .db import Database
-from .demands import COLUMNS, Demand, board, is_overdue
+from .demands import COLUMNS, Demand, board, is_overdue, is_owner
 from .people import Person
 from .presence import presence_board
 
@@ -32,7 +32,7 @@ def team_summary(db: Database, now: datetime) -> list[TeamRow]:
     today = now.date()
     rows = []
     for person, status, since in presence_board(db, now):
-        mine = {c: [d for d in columns[c] if d.owner_id == person.id] for c in COLUMNS}
+        mine = {c: [d for d in columns[c] if is_owner(d, person.id)] for c in COLUMNS}
         overdue = sum(is_overdue(d, today) for d in mine["todo"] + mine["doing"])
         rows.append(TeamRow(person, status, since, len(mine["todo"]), len(mine["doing"]), len(mine["done"]), overdue))
     return rows

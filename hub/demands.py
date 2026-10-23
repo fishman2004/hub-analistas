@@ -33,6 +33,7 @@ class RoutineInfo:
     checked: tuple[str, ...]  # pastas já marcadas
     waiting: tuple[str, ...]  # rotinas que ainda faltam terminar ("Transferência de pedidos 14:50")
     late: bool  # passou do prazo de hoje
+    owners: tuple[int, ...] = ()  # todos os responsáveis da rotina (o cartão aparece no quadro de cada um)
 
     @property
     def label(self) -> str:
@@ -296,7 +297,17 @@ def all_demands(db: Database) -> dict[int, Demand]:
 def can_see(d: Demand, person: Person) -> bool:
     """Título de demanda reservada: só o gestor, administradores, o dono e quem criou."""
     return (not d.reserved or person.is_manager or person.is_admin
-            or person.id in (d.owner_id, d.created_by))
+            or is_owner(d, person.id) or person.id == d.created_by)
+
+
+def is_owner(d: Demand, person_id: int) -> bool:
+    """O cartão é desta pessoa: é o dono ou um dos responsáveis da rotina."""
+    return d.owner_id == person_id or (d.routine is not None and person_id in d.routine.owners)
+
+
+def co_owners(d: Demand) -> tuple[int, ...]:
+    """Os outros responsáveis da rotina, além do dono do cartão (as bolinhas a mais)."""
+    return tuple(p for p in d.routine.owners if p != d.owner_id) if d.routine is not None else ()
 
 
 def is_overdue(d: Demand, today: date) -> bool:
@@ -407,12 +418,13 @@ def _with_routines(conn, rows: list[Demand], now: datetime, owner_id: int | None
             routine.starts_at, routine.deadline, routine.folders, tuple(f for f in routine.folders if f in checked),
             () if column == "done" else _waiting(routine, day, today, routines, settled),
             column != "done" and day == today and deadline is not None and now > deadline,
+            routine.owners,
         )
 
     result = [replace(d, routine=info(routines[d.routine_id], d.routine_day, d.column, checks.get(d.id, set())))
               if d.routine_id in routines else d for d in rows]
     for routine in routines.values():
-        if routine.id in on_board or not routine.is_due(now) or (owner_id is not None and routine.owner_id != owner_id):
+        if routine.id in on_board or not routine.is_due(now) or (owner_id is not None and owner_id not in routine.owners):
             continue
         start = routine.start(today)
         result.append(Demand(None, routine.name, routine.owner_id, None, None, today, False, "todo", start, start, None,
@@ -424,10 +436,12 @@ def board(db: Database, now: datetime, owner_id: int | None = None) -> dict[str,
     sql = "SELECT * FROM demands WHERE deleted = 0"
     args: list = []
     if owner_id is not None:
-        sql += " AND owner_id = ?"
+        sql += " AND (owner_id = ? OR routine_id IS NOT NULL)"  # rotina com vários responsáveis: ver is_owner
         args.append(owner_id)
     with db.connect() as conn:
         rows = _with_routines(conn, [_row(r) for r in conn.execute(sql, args)], now, owner_id)
+    if owner_id is not None:
+        rows = [d for d in rows if is_owner(d, owner_id)]
     today = now.date()
 
     def open_key(d: Demand):
@@ -442,12 +456,15 @@ def board(db: Database, now: datetime, owner_id: int | None = None) -> dict[str,
     }
 
 
-def tv_card(d: Demand, owner: Person, today: date) -> dict:
-    """O cartão como a TV o recebe. Demanda reservada não leva título, pasta, quem pediu nem nada da rotina."""
+def tv_card(d: Demand, owner: Person, today: date, people: dict | None = None) -> dict:
+    """O cartão como a TV o recebe. Demanda reservada não leva título, pasta, quem pediu nem nada da rotina.
+    Com people, a rotina leva também as iniciais dos outros responsáveis."""
     routine = None
     if d.routine is not None and not d.reserved:
+        others = [people[p] for p in co_owners(d) if p in people] if people else []
         routine = {"time": d.routine.time, "deadline": d.routine.deadline, "folders": list(d.routine.folders),
-                   "checked": list(d.routine.checked), "waiting": list(d.routine.waiting), "late": d.routine.late}
+                   "checked": list(d.routine.checked), "waiting": list(d.routine.waiting), "late": d.routine.late,
+                   "others": [{"initials": p.initials, "color": p.color} for p in others]}
     return {
         "id": d.ref,
         "initials": owner.initials,
@@ -483,7 +500,7 @@ def search_demands(db: Database, viewer: Person, *, text: str = "", owner_id: in
         visible = can_see(d, viewer)
         if words and (not visible or not all(w in f"{d.title} {d.details or ''}".lower() for w in words)):
             continue
-        if owner_id is not None and d.owner_id != owner_id:
+        if owner_id is not None and not is_owner(d, owner_id):
             continue
         if folder and (not visible or d.folder != folder):
             continue

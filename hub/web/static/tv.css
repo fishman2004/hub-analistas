@@ -88,6 +88,8 @@ body.exportar { height: auto; overflow: auto; display: block; padding: 0; }
   grid-row: span 2; min-width: 2.6rem; height: 2.6rem; padding: 0 .4rem; border-radius: .6rem;
   display: grid; place-items: center; background: var(--cor); color: #0e141a; font-weight: 800; font-size: 1.15rem;
 }
+.cartao .ini { gap: .25rem; grid-auto-flow: column; }
+.cartao .ini-outro { font-size: .95rem; padding: .05rem .35rem; border-radius: .4rem; background: var(--cor); color: #0e141a; }
 .cartao .titulo, .cartao .meta span { min-width: 0; overflow-wrap: anywhere; }
 .cartao .titulo {
   font-size: 1.75rem; font-weight: 600; line-height: 1.2;

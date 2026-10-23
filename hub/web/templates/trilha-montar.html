@@ -41,6 +41,11 @@
   </tbody>
 </table>
 </div>
+<form method="post" action="/trilha/montar/tirar-tudo" class="acoes tr-tirar-tudo" data-nome="{{ person.name }}" data-n="{{ blocks|length }}"
+      onsubmit="return confirm('Tirar todos os ' + this.dataset.n + ' blocos da trilha de ' + this.dataset.nome + '? Dá para montar de novo depois (modelo, cópia ou um por um). As marcas dos dias que passaram ficam guardadas.')">
+  <input type="hidden" name="pessoa" value="{{ person.id }}">
+  <button class="perigo">Tirar todos os blocos ({{ blocks|length }})</button>
+</form>
 {% else %}
 <div class="cartao-form tr-comecar">
   <p>A trilha está vazia. Para começar rápido:</p>

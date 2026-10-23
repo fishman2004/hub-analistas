@@ -289,8 +289,9 @@ def test_database_from_1_10_gains_the_tables(tmp_path):
     d.init()
     add_person(d, at(7), None, "Kayo")
     with sqlite3.connect(path) as conn:
-        for table in ("trail_notes", "month_routine_notes", "trail_marks", "trail_blocks", "month_routine_marks", "month_routines", "month_categories"):
+        for table in ("routine_people", "trail_notes", "month_routine_notes", "trail_marks", "trail_blocks", "month_routine_marks", "month_routines", "month_categories"):
             conn.execute(f"DROP TABLE {table}")
+        conn.execute("ALTER TABLE routines DROP COLUMN removed")  # migração 16
         conn.execute("PRAGMA user_version = 12")
     d.init()
     assert len(list_categories(d)) == 8 and (tmp_path / "copias").is_dir()

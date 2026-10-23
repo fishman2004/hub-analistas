@@ -383,3 +383,12 @@ O Kayo cadastrou um compromisso na Agenda e esperava ver na TV o mês inteiro co
 - Entra na rotação com alguma rotina do mês **ou** algum compromisso no mês. A conta "X de Y feitas" do dia continua só das rotinas.
 - Como na Agenda: sem descrição, compromisso reservado vira "Compromisso reservado", os pessoais nunca aparecem e, no modo Visita, fica só o tipo (Reunião, Entrega...).
 - A tela **Agenda** continua igual (hoje e os próximos dias úteis, com as ausências).
+
+## Vários responsáveis, remover rotina e tirar todos os blocos da trilha (fase 26)
+
+Pedidos do Kayo em 23/10/2026, ao usar as telas Rotinas e Trilha. Escolhas técnicas:
+
+- **Vários responsáveis:** a rotina continua gerando **um cartão só** por dia (senão a mesma tarefa ficaria duplicada e cada um concluiria o seu). O cartão aparece no quadro de **todos** os responsáveis, e qualquer um deles move, marca pastas e conclui. O primeiro (responsável principal) continua sendo o dono do cartão; os outros aparecem como bolinhas a mais no quadro e na TV. Na visão do gestor, o cartão conta para cada responsável.
+- **Remover rotina:** a rotina **não é apagada** (as demandas e o histórico de antes apontam para ela): ela sai da lista, do quadro e da TV, e as outras rotinas param de esperar por ela. Só o gestor e os administradores removem, com confirmação. **Desativar** continua existindo para só pausar. Dá para cadastrar de novo o mesmo nome e horário.
+- **Tirar todos os blocos:** limpa a trilha da pessoa de uma vez (como o Tirar de cada bloco: as marcas dos dias que passaram ficam guardadas), com confirmação, e vai para o histórico. Quem pode é quem pode montar a trilha: a própria pessoa, o gestor e os administradores.
+- **Banco:** a migração 16 cria a lista de responsáveis (cada rotina existente vira um responsável só) e a marca de "removida"; o Hub faz a cópia do banco antes, como sempre.

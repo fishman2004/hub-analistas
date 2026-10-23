@@ -327,7 +327,7 @@ def test_tv_gets_routine_cards_and_alerts_without_reserved_data(team):
     data = c.get("/api/tv").json()
     [card] = data["columns"]["doing"]
     assert card["routine"] == {"time": "14:50", "deadline": "15:00", "folders": ["B", "C", "F"], "checked": ["C"],
-                               "waiting": [], "late": True}
+                               "waiting": [], "late": True, "others": []}
     [hidden] = data["columns"]["todo"]
     assert hidden["title"] == "Demanda reservada" and hidden["routine"] is None and hidden["folder"] is None
     # avisos: as rotinas de hoje, inclusive a das 17:00; a que virou reservada não vai
