@@ -356,6 +356,19 @@ MIGRATIONS: list[tuple[int, str]] = [
             PRIMARY KEY (block_id, day)
         );
     """),
+    (16, """
+        -- rotinas com mais de um responsável (pedido do Kayo, 23/10/2026): a ordem conta, o primeiro continua
+        -- em routines.owner_id (é o dono do cartão). E "Remover" uma rotina: ela some da lista, mas fica
+        -- guardada, porque as demandas e o histórico de antes apontam para ela.
+        CREATE TABLE routine_people (
+            routine_id INTEGER NOT NULL REFERENCES routines(id),
+            person_id INTEGER NOT NULL REFERENCES people(id),
+            position INTEGER NOT NULL,
+            PRIMARY KEY (routine_id, person_id)
+        );
+        INSERT INTO routine_people(routine_id, person_id, position) SELECT id, owner_id, 0 FROM routines;
+        ALTER TABLE routines ADD COLUMN removed INTEGER NOT NULL DEFAULT 0;
+    """),
 ]
 SCHEMA_VERSION = MIGRATIONS[-1][0]
 

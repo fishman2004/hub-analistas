@@ -52,7 +52,7 @@ def _prazos(db: Database, now: datetime) -> dict | None:
     groups: dict[str, list[Demand]] = {}
     for d in sorted(open_demands, key=lambda d: (d.due, d.created_at)):
         groups.setdefault(_day_label(d, today), []).append(d)
-    return {"groups": [{"label": label, "cards": [tv_card(d, owners[d.owner_id], today) for d in items]}
+    return {"groups": [{"label": label, "cards": [tv_card(d, owners[d.owner_id], today, owners) for d in items]}
                        for label, items in groups.items()]}
 
 

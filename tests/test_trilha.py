@@ -227,8 +227,9 @@ def test_database_from_1_11_gains_the_tables(tmp_path):
     d.init()
     p = add_person(d, at(7), None, "Kayo")
     with sqlite3.connect(path) as conn:
-        for table in ("trail_notes", "month_routine_notes", "trail_marks", "trail_blocks"):
+        for table in ("routine_people", "trail_notes", "month_routine_notes", "trail_marks", "trail_blocks"):
             conn.execute(f"DROP TABLE {table}")
+        conn.execute("ALTER TABLE routines DROP COLUMN removed")  # migração 16
         conn.execute("PRAGMA user_version = 13")
     d.init()
     assert list_blocks(d, p.id) == [] and (tmp_path / "copias").is_dir()

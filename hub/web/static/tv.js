@@ -67,7 +67,13 @@
     const r = c.routine;  // rotina (fase 7): horário, prazo, pastas e espera; nunca vem em reservada
     const card = el("div", "cartao" + (c.reserved ? " reservada" : "") + (c.overdue ? " atrasada" : "") + (r ? " rotina" : ""));
     card.style.setProperty("--cor", c.color);
-    card.append(el("div", "ini", c.initials));
+    const ini = el("div", "ini", c.initials);
+    card.append(ini);
+    for (const o of (r && r.others) || []) {  // rotina com vários responsáveis: as outras iniciais ao lado
+      const outro = el("span", "ini-outro", o.initials);
+      outro.style.setProperty("--cor", o.color);
+      ini.append(outro);
+    }
     const titulo = el("div", "titulo");
     if (c.reserved) titulo.innerHTML = CADEADO;  // só o ícone fixo; o texto entra abaixo por textContent
     titulo.append(document.createTextNode(c.title));

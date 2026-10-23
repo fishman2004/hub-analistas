@@ -43,15 +43,14 @@
 {% if routines %}
 <div class="tabela-rolagem">
 <table class="tabela tabela-rotinas">
-  <thead><tr><th>Horário</th><th>Rotina</th><th>Dias</th><th>Responsável</th><th>Pastas</th><th>Liberada depois de</th>{% if can_manage %}<th></th>{% endif %}</tr></thead>
+  <thead><tr><th>Horário</th><th>Rotina</th><th>Dias</th><th>Responsáveis</th><th>Pastas</th><th>Liberada depois de</th>{% if can_manage %}<th></th>{% endif %}</tr></thead>
   <tbody>
   {% for r in routines %}
-  {% set dono = owners[r.owner_id] %}
   <tr class="{{ '' if r.active else 'desativada' }}">
     <td class="sem-quebra"><strong>{{ r.starts_at }}</strong>{% if r.deadline %}<br><span class="ajuda">até {{ r.deadline }}</span>{% endif %}</td>
     <td>{{ r.name }}{% if not r.active %} <span class="etiqueta">Desativada</span>{% endif %}</td>
     <td>{{ weekdays_label(r.weekdays) }}</td>
-    <td class="sem-quebra"><span class="bolinha" style="--cor: {{ dono.color }}">{{ dono.initials }}</span> {{ dono.name }}</td>
+    <td>{% for pid in r.owners %}{% set dono = owners[pid] %}<span class="sem-quebra"><span class="bolinha" style="--cor: {{ dono.color }}">{{ dono.initials }}</span> {{ dono.name }}</span>{{ ', ' if not loop.last else '' }}{% endfor %}</td>
     <td class="sem-quebra">{% for f in r.folders %}<span class="pasta-chip lista">{{ f }}</span>{% else %}<span class="ajuda">—</span>{% endfor %}</td>
     <td>{% for w in r.waits_for if w in by_id %}{{ by_id[w].label }}{{ ', ' if not loop.last else '' }}{% else %}<span class="ajuda">—</span>{% endfor %}</td>
     {% if can_manage %}
@@ -60,6 +59,9 @@
       <form method="post" action="/rotinas/{{ r.id }}/ativa" data-nome="{{ r.label }}" {% if r.active %}onsubmit="return confirm('Desativar ' + this.dataset.nome + '? Ela sai do quadro e da TV a partir de agora.')"{% endif %}>
         <input type="hidden" name="active" value="{{ '0' if r.active else '1' }}">
         <button class="{{ 'perigo' if r.active else 'discreto' }}">{{ 'Desativar' if r.active else 'Reativar' }}</button>
+      </form>
+      <form method="post" action="/rotinas/{{ r.id }}/remover" data-nome="{{ r.label }}" onsubmit="return confirm('Remover ' + this.dataset.nome + '? Ela some da lista, do quadro e da TV. As demandas que ela já gerou continuam no histórico. Para só pausar, use Desativar.')">
+        <button class="perigo" title="Tira a rotina da lista de vez (o histórico fica)">Remover</button>
       </form>
     </td>
     {% endif %}
@@ -89,12 +91,18 @@
       <input type="time" id="deadline" name="deadline" value="{{ v.deadline }}">
     </div>
     <div>
-      <label for="owner_id">Responsável</label>
+      <label for="owner_id">Responsável principal</label>
       <select id="owner_id" name="owner_id">
         {% for p in people %}<option value="{{ p.id }}" {% if p.id|string == v.owner_id|string %}selected{% endif %}>{{ p.name }}{{ ' (desativado)' if not p.active else '' }}</option>{% endfor %}
       </select>
     </div>
   </div>
+  <fieldset class="escolhas">
+    <legend>Outros responsáveis <span class="opcional">(opcional: o cartão aparece no quadro de cada um, e qualquer um conclui)</span></legend>
+    {% for p in people %}{% if p.active or p.id in v.also %}
+    <label class="check"><input type="checkbox" name="also" value="{{ p.id }}" {% if p.id in v.also %}checked{% endif %}> {{ p.name }}{{ ' (desativado)' if not p.active else '' }}</label>
+    {% endif %}{% endfor %}
+  </fieldset>
   <fieldset class="escolhas">
     <legend>Dias da semana</legend>
     {% for label in WEEKDAY_LABELS %}

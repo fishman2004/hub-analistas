@@ -17,7 +17,7 @@ from ..access import (ROLES, change_pin, create_pin, end_session, has_admin, res
 from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
-                       is_overdue, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
+                       is_overdue, is_owner, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
 from .. import anexos, cadastro, calendario, celular, drive, modos, notas, pastas, phd, rotinas_mes, trilha
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
@@ -29,7 +29,7 @@ from .. import horas
 from ..paineis import STALE_MAX, STALE_MIN, panel_config, save_panel_config, save_upload, stale_hours, store_for
 from ..presence import STATUSES, presence_board, set_status
 from ..rotinas import (WEEKDAY_LABELS, alerts_today, can_manage, create_suggested, get_routine, list_routines,
-                       save_routine, set_routine_active, start_test_alert, tv_alerts, weekdays_label)
+                       remove_routine, save_routine, set_routine_active, start_test_alert, tv_alerts, weekdays_label)
 from ..qr import qr_svg
 from ..prioridades import (DEFAULT_LIST, add_priority, by_folder, can_mark, can_remove, create_default_list, is_late,
                            is_month, last_day, list_month, mark_done, month_label, month_of, parse_due_day, parse_steps,
@@ -119,7 +119,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
                  "ausente_ate": away[p.id].strftime("%d/%m") if p.id in away and status == STATUSES[-1] else ""}
                 for p, status, since in presence_board(db, now)
             ],
-            "columns": {c: [tv_card(d, owners[d.owner_id], now.date()) for d in columns[c]] for c in COLUMNS},
+            "columns": {c: [tv_card(d, owners[d.owner_id], now.date(), owners) for d in columns[c]] for c in COLUMNS},
             "counts": {c: len(columns[c]) for c in COLUMNS},
             # aviso fixo em todas as telas da rotação
             "overdue": sum(is_overdue(d, now.date()) for d in columns["todo"] + columns["doing"]),
@@ -366,10 +366,10 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         # a presença vai junto no trecho que se atualiza: um app aberto de ontem não mostra o status velho
         status = next((s for p, s, _ in presence_board(db, now) if p.id == user.id), STATUSES[-1])
         everything = board(db, now)
-        columns = everything if show_all else {c: [d for d in everything[c] if d.owner_id == user.id] for c in COLUMNS}
+        columns = everything if show_all else {c: [d for d in everything[c] if is_owner(d, user.id)] for c in COLUMNS}
         # rotinas da equipe com pastas: cada um marca a sua, mesmo sem ser o responsável pelo cartão
         shared = [] if show_all else [d for c in ("todo", "doing") for d in everything[c]
-                                      if d.routine and d.routine.folders and d.owner_id != user.id and can_see(d, user)]
+                                      if d.routine and d.routine.folders and not is_owner(d, user.id) and can_see(d, user)]
         return {
             "status": status,
             "columns": columns,
@@ -1034,10 +1034,10 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
     def routine_values(r=None, user: Person | None = None) -> dict:
         if r is None:
             return {"id": "", "name": "", "weekdays": [0, 1, 2, 3, 4], "starts_at": "", "deadline": "",
-                    "owner_id": str(user.id), "folders": [], "waits_for": [], "on_holidays": False}
+                    "owner_id": str(user.id), "also": [], "folders": [], "waits_for": [], "on_holidays": False}
         return {"id": r.id, "name": r.name, "weekdays": list(r.weekdays), "starts_at": r.starts_at,
-                "deadline": r.deadline or "", "owner_id": str(r.owner_id), "folders": list(r.folders),
-                "waits_for": list(r.waits_for), "on_holidays": r.on_holidays}
+                "deadline": r.deadline or "", "owner_id": str(r.owner_id), "also": list(r.owners[1:]),
+                "folders": list(r.folders), "waits_for": list(r.waits_for), "on_holidays": r.on_holidays}
 
     def routines_page(request: Request, user: Person, status_code: int = 200, v: dict | None = None,
                       **ctx) -> HTMLResponse:
@@ -1045,9 +1045,11 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         routines = list_routines(db)
         v = v or routine_values(user=user)
         # responsável desativado continua na lista desta rotina, como no formulário de demanda
-        owner = get_person(db, int(v["owner_id"])) if str(v.get("owner_id", "")).isdigit() else None
-        if owner and not owner.active:
-            people = people + [owner]
+        chosen = [int(v["owner_id"])] if str(v.get("owner_id", "")).isdigit() else []
+        for pid in chosen + list(v.get("also", [])):
+            owner = get_person(db, pid)
+            if owner and not owner.active and owner not in people:
+                people = people + [owner]
         return page(request, "rotinas.html", user, status_code, routines=routines, by_id={r.id: r for r in routines},
                     people=people, owners={p.id: p for p in list_people(db, active_only=False)}, v=v,
                     can_manage=can_manage(user), alerts=alerts_today(db, clock()), **ctx)
@@ -1064,9 +1066,12 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         def ints(key: str) -> list[int]:
             return [int(x) for x in form.getlist(key) if str(x).isdigit()]
         owner = str(form.get("owner_id", ""))
+        first = int(owner) if owner.isdigit() else 0
+        # o responsável principal (o dono do cartão) e, depois, os outros marcados
+        owners = [first] + [p for p in ints("also") if p != first]
         return {"name": str(form.get("name", "")), "weekdays": ints("weekdays"),
                 "starts_at": str(form.get("starts_at", "")), "deadline": str(form.get("deadline", "")),
-                "owner_id": int(owner) if owner.isdigit() else 0, "folders": [str(f) for f in form.getlist("folders")],
+                "owner_ids": owners, "folders": [str(f) for f in form.getlist("folders")],
                 "waits_for": ints("waits_for"), "on_holidays": form.get("on_holidays") == "1"}
 
     @app.get("/rotinas", response_class=HTMLResponse)
@@ -1103,7 +1108,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         try:
             save_routine(db, clock(), user, routine_id, **fields)
         except ValidationError as exc:
-            v = {**fields, "id": routine_id or "", "owner_id": str(fields["owner_id"])}
+            v = {**fields, "id": routine_id or "", "owner_id": str(fields["owner_ids"][0]), "also": fields["owner_ids"][1:]}
             return routines_page(request, user, 422, v=v, error=str(exc))
         return RedirectResponse("/rotinas", status_code=303)
 
@@ -1117,7 +1122,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         if stop:
             return stop
         r = get_routine(db, routine_id)
-        if r is None:
+        if r is None or r.removed:
             return RedirectResponse("/rotinas", status_code=303)
         return routines_page(request, user, v=routine_values(r))
 
@@ -1135,6 +1140,18 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return routines_page(request, user, 422, error=str(exc))
         return RedirectResponse("/rotinas", status_code=303)
+
+    @app.post("/rotinas/{routine_id}/remover")
+    def rotinas_remover(request: Request, routine_id: int):
+        user, stop = manager_only(request)
+        if stop:
+            return stop
+        try:
+            r = remove_routine(db, clock(), user, routine_id)
+        except ValidationError as exc:
+            return routines_page(request, user, 422, error=str(exc))
+        return routines_page(request, user, ok=f"“{r.label}” foi removida. As demandas que ela já gerou continuam "
+                             "no histórico.")
 
     # ---------- trilha do dia (fase 20) ----------
 
@@ -1286,6 +1303,18 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return build_page(request, user, person, 422, error=str(exc))
         return back_to_build(person.id, f"{n} blocos copiados.")
+
+    @app.post("/trilha/montar/tirar-tudo")
+    def trilha_tirar_tudo(request: Request, pessoa: str = Form("")):
+        user = me(request)
+        if user is None:
+            return to_login()
+        person = build_target(request, user, pessoa)
+        if not isinstance(person, Person):
+            return person
+        n = trilha.remove_all(db, clock(), user, person.id)
+        return back_to_build(person.id, f"{n} blocos tirados. A trilha de {person.name} ficou vazia: dá para montar "
+                             "de novo, criar a do modelo ou copiar de outra pessoa.")
 
     @app.post("/trilha/montar/{block_id}")
     async def trilha_bloco_salvar(request: Request, block_id: int):
@@ -2351,6 +2380,7 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "rotina_editada": f"{who} editou a rotina “{detail}”",
         "rotina_desativada": f"{who} desativou a rotina “{detail}”",
         "rotina_reativada": f"{who} reativou a rotina “{detail}”",
+        "rotina_removida": f"{who} removeu a rotina “{detail}”",
         "rotina_demanda": f"{who} mexeu pela primeira vez hoje na rotina “{title}”",
         "pasta_marcada": f"{who} marcou a pasta {detail} em “{title}”",
         "pasta_desmarcada": f"{who} desmarcou a pasta {detail} em “{title}”",
@@ -2386,6 +2416,7 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "rotina_mes_justificativa_tirada": f"{who} tirou a justificativa da rotina do mês “{detail}”",
         "trilha_modelo": f"{who} criou a trilha do modelo para {name}",
         "trilha_copiada": f"{who} copiou uma trilha para {name}",
+        "trilha_limpa": f"{who} tirou todos os blocos ({detail}) da trilha de {name}",
         "trilha_feito": f"{who} marcou como feito o bloco {detail} da trilha de {name}",
         "trilha_desfeito": f"{who} desmarcou o bloco {detail} da trilha de {name}",
         "trilha_justificada": f"{who} justificou o bloco {detail} da trilha de {name}",
