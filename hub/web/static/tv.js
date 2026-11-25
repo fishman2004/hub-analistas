@@ -246,7 +246,8 @@
     clearTimeout(timerAviso);
     timerAviso = setTimeout(() => { faixa.hidden = true; }, AVISO_MS);
     if (lista.every((a) => a.mudo)) return;  // modo sem som (ex.: Reunião na sala): só a faixa
-    if (natalLigado && window.HubNatal && window.HubNatal.sinos()) return;  // no Natal, sinos
+    // o som escolhido em Configurações (sinos no Natal, por padrão); "padrao" ou sem Web Audio: o aviso.wav
+    if (somAviso !== "padrao" && window.HubNatal && window.HubNatal.tocarAviso(somAviso)) return;
     try {
       som.currentTime = 0;
       const tocando = som.play();
@@ -275,6 +276,9 @@
   // ---------- tema de Natal (fase 27) ----------
 
   let natalLigado = false;
+  let somAviso = "padrao";
+  let noelComSom = false;
+  let noelPedido = null;  // o último "Passar agora na TV" visto
   let musicaPedida = false;
   let musicaMutada = false;  // tecla M nesta TV
 
@@ -290,16 +294,23 @@
     if (!window.HubNatal || EXPORTAR) return;
     n = n || {};
     natalLigado = Boolean(n.ligado);
+    noelComSom = Boolean(n.noel && n.noel.som);
     window.HubNatal.vestir(natalLigado, {
-      noel: [240, 420, 40],  // de 4 a 7 minutos entre uma passada e outra
-      aoPassar: () => { if (window.HubNatal.musica.ligada) window.HubNatal.guizosDoTreno(); },
+      noel: n.noel || null,  // onde, de quanto em quanto tempo e em que altura: Configurações → Papai Noel
+      // guizos só se ligados em Configurações → Papai Noel (padrão: ele passa em silêncio)
+      aoPassar: () => { if (noelComSom && window.HubNatal.musica.ligada) window.HubNatal.guizosDoTreno(); },
     });
     document.body.classList.toggle("natal-preto", natalLigado && n.estilo === "preto");
+    // "Passar agora na TV": passa quando o pedido muda (não na primeira busca, para recarregar não repetir)
+    if (noelPedido !== null && n.noel_agora && n.noel_agora !== noelPedido && natalLigado && !NO_PC) window.HubNatal.papaiNoel();
+    noelPedido = n.noel_agora || "";
     const contagem = document.getElementById("natal-contagem");
     contagem.hidden = !natalLigado;
     if (natalLigado) contagem.textContent = textoNatal(n.faltam);
     musicaPedida = natalLigado && Boolean(n.musica) && !NO_PC;  // a TV aberta no PC de alguém não toca
-    if (musicaPedida && !musicaMutada) window.HubNatal.musica.tocar(n.volume);
+    if (musicaPedida && !musicaMutada) {
+      window.HubNatal.musica.tocar(n.volume, { tipo: "tv", faixas: n.faixas, ordem: n.ordem, intervalo: n.intervalo });
+    }
     else window.HubNatal.musica.parar();
   }
 
@@ -468,6 +479,7 @@
       paginaRemota = pagina;
       desenharPausa();
       desenharModo(dados.modo);
+      somAviso = dados.som_aviso || "padrao";
       natal(dados.natal);
       conferirAvisos();
       desenharPresenca(dados.people);

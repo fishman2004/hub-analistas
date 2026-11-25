@@ -87,15 +87,21 @@
 
   let varal = null;
 
-  // Papai Noel no trenó (natal-papai-noel.svg, desenho próprio) passando de um lado para o outro
+  // Papai Noel no trenó (natal-papai-noel.svg, desenho próprio) passando de um lado para o outro.
+  // Onde passa, de quanto em quanto tempo e em que altura vêm de Configurações → Papai Noel.
   let timerNoel = null;
   let aoPassar = null;
-  function papaiNoel() {
-    if (calmo || !raiz.classList.contains("natal") || document.querySelector(".natal-papai-noel")) return;
+  let noelCfg = null;  // { minutos, altura } ou null (não passa aqui)
+  const ALTURAS = { topo: [6, 14], meio: [34, 44], baixo: [60, 70], sorteada: [10, 60] };
+
+  function papaiNoel(forcar) {
+    if (calmo || document.querySelector(".natal-papai-noel")) return;
+    if (!forcar && !raiz.classList.contains("natal")) return;
+    const [de, ate] = ALTURAS[(noelCfg && noelCfg.altura) || "sorteada"] || ALTURAS.sorteada;
     const voo = document.createElement("div");
     voo.className = "natal-papai-noel";
     voo.setAttribute("aria-hidden", "true");
-    voo.style.top = (12 + Math.random() * 45) + "vh";
+    voo.style.top = (de + Math.random() * (ate - de)) + "vh";
     voo.style.setProperty("--dur", (11 + Math.random() * 5).toFixed(1) + "s");
     const img = document.createElement("img");
     img.src = "/static/natal-papai-noel.svg";
@@ -105,25 +111,41 @@
     voo.addEventListener("animationend", (e) => { if (e.target === voo) voo.remove(); });
     if (aoPassar) aoPassar();
   }
-  function agendarNoel(min, max, primeiro) {
+
+  function agendarNoel(primeiro) {
     clearTimeout(timerNoel);
-    const espera = primeiro !== undefined ? primeiro : min + Math.random() * (max - min);
-    timerNoel = setTimeout(() => { papaiNoel(); agendarNoel(min, max); }, espera * 1000);
+    if (!noelCfg || !raiz.classList.contains("natal")) return;
+    const media = noelCfg.minutos * 60;
+    const espera = primeiro !== undefined ? primeiro : media * (0.7 + Math.random() * 0.6);
+    timerNoel = setTimeout(() => { papaiNoel(); agendarNoel(); }, espera * 1000);
   }
 
-  // opcoes.noel = [mínimo, máximo, primeira vez] em segundos entre uma passada e outra
+  // muda onde/quando o Papai Noel passa (a TV chama a cada busca; só reagenda se mudou)
+  function configurarNoel(cfg) {
+    const novo = cfg && cfg.minutos ? { minutos: Number(cfg.minutos), altura: cfg.altura || "sorteada" } : null;
+    if (JSON.stringify(novo) === JSON.stringify(noelCfg)) return;
+    const antes = noelCfg;
+    noelCfg = novo;
+    if (!novo) { clearTimeout(timerNoel); return; }
+    if (!antes || antes.minutos !== novo.minutos) agendarNoel(Math.min(20 + Math.random() * 30, novo.minutos * 60));
+  }
+
+  // opcoes.noel = { minutos, altura } (sem ela, o Papai Noel não passa); opcoes.aoPassar = o que fazer quando passa
   function vestir(ligado, opcoes) {
     raiz.classList.toggle("natal", ligado);
     if (ligado && !neve) {
       neve = criarNeve();
       varal = criarVaral();
-      const [min, max, primeiro] = (opcoes && opcoes.noel) || [360, 600, 25 + Math.random() * 40];
       if (opcoes && opcoes.aoPassar) aoPassar = opcoes.aoPassar;
-      agendarNoel(min, max, primeiro);
+      noelCfg = null;
+      configurarNoel(opcoes && opcoes.noel);
+    } else if (ligado && opcoes && "noel" in opcoes) {
+      configurarNoel(opcoes.noel);
     }
     if (!ligado && neve) {
       neve.parar(); neve = null; varal.remove(); varal = null;
       clearTimeout(timerNoel);
+      noelCfg = null;
       for (const v of document.querySelectorAll(".natal-papai-noel")) v.remove();
     }
   }
@@ -175,11 +197,15 @@
   }
 
   // sininho de caixinha de música: a nota e dois harmônicos que somem rápido
+  // a nota soa e some sozinha, mas é abafada logo depois da seguinte começar: sem isso, as notas compridas
+  // ficavam tocando por baixo das próximas e embolavam
   function caixinha(destino, f, t, dur, forca) {
+    const fim = t + Math.min(Math.max(0.5, dur + 0.25), 2.6);
     const env = ctx.createGain();
     env.gain.setValueAtTime(0.0001, t);
     env.gain.exponentialRampToValueAtTime(0.22 * forca, t + 0.006);
-    env.gain.exponentialRampToValueAtTime(0.0008, t + Math.max(1.1, dur * 1.6));
+    env.gain.exponentialRampToValueAtTime(0.03 * forca, Math.max(t + 0.3, fim - 0.12));
+    env.gain.exponentialRampToValueAtTime(0.0005, fim);
     env.connect(destino);
     for (const [mult, g] of [[1, 1], [2, 0.28], [3, 0.07]]) {
       const o = ctx.createOscillator();
@@ -189,7 +215,7 @@
       v.gain.value = g;
       o.connect(v).connect(env);
       o.start(t);
-      o.stop(t + Math.max(1.2, dur * 1.7));
+      o.stop(fim + 0.02);
     }
   }
 
@@ -209,6 +235,60 @@
     o.stop(t + 0.75);
   }
 
+  // piano suave: ataque rápido, harmônicos que somem antes da nota e um filtro para ficar macio
+  function piano(destino, f, t, dur, forca) {
+    const fim = t + Math.min(Math.max(dur + 0.7, 1.4), 4.5);
+    const filtro = ctx.createBiquadFilter();
+    filtro.type = "lowpass";
+    filtro.frequency.value = Math.min(4200, f * 5);
+    filtro.Q.value = 0.3;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(0.15 * forca, t + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.05 * forca, t + 0.7);
+    env.gain.exponentialRampToValueAtTime(0.0004, fim);
+    filtro.connect(env).connect(destino);
+    for (const [mult, g, cents] of [[1, 1, 0], [1, 0.5, 4], [2, 0.32, 0], [3, 0.12, 0], [4, 0.05, 0]]) {
+      const o = ctx.createOscillator();
+      const v = ctx.createGain();
+      o.frequency.value = f * mult;
+      o.detune.value = cents;
+      v.gain.value = g * 0.6;
+      o.connect(v).connect(filtro);
+      o.start(t);
+      o.stop(fim + 0.02);
+    }
+  }
+
+  // "pad": um colchão de acorde que entra e sai devagar (ondas detunadas passando por um filtro escuro)
+  function pad(destino, freqs, t, dur, escuro) {
+    const filtro = ctx.createBiquadFilter();
+    filtro.type = "lowpass";
+    filtro.frequency.value = escuro ? 650 : 1000;
+    const env = ctx.createGain();
+    const sobe = Math.min(1.8, dur / 3);
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.linearRampToValueAtTime(0.038, t + sobe);
+    env.gain.setValueAtTime(0.038, t + dur);
+    env.gain.linearRampToValueAtTime(0.0001, t + dur + 2.2);
+    filtro.connect(env).connect(destino);
+    for (const f of freqs) {
+      for (const cents of [-7, 7]) {
+        const o = ctx.createOscillator();
+        o.type = "sawtooth";
+        o.frequency.value = f;
+        o.detune.value = cents;
+        const v = ctx.createGain();
+        v.gain.value = 0.16 / freqs.length;
+        o.connect(v).connect(filtro);
+        o.start(t);
+        o.stop(t + dur + 2.3);
+      }
+    }
+  }
+
+  const hz = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+
   let ruido = null;
   function bufferRuido() {
     if (ruido) return ruido;
@@ -219,7 +299,7 @@
   }
 
   // guizo de trenó: um chiado agudo e brilhante bem curto
-  function guizo(destino, t, forca) {
+  function guizo(destino, t, forca, semMetal) {
     const s = ctx.createBufferSource();
     s.buffer = bufferRuido();
     const filtro = ctx.createBiquadFilter();
@@ -233,7 +313,7 @@
     s.connect(filtro).connect(env).connect(destino);
     s.start(t);
     s.stop(t + 0.15);
-    for (const f of [4100, 5300, 7900]) {  // um pouco de metal por cima
+    if (!semMetal) for (const f of [4100, 5300, 7900]) {  // um pouco de metal por cima
       const o = ctx.createOscillator();
       const g = ctx.createGain();
       o.frequency.value = f * (0.97 + Math.random() * 0.06);
@@ -264,27 +344,43 @@
   // ---------- músicas (domínio público) ----------
   // melodia: "nota:tempos" ("R" é pausa); baixo: a nota de cada compasso (tocada no 1º tempo e a quinta no meio)
   const MUSICAS = [
-    { nome: "Jingle Bells", bpm: 132, compasso: 4, transpor: 0, guizos: true,
+    { id: "jingle", nome: "Jingle Bells", bpm: 132, compasso: 4, transpor: 0, guizos: true,
       melodia: "E5:1 E5:1 E5:2 E5:1 E5:1 E5:2 E5:1 G5:1 C5:1.5 D5:.5 E5:4 F5:1 F5:1 F5:1.5 F5:.5 F5:1 E5:1 E5:1 E5:.5 E5:.5 "
         + "E5:1 D5:1 D5:1 E5:1 D5:2 G5:2 E5:1 E5:1 E5:2 E5:1 E5:1 E5:2 E5:1 G5:1 C5:1.5 D5:.5 E5:4 "
         + "F5:1 F5:1 F5:1.5 F5:.5 F5:1 E5:1 E5:1 E5:.5 E5:.5 G5:1 G5:1 F5:1 D5:1 C5:4",
       baixo: "C C C C F C D G C C C C F C G C" },
-    { nome: "Noite Feliz", bpm: 84, compasso: 3, transpor: -12,
+    { id: "noite", nome: "Noite Feliz", bpm: 84, compasso: 3, transpor: -12,
       melodia: "G5:1.5 A5:.5 G5:1 E5:3 G5:1.5 A5:.5 G5:1 E5:3 D6:2 D6:1 B5:3 C6:2 C6:1 G5:3 "
         + "A5:2 A5:1 C6:1.5 B5:.5 A5:1 G5:1.5 A5:.5 G5:1 E5:3 A5:2 A5:1 C6:1.5 B5:.5 A5:1 G5:1.5 A5:.5 G5:1 E5:3 "
         + "D6:2 D6:1 F6:1.5 D6:.5 B5:1 C6:3 E6:3 C6:1 G5:1 E5:1 G5:1.5 F5:.5 D5:1 C5:6",
       baixo: "C C C C G G C C F F C C F F C C G G C C C G C C" },
-    { nome: "We Wish You a Merry Christmas", bpm: 150, compasso: 3, transpor: 12, repetir: 2,
+    { id: "wewish", nome: "We Wish You a Merry Christmas", bpm: 150, compasso: 3, transpor: 12, repetir: 2,
       melodia: "R:2 G4:1 C5:1 C5:.5 D5:.5 C5:.5 B4:.5 A4:1 A4:1 A4:1 D5:1 D5:.5 E5:.5 D5:.5 C5:.5 B4:1 G4:1 G4:1 "
         + "E5:1 E5:.5 F5:.5 E5:.5 D5:.5 C5:1 A4:1 G4:.5 G4:.5 A4:1 D5:1 B4:1 C5:2 R:1",
       baixo: "- C F D G A F G C" },
-    { nome: "Deck the Halls", bpm: 120, compasso: 4, transpor: 12,
+    { id: "deck", nome: "Deck the Halls", bpm: 120, compasso: 4, transpor: 12,
       melodia: "G4:1.5 F4:.5 E4:1 D4:1 C4:1 D4:1 E4:1 C4:1 D4:.5 E4:.5 F4:.5 D4:.5 E4:1.5 D4:.5 C4:1 B3:1 C4:2 "
         + "G4:1.5 F4:.5 E4:1 D4:1 C4:1 D4:1 E4:1 C4:1 D4:.5 E4:.5 F4:.5 D4:.5 E4:1.5 D4:.5 C4:1 B3:1 C4:2 "
         + "D4:1.5 E4:.5 F4:1 D4:1 E4:1.5 F4:.5 G4:1 D4:1 E4:.5 F#4:.5 G4:1 A4:.5 B4:.5 C5:1 B4:1 A4:1 G4:2 "
         + "G4:1.5 F4:.5 E4:1 D4:1 C4:1 D4:1 E4:1 C4:1 A4:.5 A4:.5 A4:.5 A4:.5 G4:1.5 F4:.5 E4:1 D4:1 C4:2",
       baixo: "C C G C C C G C G C D G C C F C" },
   ];
+  // versões em piano suave das clássicas, mais devagar e com os acordes por baixo
+  MUSICAS.push(
+    { ...MUSICAS[1], id: "noite-piano", nome: "Noite Feliz (piano suave)", bpm: 62, ganho: 1.9, instrumento: "piano", acordes: true },
+    { ...MUSICAS[0], id: "jingle-piano", nome: "Jingle Bells (piano suave)", bpm: 96, ganho: 1.6, instrumento: "piano", acordes: true,
+      guizos: false, transpor: -12 },
+    // ambientes: [baixo, notas do acorde...] em números MIDI (60 = dó central)
+    { id: "neve", nome: "Pianinho de neve (ambiente)", segundos: 6, ganho: 2.3, voltas: 4,
+      acordes: [[36, 55, 64, 71], [33, 52, 60, 67], [29, 57, 60, 64], [31, 55, 59, 62]],
+      escala: [72, 74, 76, 79, 81, 84] },
+    { id: "lareira", nome: "Lareira (ambiente)", segundos: 7, ganho: 2.3, voltas: 3, escuro: true, arpejo: true,
+      acordes: [[38, 54, 57, 61, 66], [35, 54, 57, 62, 66], [31, 54, 59, 62, 66], [33, 52, 57, 62, 67]],
+      escala: [] },
+    { id: "sinos", nome: "Sinos ao longe (ambiente)", segundos: 8, ganho: 2.6, voltas: 3, sinos: true, escuro: true, baixo: false,
+      acordes: [[41, 57, 60, 64], [38, 57, 60, 65], [46, 57, 62, 65], [48, 55, 60, 64]],
+      escala: [77, 79, 81, 84] },
+  );
   const QUINTA = { C: "G", D: "A", E: "B", F: "C", G: "D", A: "E", B: "F#" };
 
   // agenda uma música inteira a partir do instante t, num volume próprio dela; devolve quando ela termina
@@ -298,13 +394,19 @@
         const dur = Number(tempos);
         if (nota !== "R") {
           const forte = (beat - inicio) % m.compasso === 0 ? 1 : 0.8;
-          caixinha(destino, freq(nota, m.transpor), t + beat * seg, dur * seg, forte);
+          (m.instrumento === "piano" ? piano : caixinha)(destino, freq(nota, m.transpor), t + beat * seg, dur * seg, forte);
         }
         beat += dur;
       }
       m.baixo.split(" ").forEach((raizNota, i) => {
         if (raizNota === "-") return;
         const b = inicio + i * m.compasso;
+        if (m.acordes) {  // versão suave: o acorde do compasso num pad e o baixo só no primeiro tempo, de leve
+          const r = Math.round(12 * Math.log2(freq(raizNota + "3", 0) / 440)) + 69;
+          pad(destino, [hz(r), hz(r + 4), hz(r + 7), hz(r + 12)], t + b * seg, m.compasso * seg, true);
+          piano(destino, hz(r - 12), t + b * seg, m.compasso * seg, 0.4);
+          return;
+        }
         baixo(destino, freq(raizNota + "3", 0), t + b * seg, 1);
         if (m.compasso === 4) baixo(destino, freq(QUINTA[raizNota] + "2", 0), t + (b + 2) * seg, 0.7);
         else for (const k of [1, 2]) baixo(destino, freq(QUINTA[raizNota] + "3", 0), t + (b + k) * seg, 0.45);
@@ -314,28 +416,117 @@
     return t + beat * seg;
   }
 
-  const musica = { ligada: false, volume: 25, timer: null, atual: null, fila: [] };
+  // faixas ambientes (composição do próprio Hub): acordes num pad, o baixo de leve e notas soltas por cima,
+  // sorteadas dentro do acorde e da escala, então cada vez sai um pouco diferente
+  function ambiente(m, destino, t) {
+    const n = m.acordes.length;
+    for (let volta = 0; volta < m.voltas; volta++) {
+      m.acordes.forEach((acorde, i) => {
+        const t0 = t + (volta * n + i) * m.segundos;
+        pad(destino, acorde.slice(1).map(hz), t0, m.segundos, m.escuro);
+        if (m.baixo !== false) piano(destino, hz(acorde[0]), t0, m.segundos, 0.5);
+        const notas = acorde.slice(1).map((x) => x + 12).concat(m.escala);
+        if (m.arpejo) {  // arpejo subindo e descendo, no compasso
+          const passo = m.segundos / 8;
+          const sobe = acorde.slice(1).map((x) => x + 12);
+          const ordem = sobe.concat(sobe.slice(1, -1).reverse()).concat(sobe).slice(0, 8);
+          ordem.forEach((x, k) => piano(destino, hz(x), t0 + k * passo, passo * 2, k === 0 ? 0.75 : 0.5));
+          return;
+        }
+        const quantas = 3 + Math.floor(Math.random() * 3);
+        let quando = 0.4 + Math.random() * 0.6;
+        for (let k = 0; k < quantas && quando < m.segundos - 0.6; k++) {
+          const nota = notas[Math.floor(Math.random() * notas.length)];
+          if (m.sinos) sino(destino, hz(nota), t0 + quando, 0.9);
+          else piano(destino, hz(nota), t0 + quando, 1.6, 0.6 + Math.random() * 0.3);
+          quando += 0.7 + Math.random() * (m.segundos / quantas);
+        }
+      });
+    }
+    return t + n * m.voltas * m.segundos + 2;
+  }
+
+  const musica = { ligada: false, volume: 25, timer: null, atual: null, fila: [], seq: 0,
+                   faixas: MUSICAS.map((m) => m.id), ordem: "aleatoria", intervalo: 5, tipo: "app", cedidoAte: 0 };
 
   function ganhoDoVolume(v) { return Math.pow(Math.max(0, Math.min(100, v)) / 100, 1.6) * 1.4; }
 
-  function proxima() {
-    if (!musica.ligada) return;
-    if (!musica.fila.length) musica.fila = MUSICAS.slice().sort(() => Math.random() - 0.5);
-    const m = musica.fila.shift();
-    const g = ctx.createGain();
-    g.connect(volMusica);
-    musica.atual = g;
-    const fim = agendar(m, g, ctx.currentTime + 0.2);
-    // entre uma música e outra, uns segundos de silêncio
-    musica.timer = setTimeout(() => { g.disconnect(); proxima(); }, (fim - ctx.currentTime + 4) * 1000);
+  function escolher() {
+    const lista = MUSICAS.filter((m) => musica.faixas.includes(m.id));
+    const faixas = lista.length ? lista : MUSICAS;
+    if (musica.ordem === "lista") return faixas[musica.seq++ % faixas.length];
+    if (!musica.fila.length) musica.fila = faixas.slice().sort(() => Math.random() - 0.5);
+    return musica.fila.shift();
   }
 
-  function tocarMusica(volume) {
-    if (volume !== undefined) musica.volume = volume;
+  function soltar(g) {  // a música que estava tocando some em 0,2 s e sai do som
+    if (!g) return;
+    g.gain.setTargetAtTime(0, ctx.currentTime, 0.06);
+    setTimeout(() => g.disconnect(), 500);
+  }
+
+  function proxima() {
+    clearTimeout(musica.timer);
+    if (!musica.ligada) return;
+    soltar(musica.atual);
+    const m = escolher();
+    const g = ctx.createGain();
+    g.gain.value = m.ganho || 1;  // as faixas suaves vêm mais baixas: cada uma acerta o seu volume
+    g.connect(volMusica);
+    musica.atual = g;
+    musica.nome = m.nome;
+    const fim = (m.acordes && !m.melodia ? ambiente : agendar)(m, g, ctx.currentTime + 0.3);
+    // entre uma música e outra, o silêncio escolhido em Configurações
+    musica.timer = setTimeout(proxima, (fim - ctx.currentTime + 1.5 + musica.intervalo) * 1000);
+  }
+
+  // ---------- uma aba por vez no mesmo PC ----------
+  // Duas abas do Hub tocando (a TV e o app, ou a TV aberta duas vezes) embolam as músicas. As abas que tocam
+  // avisam as outras a cada 2 s; quem recebe para. A TV dá a vez para o app ("Ouvir a música aqui") e volta
+  // sozinha uns segundos depois que ele parar; entre duas iguais, fica a que começou por último.
+  const ID = Math.random().toString(36).slice(2);
+  let canal = null;
+  try { canal = new BroadcastChannel("hub-natal-musica"); } catch (e) { /* navegador antigo: cada aba por si */ }
+  let inicio = 0;
+  if (canal) {
+    canal.onmessage = (e) => {
+      const d = e.data || {};
+      if (d.id === ID || d.tipo === undefined) return;
+      musica.cedidoAte = Date.now() + 6000;
+      const outraMandaMais = d.tipo === "app" && musica.tipo === "tv";
+      const outraEMaisNova = d.tipo === musica.tipo && d.inicio > inicio;
+      if (musica.ligada && (outraMandaMais || outraEMaisNova)) pararMusica();
+      if (!musica.ligada) musica.cedidoAte = Date.now() + 6000;
+    };
+    setInterval(() => { if (musica.ligada) canal.postMessage({ id: ID, tipo: musica.tipo, inicio }); }, 2000);
+  }
+
+  // opcoes: { tipo: "tv" | "app", faixas, ordem, intervalo }
+  function tocarMusica(volume, opcoes) {
+    if (opcoes) {
+      if (opcoes.tipo) musica.tipo = opcoes.tipo;
+      if (Array.isArray(opcoes.faixas) && opcoes.faixas.join() !== musica.faixas.join()) {
+        musica.faixas = opcoes.faixas.slice();
+        musica.fila = [];
+      }
+      if (opcoes.ordem) musica.ordem = opcoes.ordem;
+      if (Number.isFinite(Number(opcoes.intervalo))) musica.intervalo = Number(opcoes.intervalo);
+    }
+    if (!musica.ligada && musica.tipo === "tv" && Date.now() < musica.cedidoAte) return false;  // outra aba deste PC toca
     const c = desbloquear();
     if (!c) return false;
-    volMusica.gain.setTargetAtTime(ganhoDoVolume(musica.volume), c.currentTime, 0.4);
-    if (!musica.ligada) { musica.ligada = true; proxima(); }
+    const novoVolume = volume !== undefined && volume !== musica.volume;
+    if (volume !== undefined) musica.volume = volume;
+    // só mexe no volume quando ele muda (a TV chama a cada 5 s; não pode desfazer a baixada dos sinos)
+    if (!musica.ligada || novoVolume) volMusica.gain.setTargetAtTime(ganhoDoVolume(musica.volume), c.currentTime, 0.4);
+    if (!musica.ligada) {
+      musica.ligada = true;
+      inicio = Date.now();
+      if (canal) canal.postMessage({ id: ID, tipo: musica.tipo, inicio });
+      proxima();
+    } else if (musica.atual && !musica.faixas.includes(MUSICAS.find((m) => m.nome === musica.nome)?.id)) {
+      proxima();  // a faixa que estava tocando foi desmarcada: passa para uma das marcadas
+    }
     return true;
   }
 
@@ -343,9 +534,8 @@
     if (!musica.ligada) return;
     musica.ligada = false;
     clearTimeout(musica.timer);
-    const g = musica.atual;
-    volMusica.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
-    setTimeout(() => { if (g) g.disconnect(); }, 1500);
+    soltar(musica.atual);
+    musica.atual = null;
   }
 
   // o som dos avisos: guizos de trenó e um sino tocando "Jingle bells, jingle bells" (curto: só o começo)
@@ -376,24 +566,102 @@
     return true;
   }
 
+  // ---------- os outros sons dos avisos (Configurações → Som dos avisos) ----------
+
+  function preparar(segundos) {
+    const c = desbloquear();
+    if (!c || c.state !== "running") return null;
+    const t0 = c.currentTime + 0.05;
+    const destino = ctx.createGain();
+    destino.connect(saida);
+    destino.connect(eco);
+    if (musica.ligada) {  // a música baixa enquanto o aviso toca
+      volMusica.gain.setTargetAtTime(ganhoDoVolume(musica.volume) * 0.15, t0, 0.08);
+      volMusica.gain.setTargetAtTime(ganhoDoVolume(musica.volume), t0 + segundos, 0.6);
+    }
+    setTimeout(() => destino.disconnect(), (segundos + 5) * 1000);
+    return { destino, t0 };
+  }
+
+  // sino grande: um "hum" grave e parciais de sino que demoram a sumir
+  function sinoGrande(destino, f, t, forca) {
+    const parciais = [[0.5, 0.5, 5], [1, 1, 4], [1.19, 0.45, 2.6], [1.5, 0.35, 2.2], [2, 0.4, 1.8], [2.5, 0.2, 1.2], [3, 0.15, 0.9], [4.2, 0.08, 0.6]];
+    for (const [mult, g, decai] of parciais) {
+      const o = ctx.createOscillator();
+      const v = ctx.createGain();
+      o.frequency.value = f * mult;
+      v.gain.setValueAtTime(0.0001, t);
+      v.gain.exponentialRampToValueAtTime(0.14 * g * forca, t + 0.004);
+      v.gain.exponentialRampToValueAtTime(0.0004, t + decai);
+      o.connect(v).connect(destino);
+      o.start(t);
+      o.stop(t + decai + 0.05);
+    }
+  }
+
+  const AVISOS = {
+    sinos: () => sinos(),
+    igreja() {  // blém... blém... blém
+      const p = preparar(6);
+      if (!p) return false;
+      [[0, "E4"], [1.6, "C4"], [3.2, "E4"]].forEach(([t, n]) => sinoGrande(p.destino, freq(n, 0), p.t0 + t, 1));
+      return true;
+    },
+    carrilhao() {  // o toque dos relógios de torre (Westminster, 1793, domínio público)
+      const p = preparar(6);
+      if (!p) return false;
+      "G4 E5 D5 C5 . G4 D5 E5 C5".split(" ").forEach((n, i) => { if (n !== ".") sino(p.destino, freq(n, 0), p.t0 + i * 0.55, 1.2); });
+      return true;
+    },
+    caixinha() {
+      const p = preparar(3);
+      if (!p) return false;
+      "C6 E6 G6 C7 G6 E6 C7".split(" ").forEach((n, i) => caixinha(p.destino, freq(n, 0), p.t0 + i * 0.16, 0.5, i === 6 ? 1.2 : 0.9));
+      return true;
+    },
+    guizos() {
+      const p = preparar(2.5);
+      if (!p) return false;
+      for (let i = 0; i < 26; i++) guizo(p.destino, p.t0 + i * 0.07 + (i % 2) * 0.025 + Math.floor(i / 6) * 0.12, 1);
+      return true;
+    },
+  };
+
+  // toca o som escolhido para os avisos; devolve false quando é o "de sempre" (o aviso.wav) ou não deu para tocar
+  function tocarAviso(tipo) {
+    return Boolean(AVISOS[tipo] && AVISOS[tipo]());
+  }
+
   // guizos de trenó baixinhos, para quando o Papai Noel passa na TV com a música ligada
+  // (opcional, em Configurações → Papai Noel): chegam devagar, passam e vão embora, no compasso, só o chiado do
+  // guizo (sem as notas de metal, que desafinavam com a música), e a música abaixa um pouco enquanto isso
   function guizosDoTreno() {
     if (!ctx || ctx.state !== "running") return;
-    const destino = ctx.createGain();
-    destino.gain.value = 0.25;
-    destino.connect(volMusica);
     const t0 = ctx.currentTime + 0.1;
-    for (let i = 0; i < 28; i++) guizo(destino, t0 + i * 0.16 + (i % 2) * 0.05, 0.6);
-    setTimeout(() => destino.disconnect(), 6000);
+    const dur = 6;
+    const destino = ctx.createGain();
+    destino.gain.setValueAtTime(0.0001, t0);
+    destino.gain.exponentialRampToValueAtTime(0.12, t0 + dur * 0.45);
+    destino.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    destino.connect(volMusica);
+    for (let i = 0; i * 0.2 < dur; i++) guizo(destino, t0 + i * 0.2, i % 2 ? 0.6 : 1, true);
+    if (musica.ligada) {
+      volMusica.gain.setTargetAtTime(ganhoDoVolume(musica.volume) * 0.6, t0, 0.5);
+      volMusica.gain.setTargetAtTime(ganhoDoVolume(musica.volume), t0 + dur, 0.8);
+    }
+    setTimeout(() => destino.disconnect(), (dur + 1) * 1000);
   }
 
   window.HubNatal = {
     vestir,
     papaiNoel,
+    configurarNoel,
     guizosDoTreno,
+    tocarAviso,
     desbloquear,
     sinos,
-    musica: { tocar: tocarMusica, parar: pararMusica, get ligada() { return musica.ligada; } },
+    musica: { tocar: tocarMusica, parar: pararMusica, proxima: () => proxima(),
+              get ligada() { return musica.ligada; }, get nome() { return musica.nome; } },
   };
 
   // ---------- app ----------
@@ -403,22 +671,50 @@
     if (document.body.dataset.tv !== undefined) return;
     const CHAVE = "hub-natal-sons";
     const ligado = raiz.classList.contains("natal");
-    if (ligado) vestir(true);
+    const corpo = document.body.dataset;
+    // o Papai Noel passa no app só se Configurações → Papai Noel deixar (o servidor manda no <body>)
+    if (ligado) vestir(true, { noel: corpo.noelMinutos ? { minutos: corpo.noelMinutos, altura: corpo.noelAltura } : null });
 
     // Configurações: ouvir a música e os sinos aqui mesmo
     const ouvir = document.getElementById("natal-ouvir");
-    const sinosBotao = document.getElementById("natal-sinos");
+    const pular = document.getElementById("natal-pular");
+    if (pular) pular.addEventListener("click", () => proxima());
+    const noelVer = document.getElementById("noel-ver");
+    if (noelVer) {
+      noelVer.hidden = false;
+      noelVer.addEventListener("click", () => {
+        const marcada = document.querySelector('input[name="altura"]:checked');
+        const guardada = noelCfg;
+        noelCfg = { minutos: 60, altura: marcada ? marcada.value : "sorteada" };
+        papaiNoel(true);
+        noelCfg = guardada;
+      });
+    }
+    const somOuvir = document.getElementById("som-ouvir");
+    if (somOuvir) {
+      somOuvir.hidden = false;
+      somOuvir.addEventListener("click", () => {
+        let tipo = document.getElementById("som").value;
+        if (tipo === "auto") tipo = raiz.classList.contains("natal") ? "sinos" : "padrao";
+        desbloquear();
+        setTimeout(() => {
+          if (!tocarAviso(tipo)) { try { new Audio("/static/aviso.wav").play().catch(() => {}); } catch (e) { /* sem som */ } }
+        }, 60);
+      });
+    }
     if (ouvir) {
       ouvir.hidden = false;
       ouvir.addEventListener("click", () => {
-        if (musica.ligada) { pararMusica(); ouvir.textContent = "▶ Ouvir a música aqui"; return; }
+        if (musica.ligada) { pararMusica(); ouvir.textContent = "▶ Ouvir a música aqui"; if (pular) pular.hidden = true; return; }
         const v = Number(document.getElementById("natal-volume").value);
-        if (tocarMusica(Number.isFinite(v) ? v : 25)) ouvir.textContent = "■ Parar a música";
+        const faixas = [...document.querySelectorAll('input[name="faixas"]:checked')].map((i) => i.value);
+        const ordem = document.querySelector('input[name="ordem"]:checked');
+        if (tocarMusica(Number.isFinite(v) ? v : 25, { tipo: "app", faixas, ordem: ordem ? ordem.value : "aleatoria",
+                                                       intervalo: document.getElementById("natal-intervalo").value })) {
+          ouvir.textContent = "■ Parar a música";
+          if (pular) pular.hidden = false;
+        }
       });
-    }
-    if (sinosBotao) {
-      sinosBotao.hidden = false;
-      sinosBotao.addEventListener("click", () => { desbloquear(); setTimeout(() => sinos(), 60); });
     }
 
     const botao = document.getElementById("natal-som");
@@ -443,6 +739,7 @@
     const comecar = () => {
       document.removeEventListener("pointerdown", comecar, true);
       document.removeEventListener("keydown", comecar, true);
+      desbloquear();  // o primeiro clique libera o som da página
       if (!musica.ligada) tocarMusica(18);
     };
     tocarMusica(18);

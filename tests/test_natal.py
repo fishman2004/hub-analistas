@@ -80,9 +80,14 @@ def test_tv_payload(db):
     ana, _ = team(db, NOVEMBRO)
     app = create_app(db, clock=lambda: NOVEMBRO)
     tv = TestClient(app, base_url=BASE)
-    assert tv.get("/api/tv").json()["natal"] == {"ligado": False, "musica": False, "volume": 25, "estilo": "vermelho", "faltam": None}
+    assert tv.get("/api/tv").json()["natal"] == {"ligado": False, "musica": False, "volume": 25, "estilo": "vermelho",
+                                                 "faixas": list(natal.TRACKS), "ordem": "aleatoria",
+                                                 "intervalo": 5, "faltam": None, "noel": None, "noel_agora": ""}
     natal.save_config(db, NOVEMBRO, ana, "ligado", True, "30")
-    assert tv.get("/api/tv").json()["natal"] == {"ligado": True, "musica": True, "volume": 30, "estilo": "vermelho", "faltam": 30}
+    assert tv.get("/api/tv").json()["natal"] == {"ligado": True, "musica": True, "volume": 30, "estilo": "vermelho",
+                                                 "faixas": list(natal.TRACKS), "ordem": "aleatoria",
+                                                 "intervalo": 5, "faltam": 30, "noel": {"minutos": 6, "altura": "sorteada", "som": False},
+                                                 "noel_agora": ""}
     natal.save_config(db, NOVEMBRO, ana, "ligado", False, "30", "preto")
     assert tv.get("/api/tv").json()["natal"]["musica"] is False
     assert tv.get("/api/tv").json()["natal"]["estilo"] == "preto"
@@ -112,7 +117,10 @@ def test_config_page_and_route(db):
     assert "Tema de Natal" in html and 'id="natal-ouvir"' in html
     r = admin.post("/configuracoes/natal", data={"modo": "ligado", "musica": "1", "volume": "35"})
     assert r.status_code == 200 and "Salvo." in r.text and 'class="natal"' in r.text
-    assert natal.config(db) == {"mode": "ligado", "music": True, "volume": 35, "tv_style": "vermelho"}
+    assert natal.config(db) == {"mode": "ligado", "music": True, "volume": 35, "tv_style": "vermelho",
+                                 "santa_where": "tv_app", "santa_minutes": 6, "santa_height": "sorteada", "santa_sound": False,
+                                 "alert_sound": "auto", "tracks": list(natal.TRACKS),
+                                 "order": "aleatoria", "gap": 5}
     admin.post("/configuracoes/natal", data={"modo": "ligado", "musica": "1", "volume": "35", "tv": "preto"})
     assert natal.config(db)["tv_style"] == "preto"
     assert admin.post("/configuracoes/natal", data={"modo": "ligado", "volume": "35", "tv": "azul"}).status_code == 422
@@ -120,7 +128,8 @@ def test_config_page_and_route(db):
     assert r.status_code == 422 and "Volume da música" in r.text
     # sem a caixinha marcada, a música fica desligada; e fica no histórico
     admin.post("/configuracoes/natal", data={"modo": "auto", "volume": "25"})
-    assert natal.config(db) == {"mode": "auto", "music": False, "volume": 25, "tv_style": "vermelho"}
+    assert {k: natal.config(db)[k] for k in ("mode", "music", "volume", "tv_style")} == {
+        "mode": "auto", "music": False, "volume": 25, "tv_style": "vermelho"}
     assert "mudou o tema de Natal" in admin.get("/historico").text
 
 
@@ -139,3 +148,77 @@ def test_personal_theme_offers_both_christmas_options(db):
     assert '"natal", "natal-preto"' in js and "Natal preto" in js
     css = TestClient(create_app(db, clock=lambda: NOVEMBRO), base_url=BASE).get("/static/natal.css").text
     assert 'html.natal[data-tema="natal-preto"]' in css and "body[data-tv].natal-preto" in css
+
+
+def test_santa_where_when_and_height(db):
+    ana, bruno = team(db, NOVEMBRO)
+    app = create_app(db, clock=lambda: NOVEMBRO)
+    natal.save_config(db, NOVEMBRO, ana, "ligado", True, "25")
+    admin = login(app, ana)
+    assert 'data-noel-minutos="6" data-noel-altura="sorteada"' in admin.get("/").text
+    assert login(app, bruno).post("/configuracoes/natal/noel", data={"onde": "tv", "minutos": "3", "altura": "topo"}).status_code == 403
+    r = admin.post("/configuracoes/natal/noel", data={"onde": "tv", "minutos": "3", "altura": "topo"})
+    assert r.status_code == 200 and "Salvo." in r.text
+    tv = TestClient(app, base_url=BASE)
+    assert tv.get("/api/tv").json()["natal"]["noel"] == {"minutos": 3, "altura": "topo", "som": False}
+    admin.post("/configuracoes/natal/noel", data={"onde": "tv", "minutos": "3", "altura": "topo", "som": "1"})
+    assert tv.get("/api/tv").json()["natal"]["noel"]["som"] is True
+    assert "data-noel-minutos" not in admin.get("/").text  # só na TV: o app não recebe
+    admin.post("/configuracoes/natal/noel", data={"onde": "app", "minutos": "10", "altura": "baixo"})
+    assert tv.get("/api/tv").json()["natal"]["noel"] is None
+    assert 'data-noel-minutos="10" data-noel-altura="baixo"' in admin.get("/").text
+    r = admin.post("/configuracoes/natal/noel", data={"onde": "tv", "minutos": "0", "altura": "topo"})
+    assert r.status_code == 422 and "de 1 a 60 minutos" in r.text
+    # Passar agora: só com o Papai Noel na TV
+    assert "desligado na TV" in admin.post("/configuracoes/natal/noel-agora").text
+    admin.post("/configuracoes/natal/noel", data={"onde": "tv_app", "minutos": "6", "altura": "sorteada"})
+    r = admin.post("/configuracoes/natal/noel-agora")
+    assert r.status_code == 200 and "passa na TV da sala" in r.text
+    assert tv.get("/api/tv").json()["natal"]["noel_agora"] == NOVEMBRO.isoformat(timespec="seconds")
+    assert "fez o Papai Noel passar na TV" in admin.get("/historico").text
+
+
+def test_alert_sound_selector(db):
+    ana, bruno = team(db, NOVEMBRO)
+    app = create_app(db, clock=lambda: NOVEMBRO)
+    tv = TestClient(app, base_url=BASE)
+    assert tv.get("/api/tv").json()["som_aviso"] == "padrao"  # automático, fora do Natal: o de sempre
+    natal.save_config(db, NOVEMBRO, ana, "ligado", True, "25")
+    assert tv.get("/api/tv").json()["som_aviso"] == "sinos"  # automático, no Natal: sinos
+    admin = login(app, ana)
+    html = admin.get("/configuracoes").text
+    assert 'id="som-aviso"' in html and "Sino de igreja" in html and 'id="som-ouvir"' in html
+    assert login(app, bruno).post("/configuracoes/som-aviso", data={"som": "igreja"}).status_code == 403
+    assert admin.post("/configuracoes/som-aviso", data={"som": "igreja"}).status_code == 200
+    assert tv.get("/api/tv").json()["som_aviso"] == "igreja"
+    natal.save_config(db, NOVEMBRO, ana, "desligado", True, "25")
+    assert tv.get("/api/tv").json()["som_aviso"] == "igreja"  # escolhido: vale o ano todo
+    assert admin.post("/configuracoes/som-aviso", data={"som": "buzina"}).status_code == 422
+    assert "mudou o som dos avisos" in admin.get("/historico").text
+    js = tv.get("/static/natal.js").text
+    for som in ("igreja", "carrilhao", "caixinha", "guizos"):
+        assert som + "()" in js
+
+
+def test_choose_tracks_order_and_gap(db):
+    ana, _ = team(db, NOVEMBRO)
+    app = create_app(db, clock=lambda: NOVEMBRO)
+    admin = login(app, ana)
+    html = admin.get("/configuracoes").text
+    assert 'name="faixas" value="noite"' in html and "Na ordem da lista" in html and 'id="natal-pular"' in html
+    r = admin.post("/configuracoes/natal", data={"modo": "ligado", "musica": "1", "volume": "25", "tv": "vermelho",
+                                                 "faixas_enviadas": "1", "faixas": ["noite", "jingle"],
+                                                 "ordem": "lista", "intervalo": "20"})
+    assert r.status_code == 200
+    n = TestClient(app, base_url=BASE).get("/api/tv").json()["natal"]
+    assert n["faixas"] == ["jingle", "noite"] and n["ordem"] == "lista" and n["intervalo"] == 20
+    r = admin.post("/configuracoes/natal", data={"modo": "ligado", "musica": "1", "volume": "25",
+                                                 "faixas_enviadas": "1", "ordem": "lista", "intervalo": "20"})
+    assert r.status_code == 422 and "pelo menos uma música" in r.text
+    r = admin.post("/configuracoes/natal", data={"modo": "ligado", "volume": "25", "faixas_enviadas": "1",
+                                                 "faixas": "deck", "intervalo": "999"})
+    assert r.status_code == 422 and "Intervalo" in r.text
+    js = TestClient(app, base_url=BASE).get("/static/natal.js").text
+    assert "BroadcastChannel" in js  # uma aba por vez no mesmo PC
+    for faixa in natal.TRACKS:
+        assert f'id: "{faixa}"' in js
