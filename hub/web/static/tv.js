@@ -305,7 +305,9 @@
     contagem.hidden = !natalLigado;
     if (natalLigado) contagem.textContent = textoNatal(n.faltam);
     musicaPedida = natalLigado && Boolean(n.musica) && !NO_PC;  // a TV aberta no PC de alguém não toca
-    if (musicaPedida && !musicaMutada) window.HubNatal.musica.tocar(n.volume);
+    if (musicaPedida && !musicaMutada) {
+      window.HubNatal.musica.tocar(n.volume, { tipo: "tv", faixas: n.faixas, ordem: n.ordem, intervalo: n.intervalo });
+    }
     else window.HubNatal.musica.parar();
   }
 

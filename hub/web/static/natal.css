@@ -152,3 +152,6 @@ html.natal body[data-tv].natal-preto {
 
 /* no celular o topo já é apertado: os Sons de Natal ficam só no PC */
 @media (max-width: 760px) { .natal-som { display: none !important; } }
+
+/* Configurações: os botões que só aparecem com JavaScript (ou só com a música tocando) */
+.natal-botoes [hidden] { display: none; }

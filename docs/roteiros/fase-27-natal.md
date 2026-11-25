@@ -29,5 +29,9 @@ Leva uns 10 minutos, com a TV da sala ligada e com som. Esta fase não muda o ba
 - Em **Configurações → 🎅 Papai Noel**, escolha onde ele passa, a cada quantos minutos e em que altura, e salve. **Ver passar aqui** mostra no seu PC; **Passar agora na TV** faz ele atravessar a TV da sala em até 5 segundos.
 - Em **Configurações → 🔔 Som dos avisos**, escolha um som, clique em **Ouvir aqui** e salve. Teste na TV com **Rotinas → Testar aviso na TV agora**. O **Automático** toca sinos no Natal e o som de sempre no resto do ano.
 
+## Músicas
+- Em **Configurações → Tema de Natal**, desmarque uma música, escolha **Na ordem da lista** e um silêncio de 10 segundos e salve. Clique em **Ouvir a música aqui** e use **⏭ Próxima** para passar.
+- Com a TV aberta no mesmo PC, ao clicar em **Ouvir a música aqui** a TV para (só uma aba toca por vez); ao parar, a TV volta a tocar em alguns segundos. Duas abas da TV no mesmo PC: só uma toca.
+
 ## Desligar
 14. Em **Configurações → Tema de Natal**, escolha **Desligado** (ou **Automático**, que desliga sozinho depois de 6 de janeiro) e salve. O app volta ao normal na próxima página e a TV em até 5 segundos.

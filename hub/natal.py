@@ -27,6 +27,9 @@ SETTING_SANTA_WHERE = "natal_noel_onde"
 SETTING_SANTA_MINUTES = "natal_noel_minutos"
 SETTING_SANTA_HEIGHT = "natal_noel_altura"
 SETTING_SANTA_NOW = "natal_noel_agora"
+SETTING_TRACKS = "natal_faixas"      # as faixas ligadas, separadas por vírgula (sem a linha: todas)
+SETTING_ORDER = "natal_ordem"        # "aleatoria" ou "lista"
+SETTING_GAP = "natal_intervalo"      # segundos de silêncio entre uma música e outra
 SETTING_ALERT_SOUND = "som_aviso"  # vale o ano todo, não só no Natal
 
 MODES = {"auto": "Automático (1º de dezembro a 6 de janeiro)", "ligado": "Ligado agora", "desligado": "Desligado"}
@@ -44,6 +47,12 @@ ALERT_SOUNDS = {
     "caixinha": "Caixinha de música",
     "guizos": "Guizos de trenó",
 }
+# as músicas (todas de domínio público); os ids são os mesmos de static/natal.js
+TRACKS = {"jingle": "Jingle Bells", "noite": "Noite Feliz", "wewish": "We Wish You a Merry Christmas",
+          "deck": "Deck the Halls"}
+ORDERS = {"aleatoria": "Aleatória", "lista": "Na ordem da lista"}
+DEFAULT_GAP = 5
+GAP_MAX = 300
 DEFAULT_VOLUME = 25
 CHRISTMAS = (12, 25)
 
@@ -63,6 +72,19 @@ def config(db: Database) -> dict:
         "volume": int(volume) if volume and volume.isdigit() and 0 <= int(volume) <= 100 else DEFAULT_VOLUME,
         "tv_style": style if style in TV_STYLES else "vermelho",
         **santa_and_sound(db),
+        **music_options(db),
+    }
+
+
+def music_options(db: Database) -> dict:
+    tracks = get_setting(db, SETTING_TRACKS)
+    chosen = [t for t in (tracks or "").split(",") if t in TRACKS] if tracks is not None else list(TRACKS)
+    order = get_setting(db, SETTING_ORDER)
+    gap = get_setting(db, SETTING_GAP)
+    return {
+        "tracks": chosen or list(TRACKS),
+        "order": order if order in ORDERS else "aleatoria",
+        "gap": int(gap) if gap and gap.isdigit() and int(gap) <= GAP_MAX else DEFAULT_GAP,
     }
 
 
@@ -114,6 +136,7 @@ def tv_payload(db: Database, now: datetime) -> dict:
     cfg = config(db)
     on = is_on(db, now.date())
     return {"ligado": on, "musica": on and cfg["music"], "volume": cfg["volume"], "estilo": cfg["tv_style"],
+            "faixas": cfg["tracks"], "ordem": cfg["order"], "intervalo": cfg["gap"],
             "faltam": days_to_christmas(now.date()) if on else None,
             # Papai Noel (fase 27): None = não passa na TV; "agora" muda quando alguém pede para ele passar já
             "noel": santa_for(db, "tv") if on else None,
@@ -121,7 +144,8 @@ def tv_payload(db: Database, now: datetime) -> dict:
 
 
 def save_config(db: Database, now: datetime, actor: Person, mode: str, music: bool, volume: str,
-                tv_style: str = "vermelho") -> None:
+                tv_style: str = "vermelho", tracks: list[str] | None = None, order: str = "aleatoria",
+                gap: str = str(DEFAULT_GAP)) -> None:
     if actor is None or not actor.is_admin:
         raise PermissionError("Só administradores podem fazer isso.")
     if mode not in MODES:
@@ -131,13 +155,25 @@ def save_config(db: Database, now: datetime, actor: Person, mode: str, music: bo
     volume = volume.strip()
     if not volume.isdigit() or not 0 <= int(volume) <= 100:
         raise ValidationError("Volume da música: use de 0 a 100.")
+    tracks = list(TRACKS) if tracks is None else [t for t in TRACKS if t in tracks]
+    if not tracks:
+        raise ValidationError("Deixe pelo menos uma música marcada (ou desligue a música de fundo).")
+    if order not in ORDERS:
+        raise ValidationError("Escolha a ordem das músicas: aleatória ou na ordem da lista.")
+    gap = gap.strip()
+    if not gap.isdigit() or int(gap) > GAP_MAX:
+        raise ValidationError(f"Intervalo entre as músicas: use de 0 a {GAP_MAX} segundos.")
     with db.connect() as conn:
         put_setting(conn, SETTING_MODE, None if mode == "auto" else mode)
         put_setting(conn, SETTING_MUSIC, None if music else "0")
         put_setting(conn, SETTING_VOLUME, None if int(volume) == DEFAULT_VOLUME else str(int(volume)))
         put_setting(conn, SETTING_TV_STYLE, None if tv_style == "vermelho" else tv_style)
+        put_setting(conn, SETTING_TRACKS, None if tracks == list(TRACKS) else ",".join(tracks))
+        put_setting(conn, SETTING_ORDER, None if order == "aleatoria" else order)
+        put_setting(conn, SETTING_GAP, None if int(gap) == DEFAULT_GAP else str(int(gap)))
         log_event(conn, now, actor.id, "config_natal", "config:natal",
-                  f"{mode}, música {'ligada' if music else 'desligada'}, volume {int(volume)}, TV {tv_style}")
+                  f"{mode}, música {'ligada' if music else 'desligada'}, volume {int(volume)}, TV {tv_style}, "
+                  f"{len(tracks)} de {len(TRACKS)} faixas")
 
 
 def save_santa(db: Database, now: datetime, actor: Person, where: str, minutes: str, height: str) -> None:

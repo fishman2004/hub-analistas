@@ -1824,6 +1824,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
                                 "trash": trash, "trash_days": anexos.TRASH_DAYS},
                     paineis=panel_config(db), drive=drive.drive_config(db),
                     natal_cfg=natal.config(db), natal_modos=natal.MODES, natal_tv=natal.TV_STYLES,
+                    natal_faixas=natal.TRACKS, natal_ordens=natal.ORDERS, natal_intervalo_max=natal.GAP_MAX,
                     natal_onde=natal.SANTA_WHERE, natal_alturas=natal.SANTA_HEIGHTS, sons_aviso=natal.ALERT_SOUNDS,
                     noel_limites={"min": natal.SANTA_MIN, "max": natal.SANTA_MAX}, natal_hoje=natal.is_on(db, clock().date()),
                     drive_limits={"min": drive.MINUTES_MIN, "max": drive.MINUTES_MAX}, pombo=pombo_config(db),
@@ -1909,13 +1910,18 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         return config_page(request, user, ok_pombo=True)
 
     @app.post("/configuracoes/natal")
-    def configuracoes_natal(request: Request, modo: str = Form("auto"), musica: str = Form(""),
-                            volume: str = Form(str(natal.DEFAULT_VOLUME)), tv: str = Form("vermelho")):
+    async def configuracoes_natal(request: Request):
         user, stop = admin_only(request)
         if stop:
             return stop
+        form = await request.form()
+        get = lambda k, d="": str(form.get(k, d))  # noqa: E731
         try:
-            natal.save_config(db, clock(), user, modo, bool(musica), volume, tv)
+            natal.save_config(db, clock(), user, get("modo", "auto"), bool(get("musica")),
+                              get("volume", str(natal.DEFAULT_VOLUME)), get("tv", "vermelho"),
+                              # sem a lista no formulário (versão antiga da página): todas as faixas
+                              [str(v) for v in form.getlist("faixas")] if "faixas_enviadas" in form else None,
+                              get("ordem", "aleatoria"), get("intervalo", str(natal.DEFAULT_GAP)))
         except ValidationError as exc:
             return config_page(request, user, 422, error_natal=str(exc))
         return config_page(request, user, ok_natal=True)
