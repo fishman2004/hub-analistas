@@ -277,6 +277,7 @@
 
   let natalLigado = false;
   let somAviso = "padrao";
+  let noelComSom = false;
   let noelPedido = null;  // o último "Passar agora na TV" visto
   let musicaPedida = false;
   let musicaMutada = false;  // tecla M nesta TV
@@ -293,9 +294,11 @@
     if (!window.HubNatal || EXPORTAR) return;
     n = n || {};
     natalLigado = Boolean(n.ligado);
+    noelComSom = Boolean(n.noel && n.noel.som);
     window.HubNatal.vestir(natalLigado, {
       noel: n.noel || null,  // onde, de quanto em quanto tempo e em que altura: Configurações → Papai Noel
-      aoPassar: () => { if (window.HubNatal.musica.ligada) window.HubNatal.guizosDoTreno(); },
+      // guizos só se ligados em Configurações → Papai Noel (padrão: ele passa em silêncio)
+      aoPassar: () => { if (noelComSom && window.HubNatal.musica.ligada) window.HubNatal.guizosDoTreno(); },
     });
     document.body.classList.toggle("natal-preto", natalLigado && n.estilo === "preto");
     // "Passar agora na TV": passa quando o pedido muda (não na primeira busca, para recarregar não repetir)

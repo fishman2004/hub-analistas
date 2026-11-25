@@ -27,6 +27,7 @@ SETTING_SANTA_WHERE = "natal_noel_onde"
 SETTING_SANTA_MINUTES = "natal_noel_minutos"
 SETTING_SANTA_HEIGHT = "natal_noel_altura"
 SETTING_SANTA_NOW = "natal_noel_agora"
+SETTING_SANTA_SOUND = "natal_noel_som"  # "1": guizos quando ele passa na TV (padrão: sem som)
 SETTING_TRACKS = "natal_faixas"      # as faixas ligadas, separadas por vírgula (sem a linha: todas)
 SETTING_ORDER = "natal_ordem"        # "aleatoria" ou "lista"
 SETTING_GAP = "natal_intervalo"      # segundos de silêncio entre uma música e outra
@@ -49,7 +50,9 @@ ALERT_SOUNDS = {
 }
 # as músicas (todas de domínio público); os ids são os mesmos de static/natal.js
 TRACKS = {"jingle": "Jingle Bells", "noite": "Noite Feliz", "wewish": "We Wish You a Merry Christmas",
-          "deck": "Deck the Halls"}
+          "deck": "Deck the Halls", "noite-piano": "Noite Feliz (piano suave)",
+          "jingle-piano": "Jingle Bells (piano suave)", "neve": "Pianinho de neve (ambiente)",
+          "lareira": "Lareira (ambiente)", "sinos": "Sinos ao longe (ambiente)"}
 ORDERS = {"aleatoria": "Aleatória", "lista": "Na ordem da lista"}
 DEFAULT_GAP = 5
 GAP_MAX = 300
@@ -98,6 +101,7 @@ def santa_and_sound(db: Database) -> dict:
         "santa_minutes": int(minutes) if minutes and minutes.isdigit() and SANTA_MIN <= int(minutes) <= SANTA_MAX
         else DEFAULT_SANTA_MINUTES,
         "santa_height": height if height in SANTA_HEIGHTS else "sorteada",
+        "santa_sound": get_setting(db, SETTING_SANTA_SOUND) == "1",
         "alert_sound": sound if sound in ALERT_SOUNDS else "auto",
     }
 
@@ -107,7 +111,7 @@ def santa_for(db: Database, place: str) -> dict | None:
     cfg = santa_and_sound(db)
     if cfg["santa_where"] not in ("tv_app", place):
         return None
-    return {"minutos": cfg["santa_minutes"], "altura": cfg["santa_height"]}
+    return {"minutos": cfg["santa_minutes"], "altura": cfg["santa_height"], "som": cfg["santa_sound"]}
 
 
 def alert_sound(db: Database, today: date) -> str:
@@ -176,7 +180,8 @@ def save_config(db: Database, now: datetime, actor: Person, mode: str, music: bo
                   f"{len(tracks)} de {len(TRACKS)} faixas")
 
 
-def save_santa(db: Database, now: datetime, actor: Person, where: str, minutes: str, height: str) -> None:
+def save_santa(db: Database, now: datetime, actor: Person, where: str, minutes: str, height: str,
+               sound: bool = False) -> None:
     if actor is None or not actor.is_admin:
         raise PermissionError("Só administradores podem fazer isso.")
     if where not in SANTA_WHERE or height not in SANTA_HEIGHTS:
@@ -188,6 +193,7 @@ def save_santa(db: Database, now: datetime, actor: Person, where: str, minutes: 
         put_setting(conn, SETTING_SANTA_WHERE, None if where == "tv_app" else where)
         put_setting(conn, SETTING_SANTA_MINUTES, None if int(minutes) == DEFAULT_SANTA_MINUTES else str(int(minutes)))
         put_setting(conn, SETTING_SANTA_HEIGHT, None if height == "sorteada" else height)
+        put_setting(conn, SETTING_SANTA_SOUND, "1" if sound else None)
         log_event(conn, now, actor.id, "config_natal", "config:natal",
                   f"Papai Noel: {SANTA_WHERE[where].lower()}, a cada {int(minutes)} min, {SANTA_HEIGHTS[height].lower()}")
 

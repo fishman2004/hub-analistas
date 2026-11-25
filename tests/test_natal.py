@@ -81,12 +81,12 @@ def test_tv_payload(db):
     app = create_app(db, clock=lambda: NOVEMBRO)
     tv = TestClient(app, base_url=BASE)
     assert tv.get("/api/tv").json()["natal"] == {"ligado": False, "musica": False, "volume": 25, "estilo": "vermelho",
-                                                 "faixas": ["jingle", "noite", "wewish", "deck"], "ordem": "aleatoria",
+                                                 "faixas": list(natal.TRACKS), "ordem": "aleatoria",
                                                  "intervalo": 5, "faltam": None, "noel": None, "noel_agora": ""}
     natal.save_config(db, NOVEMBRO, ana, "ligado", True, "30")
     assert tv.get("/api/tv").json()["natal"] == {"ligado": True, "musica": True, "volume": 30, "estilo": "vermelho",
-                                                 "faixas": ["jingle", "noite", "wewish", "deck"], "ordem": "aleatoria",
-                                                 "intervalo": 5, "faltam": 30, "noel": {"minutos": 6, "altura": "sorteada"},
+                                                 "faixas": list(natal.TRACKS), "ordem": "aleatoria",
+                                                 "intervalo": 5, "faltam": 30, "noel": {"minutos": 6, "altura": "sorteada", "som": False},
                                                  "noel_agora": ""}
     natal.save_config(db, NOVEMBRO, ana, "ligado", False, "30", "preto")
     assert tv.get("/api/tv").json()["natal"]["musica"] is False
@@ -118,8 +118,8 @@ def test_config_page_and_route(db):
     r = admin.post("/configuracoes/natal", data={"modo": "ligado", "musica": "1", "volume": "35"})
     assert r.status_code == 200 and "Salvo." in r.text and 'class="natal"' in r.text
     assert natal.config(db) == {"mode": "ligado", "music": True, "volume": 35, "tv_style": "vermelho",
-                                 "santa_where": "tv_app", "santa_minutes": 6, "santa_height": "sorteada",
-                                 "alert_sound": "auto", "tracks": ["jingle", "noite", "wewish", "deck"],
+                                 "santa_where": "tv_app", "santa_minutes": 6, "santa_height": "sorteada", "santa_sound": False,
+                                 "alert_sound": "auto", "tracks": list(natal.TRACKS),
                                  "order": "aleatoria", "gap": 5}
     admin.post("/configuracoes/natal", data={"modo": "ligado", "musica": "1", "volume": "35", "tv": "preto"})
     assert natal.config(db)["tv_style"] == "preto"
@@ -160,7 +160,9 @@ def test_santa_where_when_and_height(db):
     r = admin.post("/configuracoes/natal/noel", data={"onde": "tv", "minutos": "3", "altura": "topo"})
     assert r.status_code == 200 and "Salvo." in r.text
     tv = TestClient(app, base_url=BASE)
-    assert tv.get("/api/tv").json()["natal"]["noel"] == {"minutos": 3, "altura": "topo"}
+    assert tv.get("/api/tv").json()["natal"]["noel"] == {"minutos": 3, "altura": "topo", "som": False}
+    admin.post("/configuracoes/natal/noel", data={"onde": "tv", "minutos": "3", "altura": "topo", "som": "1"})
+    assert tv.get("/api/tv").json()["natal"]["noel"]["som"] is True
     assert "data-noel-minutos" not in admin.get("/").text  # só na TV: o app não recebe
     admin.post("/configuracoes/natal/noel", data={"onde": "app", "minutos": "10", "altura": "baixo"})
     assert tv.get("/api/tv").json()["natal"]["noel"] is None

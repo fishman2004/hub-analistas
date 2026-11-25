@@ -79,6 +79,9 @@
     <label class="check"><input type="radio" name="altura" value="{{ valor }}" {% if natal_cfg.santa_height == valor %}checked{% endif %}> {{ rotulo }}</label>
     {% endfor %}
   </fieldset>
+  <div>
+    <label class="check"><input type="checkbox" name="som" value="1" {% if natal_cfg.santa_sound %}checked{% endif %}> Guizos baixinhos quando ele passa na TV (com a música tocando)</label>
+  </div>
   <div class="natal-botoes">
     <button>Salvar</button>
     <button type="submit" class="discreto" formaction="/configuracoes/natal/noel-agora" formnovalidate>🎅 Passar agora na TV</button>

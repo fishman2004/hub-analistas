@@ -235,6 +235,60 @@
     o.stop(t + 0.75);
   }
 
+  // piano suave: ataque rápido, harmônicos que somem antes da nota e um filtro para ficar macio
+  function piano(destino, f, t, dur, forca) {
+    const fim = t + Math.min(Math.max(dur + 0.7, 1.4), 4.5);
+    const filtro = ctx.createBiquadFilter();
+    filtro.type = "lowpass";
+    filtro.frequency.value = Math.min(4200, f * 5);
+    filtro.Q.value = 0.3;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(0.15 * forca, t + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.05 * forca, t + 0.7);
+    env.gain.exponentialRampToValueAtTime(0.0004, fim);
+    filtro.connect(env).connect(destino);
+    for (const [mult, g, cents] of [[1, 1, 0], [1, 0.5, 4], [2, 0.32, 0], [3, 0.12, 0], [4, 0.05, 0]]) {
+      const o = ctx.createOscillator();
+      const v = ctx.createGain();
+      o.frequency.value = f * mult;
+      o.detune.value = cents;
+      v.gain.value = g * 0.6;
+      o.connect(v).connect(filtro);
+      o.start(t);
+      o.stop(fim + 0.02);
+    }
+  }
+
+  // "pad": um colchão de acorde que entra e sai devagar (ondas detunadas passando por um filtro escuro)
+  function pad(destino, freqs, t, dur, escuro) {
+    const filtro = ctx.createBiquadFilter();
+    filtro.type = "lowpass";
+    filtro.frequency.value = escuro ? 650 : 1000;
+    const env = ctx.createGain();
+    const sobe = Math.min(1.8, dur / 3);
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.linearRampToValueAtTime(0.038, t + sobe);
+    env.gain.setValueAtTime(0.038, t + dur);
+    env.gain.linearRampToValueAtTime(0.0001, t + dur + 2.2);
+    filtro.connect(env).connect(destino);
+    for (const f of freqs) {
+      for (const cents of [-7, 7]) {
+        const o = ctx.createOscillator();
+        o.type = "sawtooth";
+        o.frequency.value = f;
+        o.detune.value = cents;
+        const v = ctx.createGain();
+        v.gain.value = 0.16 / freqs.length;
+        o.connect(v).connect(filtro);
+        o.start(t);
+        o.stop(t + dur + 2.3);
+      }
+    }
+  }
+
+  const hz = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+
   let ruido = null;
   function bufferRuido() {
     if (ruido) return ruido;
@@ -245,7 +299,7 @@
   }
 
   // guizo de trenó: um chiado agudo e brilhante bem curto
-  function guizo(destino, t, forca) {
+  function guizo(destino, t, forca, semMetal) {
     const s = ctx.createBufferSource();
     s.buffer = bufferRuido();
     const filtro = ctx.createBiquadFilter();
@@ -259,7 +313,7 @@
     s.connect(filtro).connect(env).connect(destino);
     s.start(t);
     s.stop(t + 0.15);
-    for (const f of [4100, 5300, 7900]) {  // um pouco de metal por cima
+    if (!semMetal) for (const f of [4100, 5300, 7900]) {  // um pouco de metal por cima
       const o = ctx.createOscillator();
       const g = ctx.createGain();
       o.frequency.value = f * (0.97 + Math.random() * 0.06);
@@ -311,6 +365,22 @@
         + "G4:1.5 F4:.5 E4:1 D4:1 C4:1 D4:1 E4:1 C4:1 A4:.5 A4:.5 A4:.5 A4:.5 G4:1.5 F4:.5 E4:1 D4:1 C4:2",
       baixo: "C C G C C C G C G C D G C C F C" },
   ];
+  // versões em piano suave das clássicas, mais devagar e com os acordes por baixo
+  MUSICAS.push(
+    { ...MUSICAS[1], id: "noite-piano", nome: "Noite Feliz (piano suave)", bpm: 62, ganho: 1.9, instrumento: "piano", acordes: true },
+    { ...MUSICAS[0], id: "jingle-piano", nome: "Jingle Bells (piano suave)", bpm: 96, ganho: 1.6, instrumento: "piano", acordes: true,
+      guizos: false, transpor: -12 },
+    // ambientes: [baixo, notas do acorde...] em números MIDI (60 = dó central)
+    { id: "neve", nome: "Pianinho de neve (ambiente)", segundos: 6, ganho: 2.3, voltas: 4,
+      acordes: [[36, 55, 64, 71], [33, 52, 60, 67], [29, 57, 60, 64], [31, 55, 59, 62]],
+      escala: [72, 74, 76, 79, 81, 84] },
+    { id: "lareira", nome: "Lareira (ambiente)", segundos: 7, ganho: 2.3, voltas: 3, escuro: true, arpejo: true,
+      acordes: [[38, 54, 57, 61, 66], [35, 54, 57, 62, 66], [31, 54, 59, 62, 66], [33, 52, 57, 62, 67]],
+      escala: [] },
+    { id: "sinos", nome: "Sinos ao longe (ambiente)", segundos: 8, ganho: 2.6, voltas: 3, sinos: true, escuro: true, baixo: false,
+      acordes: [[41, 57, 60, 64], [38, 57, 60, 65], [46, 57, 62, 65], [48, 55, 60, 64]],
+      escala: [77, 79, 81, 84] },
+  );
   const QUINTA = { C: "G", D: "A", E: "B", F: "C", G: "D", A: "E", B: "F#" };
 
   // agenda uma música inteira a partir do instante t, num volume próprio dela; devolve quando ela termina
@@ -324,13 +394,19 @@
         const dur = Number(tempos);
         if (nota !== "R") {
           const forte = (beat - inicio) % m.compasso === 0 ? 1 : 0.8;
-          caixinha(destino, freq(nota, m.transpor), t + beat * seg, dur * seg, forte);
+          (m.instrumento === "piano" ? piano : caixinha)(destino, freq(nota, m.transpor), t + beat * seg, dur * seg, forte);
         }
         beat += dur;
       }
       m.baixo.split(" ").forEach((raizNota, i) => {
         if (raizNota === "-") return;
         const b = inicio + i * m.compasso;
+        if (m.acordes) {  // versão suave: o acorde do compasso num pad e o baixo só no primeiro tempo, de leve
+          const r = Math.round(12 * Math.log2(freq(raizNota + "3", 0) / 440)) + 69;
+          pad(destino, [hz(r), hz(r + 4), hz(r + 7), hz(r + 12)], t + b * seg, m.compasso * seg, true);
+          piano(destino, hz(r - 12), t + b * seg, m.compasso * seg, 0.4);
+          return;
+        }
         baixo(destino, freq(raizNota + "3", 0), t + b * seg, 1);
         if (m.compasso === 4) baixo(destino, freq(QUINTA[raizNota] + "2", 0), t + (b + 2) * seg, 0.7);
         else for (const k of [1, 2]) baixo(destino, freq(QUINTA[raizNota] + "3", 0), t + (b + k) * seg, 0.45);
@@ -338,6 +414,36 @@
       });
     }
     return t + beat * seg;
+  }
+
+  // faixas ambientes (composição do próprio Hub): acordes num pad, o baixo de leve e notas soltas por cima,
+  // sorteadas dentro do acorde e da escala, então cada vez sai um pouco diferente
+  function ambiente(m, destino, t) {
+    const n = m.acordes.length;
+    for (let volta = 0; volta < m.voltas; volta++) {
+      m.acordes.forEach((acorde, i) => {
+        const t0 = t + (volta * n + i) * m.segundos;
+        pad(destino, acorde.slice(1).map(hz), t0, m.segundos, m.escuro);
+        if (m.baixo !== false) piano(destino, hz(acorde[0]), t0, m.segundos, 0.5);
+        const notas = acorde.slice(1).map((x) => x + 12).concat(m.escala);
+        if (m.arpejo) {  // arpejo subindo e descendo, no compasso
+          const passo = m.segundos / 8;
+          const sobe = acorde.slice(1).map((x) => x + 12);
+          const ordem = sobe.concat(sobe.slice(1, -1).reverse()).concat(sobe).slice(0, 8);
+          ordem.forEach((x, k) => piano(destino, hz(x), t0 + k * passo, passo * 2, k === 0 ? 0.75 : 0.5));
+          return;
+        }
+        const quantas = 3 + Math.floor(Math.random() * 3);
+        let quando = 0.4 + Math.random() * 0.6;
+        for (let k = 0; k < quantas && quando < m.segundos - 0.6; k++) {
+          const nota = notas[Math.floor(Math.random() * notas.length)];
+          if (m.sinos) sino(destino, hz(nota), t0 + quando, 0.9);
+          else piano(destino, hz(nota), t0 + quando, 1.6, 0.6 + Math.random() * 0.3);
+          quando += 0.7 + Math.random() * (m.segundos / quantas);
+        }
+      });
+    }
+    return t + n * m.voltas * m.segundos + 2;
   }
 
   const musica = { ligada: false, volume: 25, timer: null, atual: null, fila: [], seq: 0,
@@ -365,10 +471,11 @@
     soltar(musica.atual);
     const m = escolher();
     const g = ctx.createGain();
+    g.gain.value = m.ganho || 1;  // as faixas suaves vêm mais baixas: cada uma acerta o seu volume
     g.connect(volMusica);
     musica.atual = g;
     musica.nome = m.nome;
-    const fim = agendar(m, g, ctx.currentTime + 0.3);
+    const fim = (m.acordes && !m.melodia ? ambiente : agendar)(m, g, ctx.currentTime + 0.3);
     // entre uma música e outra, o silêncio escolhido em Configurações
     musica.timer = setTimeout(proxima, (fim - ctx.currentTime + 1.5 + musica.intervalo) * 1000);
   }
@@ -526,14 +633,23 @@
   }
 
   // guizos de trenó baixinhos, para quando o Papai Noel passa na TV com a música ligada
+  // (opcional, em Configurações → Papai Noel): chegam devagar, passam e vão embora, no compasso, só o chiado do
+  // guizo (sem as notas de metal, que desafinavam com a música), e a música abaixa um pouco enquanto isso
   function guizosDoTreno() {
     if (!ctx || ctx.state !== "running") return;
-    const destino = ctx.createGain();
-    destino.gain.value = 0.25;
-    destino.connect(volMusica);
     const t0 = ctx.currentTime + 0.1;
-    for (let i = 0; i < 28; i++) guizo(destino, t0 + i * 0.16 + (i % 2) * 0.05, 0.6);
-    setTimeout(() => destino.disconnect(), 6000);
+    const dur = 6;
+    const destino = ctx.createGain();
+    destino.gain.setValueAtTime(0.0001, t0);
+    destino.gain.exponentialRampToValueAtTime(0.12, t0 + dur * 0.45);
+    destino.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    destino.connect(volMusica);
+    for (let i = 0; i * 0.2 < dur; i++) guizo(destino, t0 + i * 0.2, i % 2 ? 0.6 : 1, true);
+    if (musica.ligada) {
+      volMusica.gain.setTargetAtTime(ganhoDoVolume(musica.volume) * 0.6, t0, 0.5);
+      volMusica.gain.setTargetAtTime(ganhoDoVolume(musica.volume), t0 + dur, 0.8);
+    }
+    setTimeout(() => destino.disconnect(), (dur + 1) * 1000);
   }
 
   window.HubNatal = {

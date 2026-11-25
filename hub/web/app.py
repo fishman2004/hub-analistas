@@ -1928,12 +1928,12 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     @app.post("/configuracoes/natal/noel")
     def configuracoes_natal_noel(request: Request, onde: str = Form("tv_app"), minutos: str = Form(""),
-                                 altura: str = Form("sorteada")):
+                                 altura: str = Form("sorteada"), som: str = Form("")):
         user, stop = admin_only(request)
         if stop:
             return stop
         try:
-            natal.save_santa(db, clock(), user, onde, minutos, altura)
+            natal.save_santa(db, clock(), user, onde, minutos, altura, bool(som))
         except ValidationError as exc:
             return config_page(request, user, 422, error_noel=str(exc))
         return config_page(request, user, ok_noel="Salvo. A TV usa em até 5 segundos; no app, vale na próxima página.")
