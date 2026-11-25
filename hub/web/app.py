@@ -18,7 +18,7 @@ from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, is_owner, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, cadastro, calendario, celular, drive, modos, notas, pastas, phd, rotinas_mes, trilha
+from .. import anexos, cadastro, calendario, celular, drive, modos, natal, notas, pastas, phd, rotinas_mes, trilha
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -54,6 +54,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
     templates = Jinja2Templates(directory=HERE / "templates")
     # ?v=versão nos arquivos estáticos: a TV não fica presa a um CSS/JS antigo depois de atualizar
     templates.env.globals["version"] = __version__
+    # tema de Natal (fase 27): o base.html pergunta se está ligado hoje para vestir o app
+    templates.env.globals["natal_ligado"] = lambda: natal.is_on(db, clock().date())
 
     @app.middleware("http")
     async def same_origin_only(request: Request, call_next):
@@ -129,11 +131,14 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             "pausa": tvcontrole.tv_payload(db, now, owners),
             "pausa_minutos": tvcontrole.DEFAULT_MINUTES,
             "modo": {"nome": mode.name, "padrao": mode.is_default, "previa": preview is not None},
+            # tema de Natal (fase 27): o visual, a música de fundo (só a TV da sala toca) e os sinos nos avisos
+            "natal": natal.tv_payload(db, now),
             **rotation(db, now, mode),
         }
-        if not mode.sound:  # modo sem som (ex.: Reunião na sala): a faixa aparece, sem tocar
+        if not mode.sound:  # modo sem som (ex.: Reunião na sala): a faixa aparece, sem tocar, e a música para
             for a in payload["avisos"]:
                 a["mudo"] = True
+            payload["natal"]["musica"] = False
         if mode.hide_titles:  # modo com os títulos escondidos (ex.: Visita): o texto nem sai do servidor
             modos.mask_titles(payload)
         return payload
@@ -1815,6 +1820,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
                                 "default_folder": str(anexos.default_folder()), "usage": anexos.usage(db),
                                 "trash": trash, "trash_days": anexos.TRASH_DAYS},
                     paineis=panel_config(db), drive=drive.drive_config(db),
+                    natal_cfg=natal.config(db), natal_modos=natal.MODES, natal_tv=natal.TV_STYLES, natal_hoje=natal.is_on(db, clock().date()),
                     drive_limits={"min": drive.MINUTES_MIN, "max": drive.MINUTES_MAX}, pombo=pombo_config(db),
                     stale_limits={"min": STALE_MIN, "max": STALE_MAX},
                     limits={"min": MIN_SECONDS, "max": MAX_SECONDS, "page_min": PAGE_MIN, "page_max": PAGE_MAX}, **ctx)
@@ -1896,6 +1902,18 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return config_page(request, user, 422, error_pombo=str(exc))
         return config_page(request, user, ok_pombo=True)
+
+    @app.post("/configuracoes/natal")
+    def configuracoes_natal(request: Request, modo: str = Form("auto"), musica: str = Form(""),
+                            volume: str = Form(str(natal.DEFAULT_VOLUME)), tv: str = Form("vermelho")):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            natal.save_config(db, clock(), user, modo, bool(musica), volume, tv)
+        except ValidationError as exc:
+            return config_page(request, user, 422, error_natal=str(exc))
+        return config_page(request, user, ok_natal=True)
 
     # ---------- painéis de dados ----------
 
@@ -2359,6 +2377,7 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "config_drive": f"{who} mudou o download da 8081 do Google Drive ({detail})",
         "config_phd": f"{who} mudou o PHD automático",
         "config_pombo": f"{who} mudou a pasta do histórico do Pombo",
+        "config_natal": f"{who} mudou o tema de Natal ({detail})",
         "painel_arquivo": f"{who} enviou a planilha “{detail}” dos painéis",
         "horas_lancado": f"{who} lançou o banco de horas de {detail}",
         "horas_corrigido": f"{who} corrigiu o banco de horas de {detail}",

@@ -1,0 +1,154 @@
+/* Tema de Natal (fase 27), para o app e para a TV. Só vale com a classe "natal" no <html> (o servidor liga
+   no app pelo base.html; a TV liga pelo /api/tv). Na TV, o <body> tem data-tv. As cores de status
+   (na sala, reunião, pausa, fora, atraso) não mudam: continuam dizendo a mesma coisa. */
+
+/* ---------- peças das duas telas ---------- */
+.natal-neve { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+.natal-varal {
+  position: absolute; top: 0; left: 0; right: 0; height: 26px; z-index: 25; pointer-events: none;
+  display: flex; justify-content: space-between; padding: 0 1%; overflow: hidden;
+  background: radial-gradient(ellipse 2.6% 9px at 1.25% 0, transparent 7px, #2c3a2f 7px 8.5px, transparent 9px) 0 2px / 2.5% 14px repeat-x;
+}
+.natal-varal .luz {
+  position: relative; top: 8px; width: 9px; height: 13px; border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+  background: var(--luz); box-shadow: 0 0 8px 2px var(--luz);
+  animation: natal-pisca 1.6s ease-in-out infinite; animation-delay: calc(var(--i) * -0.37s);
+}
+.natal-varal .luz::before { content: ""; position: absolute; top: -3px; left: 2px; width: 5px; height: 4px; border-radius: 1px; background: #3d4a40; }
+.natal-varal .luz:nth-child(2n) { top: 10px; }
+.natal-varal .luz:nth-child(n+21) { display: none; }  /* tela estreita: menos luzes */
+@media (min-width: 900px) { .natal-varal .luz:nth-child(n+21) { display: block; } }
+.natal-varal .vermelha { --luz: #ff4d4d; }
+.natal-varal .dourada { --luz: #ffd166; }
+.natal-varal .verde { --luz: #4ade80; }
+.natal-varal .azul { --luz: #60a5fa; }
+@keyframes natal-pisca { 0%, 100% { opacity: 1; } 50% { opacity: .35; box-shadow: none; } }
+
+/* Papai Noel passando de vez em quando (natal.js): o voo de um lado para o outro e o sobe e desce */
+.natal-papai-noel { position: fixed; left: 0; z-index: 30; pointer-events: none; width: min(36vw, 520px);
+  animation: natal-voo var(--dur, 14s) linear forwards; }
+.natal-papai-noel img { display: block; width: 100%; height: auto; animation: natal-balanca 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 35%)); }
+@keyframes natal-voo { from { transform: translateX(-105%); } to { transform: translateX(100vw); } }
+@keyframes natal-balanca { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(18px) rotate(2deg); } }
+
+/* gorro no logo */
+.natal .marca { position: relative; }
+.natal .marca::before {
+  content: ""; position: absolute; z-index: 1; pointer-events: none;
+  left: -7px; top: -13px; width: 30px; height: 24px; background: url(natal-gorro.svg) center / contain no-repeat;
+  transform: rotate(-14deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .natal-varal .luz { animation: none; }
+  .natal-papai-noel { display: none; }
+}
+
+/* ---------- app ---------- */
+/* as cores ficam no <body> do app (nunca no da TV, que tem as próprias) */
+html.natal:not([data-tema="escuro"]):not([data-tema="natal-preto"]) body:not([data-tv]) {
+  --fundo: #f8f4ec; --cartao: #fffdf8; --linha: #e6dccb; --azul: #17703f; --suave: #5f6a62;
+  --natal-neve: #b9cde0;
+}
+html.natal[data-tema="escuro"] body:not([data-tv]) {
+  --fundo: #0c1612; --cartao: #14211b; --linha: #26392e; --azul: #72d79a; --texto: #edf2ee; --suave: #9fb1a5;
+  --sobre-cor: #0c1612; --natal-neve: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  html.natal:not([data-tema]) body:not([data-tv]) {
+    --fundo: #0c1612; --cartao: #14211b; --linha: #26392e; --azul: #72d79a; --texto: #edf2ee; --suave: #9fb1a5;
+    --sobre-cor: #0c1612; --natal-neve: #ffffff;
+  }
+}
+html.natal body:not([data-tv]) {
+  background-color: var(--fundo);
+  background-image: radial-gradient(circle at 8% 0%, rgb(214 40 40 / 9%), transparent 38%),
+                    radial-gradient(circle at 95% 100%, rgb(23 112 63 / 11%), transparent 42%);
+  background-attachment: fixed;
+}
+html.natal body:not([data-tv]) > .topo {
+  position: relative; padding-top: 30px;
+  background: linear-gradient(180deg, #b71c22, #8a1117); border-bottom: 3px solid #e9c46a; color: #fff;
+}
+.natal body:not([data-tv]) > .topo .marca,
+.natal body:not([data-tv]) > .topo nav > a,
+.natal body:not([data-tv]) > .topo .grupo > summary,
+.natal body:not([data-tv]) > .topo .eu-nome,
+.natal body:not([data-tv]) > .topo .eu .link,
+.natal body:not([data-tv]) > .topo .menu-botao { color: #fff; }
+.natal body:not([data-tv]) > .topo nav > a:hover,
+.natal body:not([data-tv]) > .topo .grupo > summary:hover,
+.natal body:not([data-tv]) > .topo .grupo[open] > summary { background: rgb(255 255 255 / 16%); color: #fff; }
+.natal body:not([data-tv]) > .topo nav a[aria-current="page"] { background: #fff; color: #8a1117; }
+.natal body:not([data-tv]) > .topo .grupo-links a[aria-current="page"] { background: var(--azul); color: var(--cartao); }
+.natal body:not([data-tv]) > .topo .grupo.aqui > summary { color: #fff; box-shadow: inset 0 0 0 1.5px #ffd98a; }
+.natal body:not([data-tv]) > .topo .grupo-links a { color: var(--suave); }
+.natal body:not([data-tv]) > .topo .grupo-links a:hover { background: var(--fundo); color: var(--texto); }
+.natal body:not([data-tv]) > .topo .tema,
+.natal body:not([data-tv]) > .topo .natal-som,
+.natal body:not([data-tv]) > .topo .ir-para-botao { color: #fff; border-color: rgb(255 255 255 / 45%); background: transparent; }
+.natal body:not([data-tv]) > .topo .ir-para-botao kbd { background: rgb(255 255 255 / 14%); color: #fff; border-color: rgb(255 255 255 / 35%); }
+.natal body:not([data-tv]) > .topo .tema:hover,
+.natal body:not([data-tv]) > .topo .natal-som:hover { background: rgb(255 255 255 / 16%); }
+.natal-som { padding: 6px 12px; font-weight: 400; white-space: nowrap; }
+.natal-som[hidden] { display: none; }
+/* faixa vermelha, dourada e verde em cima dos blocos */
+.natal .presenca, .natal .cartao-form, .natal .minha-trilha {
+  background-image: linear-gradient(90deg, #c62828, #e9c46a 50%, #17703f); background-size: 100% 4px; background-repeat: no-repeat;
+}
+.natal .coluna { box-shadow: inset 0 4px 0 #c62828; }
+.natal .coluna.col-done { box-shadow: inset 0 4px 0 #17703f; }
+.natal main h1::after { content: " ❄"; font-size: .7em; color: #7fb0d6; }
+
+/* ---------- TV ---------- */
+html.natal body[data-tv] {
+  --natal-neve: #ffffff;
+  padding-top: 2.4rem;
+  background: radial-gradient(ellipse 80% 55% at 50% -10%, #173a55, transparent 70%),
+              radial-gradient(ellipse 50% 40% at 0% 105%, rgb(23 112 63 / 30%), transparent 70%),
+              radial-gradient(ellipse 50% 40% at 100% 105%, rgb(198 40 40 / 25%), transparent 70%), #0a131c;
+}
+.natal body[data-tv] .natal-varal { height: 2.2rem; }
+.natal body[data-tv] .natal-varal .luz { top: .6rem; width: .75rem; height: 1.05rem; }
+.natal body[data-tv] .natal-varal .luz:nth-child(2n) { top: .85rem; }
+.natal body[data-tv] .natal-varal .luz:nth-child(n+21) { display: block; }
+.natal body[data-tv] .marca::before { left: -.7rem; top: -1.3rem; width: 3rem; height: 2.4rem; }
+.natal body[data-tv] .natal-papai-noel { width: 36rem; }
+.natal-contagem {
+  display: inline-flex; align-items: center; gap: .5rem; padding: .35rem 1.1rem; border-radius: 999px;
+  background: linear-gradient(180deg, #b71c22, #8a1117); border: .15rem solid #e9c46a; color: #fff;
+  font-size: 1.25rem; font-weight: 700; white-space: nowrap; flex: none; box-shadow: 0 .3rem 1rem rgb(0 0 0 / 35%);
+}
+.natal-contagem[hidden] { display: none; }
+.natal body[data-tv] .coluna[data-col="todo"] { box-shadow: inset 0 .3rem 0 #e2453f; }
+.natal body[data-tv] .tela-titulo::after { content: " ❄"; color: #9fd0ff; font-size: .7em; }
+.natal body[data-tv] .pessoa { background-image: linear-gradient(180deg, rgb(255 255 255 / 3%), transparent); }
+
+/* ---------- Natal preto (app: botão Tema; TV: Configurações → Versão na TV) ---------- */
+html[data-tema="natal-preto"] { color-scheme: dark; }
+html.natal[data-tema="natal-preto"] body:not([data-tv]) {
+  --fundo: #070707; --cartao: #141414; --linha: #2b2924; --texto: #f4f0e6; --suave: #aca591; --azul: #e9c46a;
+  --sala: #4cc06d; --reuniao: #f0b24a; --pausa: #7fb2e5; --fora: #8a939c; --atraso: #f2867a;
+  --sobre-cor: #070707; --natal-neve: #ffffff;
+  background-image: radial-gradient(circle at 8% 0%, rgb(233 196 106 / 10%), transparent 38%),
+                    radial-gradient(circle at 95% 100%, rgb(198 40 40 / 12%), transparent 42%);
+}
+html.natal[data-tema="natal-preto"] body:not([data-tv]) > .topo { background: linear-gradient(180deg, #1d1b17, #050505); border-bottom-color: #e9c46a; }
+html.natal[data-tema="natal-preto"] body:not([data-tv]) > .topo nav a[aria-current="page"] { background: #e9c46a; color: #0a0a0a; }
+html.natal[data-tema="natal-preto"] body:not([data-tv]) > .topo .grupo-links a[aria-current="page"] { color: #0a0a0a; }
+html.natal[data-tema="natal-preto"] body:not([data-tv]) > .topo .marca { color: #f5dc9a; }
+html.natal[data-tema="natal-preto"] .natal-varal { background-color: transparent; }
+
+html.natal body[data-tv].natal-preto {
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgb(233 196 106 / 22%), transparent 70%),
+              radial-gradient(ellipse 50% 40% at 0% 105%, rgb(23 112 63 / 22%), transparent 70%),
+              radial-gradient(ellipse 50% 40% at 100% 105%, rgb(198 40 40 / 22%), transparent 70%), #030303;
+  --painel: #121212; --cartao: #1a1a1a; --linha: #2c2a25;
+}
+.natal body[data-tv].natal-preto .natal-contagem { background: linear-gradient(180deg, #1d1b17, #050505); color: #f5dc9a; }
+.natal body[data-tv].natal-preto .marca { color: #f5dc9a; }
+.natal body[data-tv].natal-preto .coluna[data-col="todo"] { box-shadow: inset 0 .3rem 0 #e9c46a; }
+
+/* no celular o topo já é apertado: os Sons de Natal ficam só no PC */
+@media (max-width: 760px) { .natal-som { display: none !important; } }

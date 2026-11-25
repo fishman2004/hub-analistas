@@ -22,6 +22,11 @@
 // Exportar em PDF (fase 15): na página /tv/exportar, o corpo tem a classe "exportar". A TV desenha uma
 // vez, com os mesmos dados do /api/tv, numa folha de 1920x1080 fora da tela; cada tela (e cada página
 // dela) é copiada como uma folha estática e a janela de impressão abre ("Salvar como PDF").
+//
+// Natal (fase 27): o /api/tv diz se o tema está ligado, se a música toca e o volume. A TV veste o tema
+// (natal.js: neve, luzinhas, Papai Noel passando), mostra quantos dias faltam para o Natal e, só na TV da
+// sala, toca a música; os avisos tocam sinos em vez do som de sempre. A tecla M liga e desliga a música
+// nesta TV até recarregar a página. O PDF exportado sai sem o tema.
 (function () {
   "use strict";
   const INTERVALO_MS = 5000;
@@ -241,6 +246,7 @@
     clearTimeout(timerAviso);
     timerAviso = setTimeout(() => { faixa.hidden = true; }, AVISO_MS);
     if (lista.every((a) => a.mudo)) return;  // modo sem som (ex.: Reunião na sala): só a faixa
+    if (natalLigado && window.HubNatal && window.HubNatal.sinos()) return;  // no Natal, sinos
     try {
       som.currentTime = 0;
       const tocando = som.play();
@@ -264,6 +270,43 @@
     }
     if (mudou) guardarTocados();
     if (novos.length) mostrarAviso(novos);
+  }
+
+  // ---------- tema de Natal (fase 27) ----------
+
+  let natalLigado = false;
+  let musicaPedida = false;
+  let musicaMutada = false;  // tecla M nesta TV
+
+  function textoNatal(faltam) {
+    const [, mes, dia] = hoje.split("-").map(Number);
+    if ((mes === 12 && dia > 25) || mes === 1) return "✨ Feliz Ano Novo!";
+    if (faltam === 0) return "🎄 Feliz Natal!";
+    if (faltam === 1) return "🎄 Amanhã é Natal!";
+    return "🎄 Natal em " + faltam + " dias";
+  }
+
+  function natal(n) {
+    if (!window.HubNatal || EXPORTAR) return;
+    n = n || {};
+    natalLigado = Boolean(n.ligado);
+    window.HubNatal.vestir(natalLigado, {
+      noel: [240, 420, 40],  // de 4 a 7 minutos entre uma passada e outra
+      aoPassar: () => { if (window.HubNatal.musica.ligada) window.HubNatal.guizosDoTreno(); },
+    });
+    document.body.classList.toggle("natal-preto", natalLigado && n.estilo === "preto");
+    const contagem = document.getElementById("natal-contagem");
+    contagem.hidden = !natalLigado;
+    if (natalLigado) contagem.textContent = textoNatal(n.faltam);
+    musicaPedida = natalLigado && Boolean(n.musica) && !NO_PC;  // a TV aberta no PC de alguém não toca
+    if (musicaPedida && !musicaMutada) window.HubNatal.musica.tocar(n.volume);
+    else window.HubNatal.musica.parar();
+  }
+
+  function alternarMusica() {
+    musicaMutada = !musicaMutada;
+    if (musicaPedida && !musicaMutada) window.HubNatal.musica.tocar();
+    else if (window.HubNatal) window.HubNatal.musica.parar();
   }
 
   // ---------- rotação ----------
@@ -425,6 +468,7 @@
       paginaRemota = pagina;
       desenharPausa();
       desenharModo(dados.modo);
+      natal(dados.natal);
       conferirAvisos();
       desenharPresenca(dados.people);
       avisoAtrasadas(dados.overdue || 0);
@@ -518,7 +562,8 @@
     document.addEventListener("click", alternarPausa);
     document.addEventListener("keydown", (e) => {
       const teclas = { " ": () => alternarPausa(), ArrowLeft: () => trocarTela(-1), ArrowRight: () => trocarTela(1),
-                       ArrowUp: () => trocarPagina(-1), ArrowDown: () => trocarPagina(1) };
+                       ArrowUp: () => trocarPagina(-1), ArrowDown: () => trocarPagina(1),
+                       m: () => alternarMusica(), M: () => alternarMusica() };
       if (teclas[e.key]) { e.preventDefault(); teclas[e.key](); }
     });
     atualizar();

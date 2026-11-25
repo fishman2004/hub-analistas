@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="pt-BR">
+{% set natal = natal_ligado() %}
+<html lang="pt-BR"{% if natal %} class="natal"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,6 +15,8 @@
   <meta name="apple-mobile-web-app-title" content="Hub">
   <link rel="stylesheet" href="/static/app.css?v={{ version }}">
   <script src="/static/tema.js?v={{ version }}"></script>
+  {# tema de Natal (fase 27): vale na época (servidor) ou quando a pessoa escolhe "Natal" no botão Tema #}
+  <link rel="stylesheet" href="/static/natal.css?v={{ version }}">
 </head>
 <body>
   <header class="topo">
@@ -56,10 +59,13 @@
       <button class="link">Sair</button>
     </form>
     {% endif %}
+    <button type="button" id="natal-som" class="natal-som" hidden aria-pressed="false">🔕 Sons de Natal</button>
     <button type="button" id="tema" class="tema" hidden>Tema</button>
   </header>
   <main>{% block main %}{% endblock %}</main>
   <script src="/static/hub.js?v={{ version }}" defer></script>
+  {# tema de Natal (fase 27): o visual só com o tema ligado; o script também serve para ouvir a música em Configurações #}
+  <script src="/static/natal.js?v={{ version }}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

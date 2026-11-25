@@ -65,6 +65,7 @@ flowchart LR
 - **Prioridades por pasta e Assistente:** cada analista fica ligado às suas pastas (página **Pessoas**) e marca a prioridade do mês pasta por pasta; a página e a TV mostram quais pastas já concluíram e quais faltam. As **Metas do mês** ficam à parte, numa tabela com as etapas (enviar ao gerente, ajustes, devolução e upload) nas linhas e as pastas nas colunas. O papel **Assistente** (jovem aprendiz de meio período) pega demandas, tem jornada própria no banco de horas e não entra nas prioridades.
 - **Exportar em PDF:** na página **TV da sala**, qualquer tela (ou todas) sai num PDF igual à TV, para mandar a alguém, com a mesma regra da TV (painéis só em %).
 - **Pausar a TV:** um clique (ou Espaço) na própria TV pausa na tela atual. Pelo app, a página **TV da sala** pausa a TV da sala numa tela, troca de tela e retoma, ou abre qualquer tela só no seu PC. A pausa volta sozinha depois de 15 minutos.
+- **Tema de Natal:** de 1º de dezembro a 6 de janeiro (ou quando um administrador ligar), neve, luzinhas, Papai Noel passando, música de Natal na TV da sala e sinos nos avisos.
 - **A TV nunca rola:** uma coluna com mais demandas do que cabem passa as páginas sozinha, com um fade. Se o servidor cair, a TV mantém a última tela e avisa "sem atualização desde HH:MM".
 - Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
 
