@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 170" aria-hidden="true">
+  <!-- Papai Noel no trenó com duas renas, desenho próprio do Hub (fase 27). As pernas das renas
+       galopam com as classes "perna-a" e "perna-b" (animadas no natal-app.css / natal-tv.css). -->
+  <style>
+    .perna-a, .perna-b { transform-box: fill-box; transform-origin: 50% 0; animation: galope .34s ease-in-out infinite alternate; }
+    .perna-b { animation-direction: alternate-reverse; }
+    .rastro circle { animation: brilho .5s ease-in-out infinite alternate; }
+    .rastro circle:nth-child(2n) { animation-delay: .25s; }
+    @keyframes galope { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+    @keyframes brilho { from { opacity: .2; } to { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+  <defs>
+    <linearGradient id="pn-treno" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e23b33"/><stop offset="1" stop-color="#9c1519"/></linearGradient>
+    <linearGradient id="pn-rena" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a6438"/><stop offset="1" stop-color="#6b4024"/></linearGradient>
+  </defs>
+  <!-- rastro de estrelinhas -->
+  <g class="rastro" fill="#ffe08a">
+    <circle cx="6" cy="118" r="2.2"/><circle cx="22" cy="132" r="1.6"/><circle cx="14" cy="104" r="1.3"/><circle cx="34" cy="146" r="1.2"/>
+  </g>
+  <!-- rédeas -->
+  <path d="M150 92 Q 250 120 330 98 M150 96 Q 330 135 455 92" fill="none" stroke="#f4d27a" stroke-width="2"/>
+  <!-- saco de presentes -->
+  <path d="M52 92 C 40 60, 62 38, 82 44 C 100 48, 104 70, 96 92 Z" fill="#2f7d4a"/>
+  <path d="M70 46 C 74 38, 84 36, 88 42" fill="none" stroke="#f4d27a" stroke-width="3"/>
+  <!-- Papai Noel -->
+  <g>
+    <path d="M96 96 C 96 70, 108 58, 128 58 C 146 58, 154 72, 152 96 Z" fill="#d52a26"/>
+    <rect x="98" y="80" width="54" height="7" fill="#2b1d14"/>
+    <rect x="120" y="79" width="9" height="9" rx="1.5" fill="#f4d27a"/>
+    <circle cx="130" cy="44" r="14" fill="#f6c9a6"/>
+    <path d="M114 46 C 114 66, 124 76, 132 76 C 142 76, 148 64, 146 46 C 140 54, 120 54, 114 46 Z" fill="#fff"/>
+    <path d="M123 52 C 128 49, 134 49, 139 52" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="140" cy="45" r="2.6" fill="#e8908a"/>
+    <circle cx="135" cy="40" r="1.6" fill="#2b1d14"/>
+    <path d="M115 36 C 118 18, 136 12, 150 22 C 158 28, 162 36, 166 42 L 146 36 Z" fill="#d52a26"/>
+    <rect x="113" y="31" width="36" height="8" rx="4" fill="#fff"/>
+    <circle cx="167" cy="43" r="5" fill="#fff"/>
+    <path d="M140 66 C 150 72, 154 82, 156 92" fill="none" stroke="#d52a26" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="156" cy="92" r="4.5" fill="#2b1d14"/>
+  </g>
+  <!-- trenó -->
+  <path d="M40 88 L 168 88 C 176 88, 180 96, 176 104 L 168 118 L 58 118 C 44 118, 36 104, 40 88 Z" fill="url(#pn-treno)"/>
+  <path d="M48 98 L 166 98" stroke="#f4d27a" stroke-width="3"/>
+  <path d="M30 136 L 172 136 C 188 136, 194 126, 190 118" fill="none" stroke="#f4d27a" stroke-width="5" stroke-linecap="round"/>
+  <path d="M70 118 L 66 136 M150 118 L 154 136" stroke="#f4d27a" stroke-width="4"/>
+  <!-- duas renas -->
+  <g id="pn-r1" transform="translate(250 58)">
+    <g class="perna-a" stroke="#5a341c" stroke-width="5" stroke-linecap="round"><path d="M18 50 L 8 78"/><path d="M68 50 L 60 78"/></g>
+    <g class="perna-b" stroke="#5a341c" stroke-width="5" stroke-linecap="round"><path d="M26 50 L 34 78"/><path d="M76 50 L 86 76"/></g>
+    <ellipse cx="46" cy="40" rx="40" ry="17" fill="url(#pn-rena)"/>
+    <path d="M6 34 C 0 28, -2 24, 2 22" fill="none" stroke="#efe2c8" stroke-width="5" stroke-linecap="round"/>
+    <path d="M78 34 C 86 20, 92 10, 100 6" stroke="url(#pn-rena)" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <ellipse cx="108" cy="8" rx="15" ry="9" fill="#8a5631"/>
+    <circle cx="122" cy="10" r="3.6" fill="#2b1d14"/>
+    <circle cx="106" cy="4" r="1.8" fill="#1b120c"/>
+    <path d="M100 -2 L 96 -18 L 88 -26 M96 -18 L 104 -26 M98 -10 L 90 -12" fill="none" stroke="#c9a06a" stroke-width="3" stroke-linecap="round"/>
+    <path d="M78 34 C 84 40, 92 38, 96 30" fill="none" stroke="#d52a26" stroke-width="4"/>
+    <circle cx="88" cy="38" r="3" fill="#f4d27a"/>
+  </g>
+  <g transform="translate(380 52)">
+    <g class="perna-b" stroke="#5a341c" stroke-width="5" stroke-linecap="round"><path d="M18 50 L 8 78"/><path d="M68 50 L 60 78"/></g>
+    <g class="perna-a" stroke="#5a341c" stroke-width="5" stroke-linecap="round"><path d="M26 50 L 34 78"/><path d="M76 50 L 86 76"/></g>
+    <ellipse cx="46" cy="40" rx="40" ry="17" fill="url(#pn-rena)"/>
+    <path d="M6 34 C 0 28, -2 24, 2 22" fill="none" stroke="#efe2c8" stroke-width="5" stroke-linecap="round"/>
+    <path d="M78 34 C 86 20, 92 10, 100 6" stroke="url(#pn-rena)" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <ellipse cx="108" cy="8" rx="15" ry="9" fill="#8a5631"/>
+    <circle cx="122" cy="10" r="3.6" fill="#2b1d14"/>
+    <circle cx="106" cy="4" r="1.8" fill="#1b120c"/>
+    <path d="M100 -2 L 96 -18 L 88 -26 M96 -18 L 104 -26 M98 -10 L 90 -12" fill="none" stroke="#c9a06a" stroke-width="3" stroke-linecap="round"/>
+    <path d="M78 34 C 84 40, 92 38, 96 30" fill="none" stroke="#d52a26" stroke-width="4"/>
+    <circle cx="88" cy="38" r="3" fill="#f4d27a"/>
+  </g>
+</svg>

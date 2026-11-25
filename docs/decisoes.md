@@ -392,3 +392,14 @@ Pedidos do Kayo em 23/10/2026, ao usar as telas Rotinas e Trilha. Escolhas técn
 - **Remover rotina:** a rotina **não é apagada** (as demandas e o histórico de antes apontam para ela): ela sai da lista, do quadro e da TV, e as outras rotinas param de esperar por ela. Só o gestor e os administradores removem, com confirmação. **Desativar** continua existindo para só pausar. Dá para cadastrar de novo o mesmo nome e horário.
 - **Tirar todos os blocos:** limpa a trilha da pessoa de uma vez (como o Tirar de cada bloco: as marcas dos dias que passaram ficam guardadas), com confirmação, e vai para o histórico. Quem pode é quem pode montar a trilha: a própria pessoa, o gestor e os administradores.
 - **Banco:** a migração 16 cria a lista de responsáveis (cada rotina existente vira um responsável só) e a marca de "removida"; o Hub faz a cópia do banco antes, como sempre.
+
+## Tema de Natal (fase 27)
+
+Pedido do Kayo em 25/11/2026: "tudo natalino mesmo", com música de fundo, design diferente, sinos nas notificações e um Papai Noel passando na tela. Escolhas técnicas (o Kayo pode pedir para trocar):
+
+- **Quando vale:** no **automático**, de 1º de dezembro até 6 de janeiro (Dia de Reis); em **Configurações → Tema de Natal** um administrador liga agora ou desliga de vez. Fica na tabela `settings` (sem migração) e no histórico.
+- **Música só na TV da sala:** é ela que fica ligada o dia todo. Volume padrão 25 (de 0 a 100), ajustável em Configurações; os sinos dos avisos tocam sempre no volume normal e a música baixa enquanto eles tocam. Nos modos sem som (ex.: Reunião na sala) a música para. A TV aberta no PC de alguém ("no meu PC", pré-visualização) não toca. Na própria TV, a tecla **M** liga e desliga até recarregar. O navegador da TV já abre com permissão para tocar som (`--autoplay-policy`, ver `hub/winsys.py`).
+- **No app, som desligado por padrão:** cada pessoa liga **Sons de Natal** no topo (guardado no navegador): a música baixinha e um sininho curto quando aparece um aviso de sucesso. Numa sala com vários PCs, som ligado em todos sem pedir seria barulho.
+- **Áudio sem direitos autorais e sem arquivo:** as melodias são de domínio público (Jingle Bells, 1857; Noite Feliz, 1818; We Wish You a Merry Christmas e Deck the Halls, tradicionais) e o som é gerado no navegador (Web Audio: caixinha de música, baixo, guizos e sino sintetizados), sem baixar nada.
+- **Papai Noel:** desenho próprio em SVG (`static/natal-papai-noel.svg`), nada copiado de sites de GIF. Passa na TV a cada 4 a 7 minutos e no app a cada 6 a 10 minutos, leva uns 12 a 16 segundos para atravessar e não bloqueia cliques. Na TV, com a música ligada, vem com guizos.
+- **Legibilidade:** as cores de status (na sala, reunião, pausa, fora, atrasada) não mudam. A neve cai **atrás** dos cartões. Com "menos movimento" no Windows, a neve fica parada, as luzes não piscam e o Papai Noel não passa. O PDF exportado da TV sai sem o tema.

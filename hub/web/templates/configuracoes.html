@@ -6,6 +6,33 @@
 {% if error %}<div class="erro" role="alert">{{ error }}</div>{% endif %}
 {% if ok %}<div class="sucesso" role="status">Salvo. A TV usa os novos tempos na próxima atualização (em até 5 segundos).</div>{% endif %}
 
+<form class="ficha cartao-form natal-config" method="post" action="/configuracoes/natal" id="natal">
+  <h2>🎄 Tema de Natal</h2>
+  {% if error_natal %}<div class="erro" role="alert">{{ error_natal }}</div>{% endif %}
+  {% if ok_natal %}<div class="sucesso" role="status">Salvo. O app muda na próxima página aberta e a TV em até 5 segundos.</div>{% endif %}
+  <p class="ajuda">Neve, luzinhas e cores de Natal no app e na TV, música de fundo na TV da sala e sinos nos avisos das rotinas. Hoje o tema está <strong>{{ 'ligado' if natal_hoje else 'desligado' }}</strong>.</p>
+  <fieldset class="escolhas">
+    <legend>Quando o tema vale</legend>
+    {% for valor, rotulo in natal_modos.items() %}
+    <label class="check"><input type="radio" name="modo" value="{{ valor }}" {% if natal_cfg.mode == valor %}checked{% endif %}> {{ rotulo }}</label>
+    {% endfor %}
+  </fieldset>
+  <div>
+    <label class="check"><input type="checkbox" name="musica" value="1" {% if natal_cfg.music %}checked{% endif %}> Música de fundo na TV da sala</label>
+    <p class="ajuda">Melodias de Natal de domínio público, tocadas pelo próprio Hub (sem internet). A música para sozinha nos modos sem som (como <strong>Reunião na sala</strong>) e baixa enquanto os sinos de um aviso tocam. Na própria TV, a tecla <kbd>M</kbd> liga e desliga a música até recarregar a página.</p>
+  </div>
+  <div>
+    <label for="natal-volume">Volume da música na TV (0 a 100)</label>
+    <input class="curto" type="number" id="natal-volume" name="volume" value="{{ natal_cfg.volume }}" min="0" max="100" required>
+    <p class="ajuda">Os sinos dos avisos tocam sempre no volume normal. Também dá para ajustar no volume do PC da sala.</p>
+  </div>
+  <div class="natal-botoes">
+    <button>Salvar</button>
+    <button type="button" class="discreto" id="natal-ouvir" hidden>▶ Ouvir a música aqui</button>
+    <button type="button" class="discreto" id="natal-sinos" hidden>🔔 Ouvir os sinos</button>
+  </div>
+</form>
+
 <form class="ficha cartao-form" method="post" action="/configuracoes">
   <h2>Telas da TV · modo Padrão</h2>
   <p class="ajuda">A TV passa de uma tela para a outra sozinha. Uma tela sem nada para mostrar sai da rotação até ter de novo. No Padrão, o Quadro está sempre na rotação. Aqui fica o modo <strong>Padrão</strong>, que vale quando nenhum outro vale; os outros (Início de mês, Fim de mês...), com a ordem das telas e as regras automáticas, ficam em <a href="/modos">Modos da TV</a>.</p>

@@ -6,6 +6,7 @@
   <title>{{ exportar.titulo if exportar else "Hub dos Analistas · TV" }}</title>
   <link rel="icon" href="/static/hub.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/tv.css?v={{ version }}">
+  <link rel="stylesheet" href="/static/natal.css?v={{ version }}">
 </head>
 {% if exportar %}
 <body class="exportar{{ ' clara' if exportar.clara else '' }}" data-exportar="{{ exportar.tela }}" data-rodape="{{ exportar.rodape }}">
@@ -22,10 +23,11 @@
   </div>
   <div class="folha" id="ao-vivo">
 {% else %}
-<body>
+<body data-tv>
 {% endif %}
   <header class="topo">
     <div class="marca"><img src="/static/hub.svg" alt="" width="44" height="44"> Hub dos Analistas</div>
+    <div id="natal-contagem" class="natal-contagem" hidden></div>
     <div id="rotacao" class="rotacao" aria-hidden="true"></div>
     <div id="pausa" class="selo-pausa" role="status" hidden></div>
     <div class="topo-dir">
@@ -107,6 +109,7 @@
   </div>
   <div id="folhas" class="folhas"></div>
 {% endif %}
+  <script src="/static/natal.js?v={{ version }}"></script>
   <script src="/static/tv.js?v={{ version }}"></script>
   <script src="/static/tv-telas/quadro.js?v={{ version }}"></script>
   <script src="/static/tv-telas/trilhas.js?v={{ version }}"></script>

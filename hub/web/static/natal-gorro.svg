@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 52" aria-hidden="true">
+  <!-- gorro de Papai Noel em cima do logo (fase 27) -->
+  <path d="M8 40 C 10 18, 26 4, 44 8 C 54 10, 58 22, 60 34 L 48 26 C 40 30, 24 36, 8 40 Z" fill="#d52a26"/>
+  <path d="M30 10 C 40 6, 50 10, 54 18" fill="none" stroke="#ff6b5f" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+  <rect x="2" y="36" width="50" height="12" rx="6" fill="#fff" transform="rotate(-8 27 42)"/>
+  <circle cx="58" cy="38" r="6" fill="#fff"/>
+</svg>

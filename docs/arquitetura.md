@@ -126,6 +126,7 @@ Como na tela Hoje do Pombo, o que já foi enviado ou tentado vale mais que as li
 | `hub/rotinas_mes.py` | Rotinas do mês (fase 19): categorias com cor, as regras de repetição por dia útil, "feita" no dia, a justificativa (fase 23, `month_routine_notes`: hoje e os últimos 31 dias), as rotinas do modelo do gestor e a tela da TV (o mês e o dia) |
 | `hub/presence.py` | Presença e a virada do dia |
 | `hub/backup.py` | Cópia de segurança diária (14 dias) |
+| `hub/natal.py` | Tema de Natal (fase 27): quando vale (automático de 1º/12 a 6/1, ligado ou desligado), música e volume da TV e o que vai no `/api/tv`. O visual e o som ficam em `static/natal.css` e `static/natal.js` (neve, luzinhas, Papai Noel, músicas e sinos gerados com Web Audio) |
 | `hub/winsys.py` | Abrir com o Windows, não dormir, TV em tela cheia |
 | `hub/web/` | Rotas, páginas, o JavaScript da TV (`static/tv.js` e uma tela por arquivo em `static/tv-telas/`) e o do tema do app (`static/tema.js`) |
 | `tools/` | Teste de rede, dados de demonstração (inclusive um histórico fictício do Pombo), as planilhas de exemplo dos painéis (`tools/exemplos/`, geradas por `tools/gerar_exemplos.py`), a ponte do Apps Script da 8081 (`tools/drive/ponte-8081.gs`) e o gerador do som do aviso (`tools/gerar_som.py`, que grava `hub/web/static/aviso.wav`) |
