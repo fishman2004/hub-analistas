@@ -23,7 +23,7 @@ def test_entrar_has_theme_button_and_script(client):
     html = c.get("/entrar").text
     assert f'src="/static/tema.js?v={__version__}"' in html
     # o script vem no <head>, antes da página aparecer, para não piscar o tema errado
-    assert html.index("tema.js") < html.index("<body>")
+    assert html.index("tema.js") < html.index("<body")
     assert re.search(r'<button[^>]*id="tema"', html)
 
 

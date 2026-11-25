@@ -87,15 +87,21 @@
 
   let varal = null;
 
-  // Papai Noel no trenó (natal-papai-noel.svg, desenho próprio) passando de um lado para o outro
+  // Papai Noel no trenó (natal-papai-noel.svg, desenho próprio) passando de um lado para o outro.
+  // Onde passa, de quanto em quanto tempo e em que altura vêm de Configurações → Papai Noel.
   let timerNoel = null;
   let aoPassar = null;
-  function papaiNoel() {
-    if (calmo || !raiz.classList.contains("natal") || document.querySelector(".natal-papai-noel")) return;
+  let noelCfg = null;  // { minutos, altura } ou null (não passa aqui)
+  const ALTURAS = { topo: [6, 14], meio: [34, 44], baixo: [60, 70], sorteada: [10, 60] };
+
+  function papaiNoel(forcar) {
+    if (calmo || document.querySelector(".natal-papai-noel")) return;
+    if (!forcar && !raiz.classList.contains("natal")) return;
+    const [de, ate] = ALTURAS[(noelCfg && noelCfg.altura) || "sorteada"] || ALTURAS.sorteada;
     const voo = document.createElement("div");
     voo.className = "natal-papai-noel";
     voo.setAttribute("aria-hidden", "true");
-    voo.style.top = (12 + Math.random() * 45) + "vh";
+    voo.style.top = (de + Math.random() * (ate - de)) + "vh";
     voo.style.setProperty("--dur", (11 + Math.random() * 5).toFixed(1) + "s");
     const img = document.createElement("img");
     img.src = "/static/natal-papai-noel.svg";
@@ -105,25 +111,41 @@
     voo.addEventListener("animationend", (e) => { if (e.target === voo) voo.remove(); });
     if (aoPassar) aoPassar();
   }
-  function agendarNoel(min, max, primeiro) {
+
+  function agendarNoel(primeiro) {
     clearTimeout(timerNoel);
-    const espera = primeiro !== undefined ? primeiro : min + Math.random() * (max - min);
-    timerNoel = setTimeout(() => { papaiNoel(); agendarNoel(min, max); }, espera * 1000);
+    if (!noelCfg || !raiz.classList.contains("natal")) return;
+    const media = noelCfg.minutos * 60;
+    const espera = primeiro !== undefined ? primeiro : media * (0.7 + Math.random() * 0.6);
+    timerNoel = setTimeout(() => { papaiNoel(); agendarNoel(); }, espera * 1000);
   }
 
-  // opcoes.noel = [mínimo, máximo, primeira vez] em segundos entre uma passada e outra
+  // muda onde/quando o Papai Noel passa (a TV chama a cada busca; só reagenda se mudou)
+  function configurarNoel(cfg) {
+    const novo = cfg && cfg.minutos ? { minutos: Number(cfg.minutos), altura: cfg.altura || "sorteada" } : null;
+    if (JSON.stringify(novo) === JSON.stringify(noelCfg)) return;
+    const antes = noelCfg;
+    noelCfg = novo;
+    if (!novo) { clearTimeout(timerNoel); return; }
+    if (!antes || antes.minutos !== novo.minutos) agendarNoel(Math.min(20 + Math.random() * 30, novo.minutos * 60));
+  }
+
+  // opcoes.noel = { minutos, altura } (sem ela, o Papai Noel não passa); opcoes.aoPassar = o que fazer quando passa
   function vestir(ligado, opcoes) {
     raiz.classList.toggle("natal", ligado);
     if (ligado && !neve) {
       neve = criarNeve();
       varal = criarVaral();
-      const [min, max, primeiro] = (opcoes && opcoes.noel) || [360, 600, 25 + Math.random() * 40];
       if (opcoes && opcoes.aoPassar) aoPassar = opcoes.aoPassar;
-      agendarNoel(min, max, primeiro);
+      noelCfg = null;
+      configurarNoel(opcoes && opcoes.noel);
+    } else if (ligado && opcoes && "noel" in opcoes) {
+      configurarNoel(opcoes.noel);
     }
     if (!ligado && neve) {
       neve.parar(); neve = null; varal.remove(); varal = null;
       clearTimeout(timerNoel);
+      noelCfg = null;
       for (const v of document.querySelectorAll(".natal-papai-noel")) v.remove();
     }
   }
@@ -376,6 +398,72 @@
     return true;
   }
 
+  // ---------- os outros sons dos avisos (Configurações → Som dos avisos) ----------
+
+  function preparar(segundos) {
+    const c = desbloquear();
+    if (!c || c.state !== "running") return null;
+    const t0 = c.currentTime + 0.05;
+    const destino = ctx.createGain();
+    destino.connect(saida);
+    destino.connect(eco);
+    if (musica.ligada) {  // a música baixa enquanto o aviso toca
+      volMusica.gain.setTargetAtTime(ganhoDoVolume(musica.volume) * 0.15, t0, 0.08);
+      volMusica.gain.setTargetAtTime(ganhoDoVolume(musica.volume), t0 + segundos, 0.6);
+    }
+    setTimeout(() => destino.disconnect(), (segundos + 5) * 1000);
+    return { destino, t0 };
+  }
+
+  // sino grande: um "hum" grave e parciais de sino que demoram a sumir
+  function sinoGrande(destino, f, t, forca) {
+    const parciais = [[0.5, 0.5, 5], [1, 1, 4], [1.19, 0.45, 2.6], [1.5, 0.35, 2.2], [2, 0.4, 1.8], [2.5, 0.2, 1.2], [3, 0.15, 0.9], [4.2, 0.08, 0.6]];
+    for (const [mult, g, decai] of parciais) {
+      const o = ctx.createOscillator();
+      const v = ctx.createGain();
+      o.frequency.value = f * mult;
+      v.gain.setValueAtTime(0.0001, t);
+      v.gain.exponentialRampToValueAtTime(0.14 * g * forca, t + 0.004);
+      v.gain.exponentialRampToValueAtTime(0.0004, t + decai);
+      o.connect(v).connect(destino);
+      o.start(t);
+      o.stop(t + decai + 0.05);
+    }
+  }
+
+  const AVISOS = {
+    sinos: () => sinos(),
+    igreja() {  // blém... blém... blém
+      const p = preparar(6);
+      if (!p) return false;
+      [[0, "E4"], [1.6, "C4"], [3.2, "E4"]].forEach(([t, n]) => sinoGrande(p.destino, freq(n, 0), p.t0 + t, 1));
+      return true;
+    },
+    carrilhao() {  // o toque dos relógios de torre (Westminster, 1793, domínio público)
+      const p = preparar(6);
+      if (!p) return false;
+      "G4 E5 D5 C5 . G4 D5 E5 C5".split(" ").forEach((n, i) => { if (n !== ".") sino(p.destino, freq(n, 0), p.t0 + i * 0.55, 1.2); });
+      return true;
+    },
+    caixinha() {
+      const p = preparar(3);
+      if (!p) return false;
+      "C6 E6 G6 C7 G6 E6 C7".split(" ").forEach((n, i) => caixinha(p.destino, freq(n, 0), p.t0 + i * 0.16, 0.5, i === 6 ? 1.2 : 0.9));
+      return true;
+    },
+    guizos() {
+      const p = preparar(2.5);
+      if (!p) return false;
+      for (let i = 0; i < 26; i++) guizo(p.destino, p.t0 + i * 0.07 + (i % 2) * 0.025 + Math.floor(i / 6) * 0.12, 1);
+      return true;
+    },
+  };
+
+  // toca o som escolhido para os avisos; devolve false quando é o "de sempre" (o aviso.wav) ou não deu para tocar
+  function tocarAviso(tipo) {
+    return Boolean(AVISOS[tipo] && AVISOS[tipo]());
+  }
+
   // guizos de trenó baixinhos, para quando o Papai Noel passa na TV com a música ligada
   function guizosDoTreno() {
     if (!ctx || ctx.state !== "running") return;
@@ -390,7 +478,9 @@
   window.HubNatal = {
     vestir,
     papaiNoel,
+    configurarNoel,
     guizosDoTreno,
+    tocarAviso,
     desbloquear,
     sinos,
     musica: { tocar: tocarMusica, parar: pararMusica, get ligada() { return musica.ligada; } },
@@ -403,11 +493,35 @@
     if (document.body.dataset.tv !== undefined) return;
     const CHAVE = "hub-natal-sons";
     const ligado = raiz.classList.contains("natal");
-    if (ligado) vestir(true);
+    const corpo = document.body.dataset;
+    // o Papai Noel passa no app só se Configurações → Papai Noel deixar (o servidor manda no <body>)
+    if (ligado) vestir(true, { noel: corpo.noelMinutos ? { minutos: corpo.noelMinutos, altura: corpo.noelAltura } : null });
 
     // Configurações: ouvir a música e os sinos aqui mesmo
     const ouvir = document.getElementById("natal-ouvir");
-    const sinosBotao = document.getElementById("natal-sinos");
+    const noelVer = document.getElementById("noel-ver");
+    if (noelVer) {
+      noelVer.hidden = false;
+      noelVer.addEventListener("click", () => {
+        const marcada = document.querySelector('input[name="altura"]:checked');
+        const guardada = noelCfg;
+        noelCfg = { minutos: 60, altura: marcada ? marcada.value : "sorteada" };
+        papaiNoel(true);
+        noelCfg = guardada;
+      });
+    }
+    const somOuvir = document.getElementById("som-ouvir");
+    if (somOuvir) {
+      somOuvir.hidden = false;
+      somOuvir.addEventListener("click", () => {
+        let tipo = document.getElementById("som").value;
+        if (tipo === "auto") tipo = raiz.classList.contains("natal") ? "sinos" : "padrao";
+        desbloquear();
+        setTimeout(() => {
+          if (!tocarAviso(tipo)) { try { new Audio("/static/aviso.wav").play().catch(() => {}); } catch (e) { /* sem som */ } }
+        }, 60);
+      });
+    }
     if (ouvir) {
       ouvir.hidden = false;
       ouvir.addEventListener("click", () => {
@@ -415,10 +529,6 @@
         const v = Number(document.getElementById("natal-volume").value);
         if (tocarMusica(Number.isFinite(v) ? v : 25)) ouvir.textContent = "■ Parar a música";
       });
-    }
-    if (sinosBotao) {
-      sinosBotao.hidden = false;
-      sinosBotao.addEventListener("click", () => { desbloquear(); setTimeout(() => sinos(), 60); });
     }
 
     const botao = document.getElementById("natal-som");

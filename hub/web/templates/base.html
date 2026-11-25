@@ -18,7 +18,8 @@
   {# tema de Natal (fase 27): vale na época (servidor) ou quando a pessoa escolhe "Natal" no botão Tema #}
   <link rel="stylesheet" href="/static/natal.css?v={{ version }}">
 </head>
-<body>
+{% set noel = natal_noel_app() %}
+<body{% if noel %} data-noel-minutos="{{ noel.minutos }}" data-noel-altura="{{ noel.altura }}"{% endif %}>
   <header class="topo">
     <a class="marca" href="/"><img src="/static/hub.svg" alt="" width="30" height="30"> Hub dos Analistas</a>
     {% if user %}

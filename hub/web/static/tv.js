@@ -246,7 +246,8 @@
     clearTimeout(timerAviso);
     timerAviso = setTimeout(() => { faixa.hidden = true; }, AVISO_MS);
     if (lista.every((a) => a.mudo)) return;  // modo sem som (ex.: Reunião na sala): só a faixa
-    if (natalLigado && window.HubNatal && window.HubNatal.sinos()) return;  // no Natal, sinos
+    // o som escolhido em Configurações (sinos no Natal, por padrão); "padrao" ou sem Web Audio: o aviso.wav
+    if (somAviso !== "padrao" && window.HubNatal && window.HubNatal.tocarAviso(somAviso)) return;
     try {
       som.currentTime = 0;
       const tocando = som.play();
@@ -275,6 +276,8 @@
   // ---------- tema de Natal (fase 27) ----------
 
   let natalLigado = false;
+  let somAviso = "padrao";
+  let noelPedido = null;  // o último "Passar agora na TV" visto
   let musicaPedida = false;
   let musicaMutada = false;  // tecla M nesta TV
 
@@ -291,10 +294,13 @@
     n = n || {};
     natalLigado = Boolean(n.ligado);
     window.HubNatal.vestir(natalLigado, {
-      noel: [240, 420, 40],  // de 4 a 7 minutos entre uma passada e outra
+      noel: n.noel || null,  // onde, de quanto em quanto tempo e em que altura: Configurações → Papai Noel
       aoPassar: () => { if (window.HubNatal.musica.ligada) window.HubNatal.guizosDoTreno(); },
     });
     document.body.classList.toggle("natal-preto", natalLigado && n.estilo === "preto");
+    // "Passar agora na TV": passa quando o pedido muda (não na primeira busca, para recarregar não repetir)
+    if (noelPedido !== null && n.noel_agora && n.noel_agora !== noelPedido && natalLigado && !NO_PC) window.HubNatal.papaiNoel();
+    noelPedido = n.noel_agora || "";
     const contagem = document.getElementById("natal-contagem");
     contagem.hidden = !natalLigado;
     if (natalLigado) contagem.textContent = textoNatal(n.faltam);
@@ -468,6 +474,7 @@
       paginaRemota = pagina;
       desenharPausa();
       desenharModo(dados.modo);
+      somAviso = dados.som_aviso || "padrao";
       natal(dados.natal);
       conferirAvisos();
       desenharPresenca(dados.people);

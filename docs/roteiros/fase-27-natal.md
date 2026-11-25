@@ -25,5 +25,9 @@ Leva uns 10 minutos, com a TV da sala ligada e com som. Esta fase não muda o ba
 12. Com um teclado na TV, a tecla **M** desliga e liga a música (até recarregar a página).
 13. Se não tocar nada: confira o volume do PC da sala e se a TV foi aberta pelo `iniciar.bat` (ele abre o Edge com a permissão para tocar som).
 
+## Papai Noel e som dos avisos
+- Em **Configurações → 🎅 Papai Noel**, escolha onde ele passa, a cada quantos minutos e em que altura, e salve. **Ver passar aqui** mostra no seu PC; **Passar agora na TV** faz ele atravessar a TV da sala em até 5 segundos.
+- Em **Configurações → 🔔 Som dos avisos**, escolha um som, clique em **Ouvir aqui** e salve. Teste na TV com **Rotinas → Testar aviso na TV agora**. O **Automático** toca sinos no Natal e o som de sempre no resto do ano.
+
 ## Desligar
 14. Em **Configurações → Tema de Natal**, escolha **Desligado** (ou **Automático**, que desliga sozinho depois de 6 de janeiro) e salve. O app volta ao normal na próxima página e a TV em até 5 segundos.

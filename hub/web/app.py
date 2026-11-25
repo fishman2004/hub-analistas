@@ -56,6 +56,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
     templates.env.globals["version"] = __version__
     # tema de Natal (fase 27): o base.html pergunta se está ligado hoje para vestir o app
     templates.env.globals["natal_ligado"] = lambda: natal.is_on(db, clock().date())
+    templates.env.globals["natal_noel_app"] = lambda: natal.santa_for(db, "app")
 
     @app.middleware("http")
     async def same_origin_only(request: Request, call_next):
@@ -133,6 +134,8 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             "modo": {"nome": mode.name, "padrao": mode.is_default, "previa": preview is not None},
             # tema de Natal (fase 27): o visual, a música de fundo (só a TV da sala toca) e os sinos nos avisos
             "natal": natal.tv_payload(db, now),
+            # o som dos avisos (fase 27): o de sempre, sinos, sino de igreja... (Configurações)
+            "som_aviso": natal.alert_sound(db, now.date()),
             **rotation(db, now, mode),
         }
         if not mode.sound:  # modo sem som (ex.: Reunião na sala): a faixa aparece, sem tocar, e a música para
@@ -1820,7 +1823,9 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
                                 "default_folder": str(anexos.default_folder()), "usage": anexos.usage(db),
                                 "trash": trash, "trash_days": anexos.TRASH_DAYS},
                     paineis=panel_config(db), drive=drive.drive_config(db),
-                    natal_cfg=natal.config(db), natal_modos=natal.MODES, natal_tv=natal.TV_STYLES, natal_hoje=natal.is_on(db, clock().date()),
+                    natal_cfg=natal.config(db), natal_modos=natal.MODES, natal_tv=natal.TV_STYLES,
+                    natal_onde=natal.SANTA_WHERE, natal_alturas=natal.SANTA_HEIGHTS, sons_aviso=natal.ALERT_SOUNDS,
+                    noel_limites={"min": natal.SANTA_MIN, "max": natal.SANTA_MAX}, natal_hoje=natal.is_on(db, clock().date()),
                     drive_limits={"min": drive.MINUTES_MIN, "max": drive.MINUTES_MAX}, pombo=pombo_config(db),
                     stale_limits={"min": STALE_MIN, "max": STALE_MAX},
                     limits={"min": MIN_SECONDS, "max": MAX_SECONDS, "page_min": PAGE_MIN, "page_max": PAGE_MAX}, **ctx)
@@ -1914,6 +1919,41 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return config_page(request, user, 422, error_natal=str(exc))
         return config_page(request, user, ok_natal=True)
+
+    @app.post("/configuracoes/natal/noel")
+    def configuracoes_natal_noel(request: Request, onde: str = Form("tv_app"), minutos: str = Form(""),
+                                 altura: str = Form("sorteada")):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            natal.save_santa(db, clock(), user, onde, minutos, altura)
+        except ValidationError as exc:
+            return config_page(request, user, 422, error_noel=str(exc))
+        return config_page(request, user, ok_noel="Salvo. A TV usa em até 5 segundos; no app, vale na próxima página.")
+
+    @app.post("/configuracoes/natal/noel-agora")
+    def configuracoes_natal_noel_agora(request: Request):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        if not natal.is_on(db, clock().date()):
+            return config_page(request, user, 422, error_noel="O tema de Natal está desligado na TV: ligue o tema primeiro.")
+        if natal.santa_for(db, "tv") is None:
+            return config_page(request, user, 422, error_noel="O Papai Noel está desligado na TV: escolha “Na TV e no app” ou “Só na TV”.")
+        natal.santa_now(db, clock(), user)
+        return config_page(request, user, ok_noel="Pedido enviado: o Papai Noel passa na TV da sala em até 5 segundos.")
+
+    @app.post("/configuracoes/som-aviso")
+    def configuracoes_som_aviso(request: Request, som: str = Form("auto")):
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        try:
+            natal.save_alert_sound(db, clock(), user, som)
+        except ValidationError as exc:
+            return config_page(request, user, 422, error_som=str(exc))
+        return config_page(request, user, ok_som=True)
 
     # ---------- painéis de dados ----------
 
@@ -2378,6 +2418,8 @@ def describe(row, people: dict, demands: dict, viewer: Person, cal_events: dict 
         "config_phd": f"{who} mudou o PHD automático",
         "config_pombo": f"{who} mudou a pasta do histórico do Pombo",
         "config_natal": f"{who} mudou o tema de Natal ({detail})",
+        "natal_noel_agora": f"{who} fez o Papai Noel passar na TV",
+        "config_som_aviso": f"{who} mudou o som dos avisos para “{detail}”",
         "painel_arquivo": f"{who} enviou a planilha “{detail}” dos painéis",
         "horas_lancado": f"{who} lançou o banco de horas de {detail}",
         "horas_corrigido": f"{who} corrigiu o banco de horas de {detail}",

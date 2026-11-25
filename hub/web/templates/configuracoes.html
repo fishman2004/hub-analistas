@@ -36,7 +36,54 @@
   <div class="natal-botoes">
     <button>Salvar</button>
     <button type="button" class="discreto" id="natal-ouvir" hidden>▶ Ouvir a música aqui</button>
-    <button type="button" class="discreto" id="natal-sinos" hidden>🔔 Ouvir os sinos</button>
+  </div>
+</form>
+
+<form class="ficha cartao-form" method="post" action="/configuracoes/natal/noel" id="papai-noel">
+  <h2>🎅 Papai Noel</h2>
+  {% if error_noel %}<div class="erro" role="alert">{{ error_noel }}</div>{% endif %}
+  {% if ok_noel %}<div class="sucesso" role="status">{{ ok_noel }}</div>{% endif %}
+  <p class="ajuda">Com o tema de Natal ligado, o Papai Noel no trenó atravessa a tela de vez em quando, sem atrapalhar os cliques.</p>
+  <fieldset class="escolhas">
+    <legend>Onde ele passa</legend>
+    {% for valor, rotulo in natal_onde.items() %}
+    <label class="check"><input type="radio" name="onde" value="{{ valor }}" {% if natal_cfg.santa_where == valor %}checked{% endif %}> {{ rotulo }}</label>
+    {% endfor %}
+  </fieldset>
+  <div>
+    <label for="noel-minutos">Passa mais ou menos a cada (minutos)</label>
+    <input class="curto" type="number" id="noel-minutos" name="minutos" value="{{ natal_cfg.santa_minutes }}" min="{{ noel_limites.min }}" max="{{ noel_limites.max }}" required>
+    <p class="ajuda">O tempo varia um pouco de uma vez para outra (30% para mais ou para menos), para não ficar previsível. A primeira passada é uns segundos depois de abrir a página.</p>
+  </div>
+  <fieldset class="escolhas">
+    <legend>Em que altura da tela</legend>
+    {% for valor, rotulo in natal_alturas.items() %}
+    <label class="check"><input type="radio" name="altura" value="{{ valor }}" {% if natal_cfg.santa_height == valor %}checked{% endif %}> {{ rotulo }}</label>
+    {% endfor %}
+  </fieldset>
+  <div class="natal-botoes">
+    <button>Salvar</button>
+    <button type="submit" class="discreto" formaction="/configuracoes/natal/noel-agora" formnovalidate>🎅 Passar agora na TV</button>
+    <button type="button" class="discreto" id="noel-ver" hidden>Ver passar aqui</button>
+  </div>
+</form>
+
+<form class="ficha cartao-form" method="post" action="/configuracoes/som-aviso" id="som-aviso">
+  <h2>🔔 Som dos avisos</h2>
+  {% if error_som %}<div class="erro" role="alert">{{ error_som }}</div>{% endif %}
+  {% if ok_som %}<div class="sucesso" role="status">Salvo. A TV usa no próximo aviso (teste em <a href="/rotinas">Rotinas → Testar aviso na TV agora</a>).</div>{% endif %}
+  <p class="ajuda">O som que a TV da sala toca quando chega o horário de uma rotina. Vale o ano todo. Os sons são gerados pelo próprio Hub, sem internet.</p>
+  <div>
+    <label for="som">Som</label>
+    <select id="som" name="som">
+      {% for valor, rotulo in sons_aviso.items() %}
+      <option value="{{ valor }}" {% if natal_cfg.alert_sound == valor %}selected{% endif %}>{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="natal-botoes">
+    <button>Salvar</button>
+    <button type="button" class="discreto" id="som-ouvir" hidden>🔊 Ouvir aqui</button>
   </div>
 </form>
 
