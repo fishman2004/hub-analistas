@@ -3,7 +3,9 @@
 Tudo fica na tabela settings (sem migração):
 - natal_modo: "auto" (padrão: liga sozinho de 1º de dezembro a 6 de janeiro, Dia de Reis), "ligado" ou "desligado";
 - natal_musica: "1"/"0", se a TV da sala toca a música de fundo enquanto o tema está ligado (padrão: sim);
-- natal_volume: de 0 a 100, o volume da música na TV (padrão 25). Os sinos dos avisos tocam sempre no volume cheio.
+- natal_volume: de 0 a 100, o volume da música na TV (padrão 25). Os sinos dos avisos tocam sempre no volume cheio;
+- natal_tv_estilo: "vermelho" (padrão) ou "preto", a versão do tema na TV. No app, cada pessoa escolhe no botão
+  Tema ("Natal" ou "Natal preto"), e pode escolher o Natal mesmo fora da época.
 
 A música e os sinos são gerados no próprio navegador (Web Audio), a partir de melodias de domínio público
 (Jingle Bells, Noite Feliz, We Wish You a Merry Christmas, O Tannenbaum, Deck the Halls): nenhum arquivo de
@@ -20,8 +22,10 @@ from .people import Person, ValidationError
 SETTING_MODE = "natal_modo"
 SETTING_MUSIC = "natal_musica"
 SETTING_VOLUME = "natal_volume"
+SETTING_TV_STYLE = "natal_tv_estilo"
 
 MODES = {"auto": "Automático (1º de dezembro a 6 de janeiro)", "ligado": "Ligado agora", "desligado": "Desligado"}
+TV_STYLES = {"vermelho": "Vermelho (noite azul, como o app)", "preto": "Preto e dourado"}
 DEFAULT_VOLUME = 25
 CHRISTMAS = (12, 25)
 
@@ -34,10 +38,12 @@ def in_season(today: date) -> bool:
 def config(db: Database) -> dict:
     mode = get_setting(db, SETTING_MODE)
     volume = get_setting(db, SETTING_VOLUME)
+    style = get_setting(db, SETTING_TV_STYLE)
     return {
         "mode": mode if mode in MODES else "auto",
         "music": get_setting(db, SETTING_MUSIC) != "0",
         "volume": int(volume) if volume and volume.isdigit() and 0 <= int(volume) <= 100 else DEFAULT_VOLUME,
+        "tv_style": style if style in TV_STYLES else "vermelho",
     }
 
 
@@ -58,15 +64,18 @@ def tv_payload(db: Database, now: datetime) -> dict:
     """O que a TV precisa saber: se o tema está ligado, se toca a música e em que volume."""
     cfg = config(db)
     on = is_on(db, now.date())
-    return {"ligado": on, "musica": on and cfg["music"], "volume": cfg["volume"],
+    return {"ligado": on, "musica": on and cfg["music"], "volume": cfg["volume"], "estilo": cfg["tv_style"],
             "faltam": days_to_christmas(now.date()) if on else None}
 
 
-def save_config(db: Database, now: datetime, actor: Person, mode: str, music: bool, volume: str) -> None:
+def save_config(db: Database, now: datetime, actor: Person, mode: str, music: bool, volume: str,
+                tv_style: str = "vermelho") -> None:
     if actor is None or not actor.is_admin:
         raise PermissionError("Só administradores podem fazer isso.")
     if mode not in MODES:
         raise ValidationError("Escolha como o tema de Natal liga: automático, ligado ou desligado.")
+    if tv_style not in TV_STYLES:
+        raise ValidationError("Escolha a versão do tema na TV: vermelho ou preto.")
     volume = volume.strip()
     if not volume.isdigit() or not 0 <= int(volume) <= 100:
         raise ValidationError("Volume da música: use de 0 a 100.")
@@ -74,5 +83,6 @@ def save_config(db: Database, now: datetime, actor: Person, mode: str, music: bo
         put_setting(conn, SETTING_MODE, None if mode == "auto" else mode)
         put_setting(conn, SETTING_MUSIC, None if music else "0")
         put_setting(conn, SETTING_VOLUME, None if int(volume) == DEFAULT_VOLUME else str(int(volume)))
+        put_setting(conn, SETTING_TV_STYLE, None if tv_style == "vermelho" else tv_style)
         log_event(conn, now, actor.id, "config_natal", "config:natal",
-                  f"{mode}, música {'ligada' if music else 'desligada'}, volume {int(volume)}")
+                  f"{mode}, música {'ligada' if music else 'desligada'}, volume {int(volume)}, TV {tv_style}")

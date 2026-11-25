@@ -15,7 +15,8 @@
   <meta name="apple-mobile-web-app-title" content="Hub">
   <link rel="stylesheet" href="/static/app.css?v={{ version }}">
   <script src="/static/tema.js?v={{ version }}"></script>
-  {% if natal %}<link rel="stylesheet" href="/static/natal.css?v={{ version }}">{% endif %}
+  {# tema de Natal (fase 27): vale na época (servidor) ou quando a pessoa escolhe "Natal" no botão Tema #}
+  <link rel="stylesheet" href="/static/natal.css?v={{ version }}">
 </head>
 <body>
   <header class="topo">
@@ -58,7 +59,7 @@
       <button class="link">Sair</button>
     </form>
     {% endif %}
-    {% if natal %}<button type="button" id="natal-som" class="natal-som" hidden aria-pressed="false">🔕 Sons de Natal</button>{% endif %}
+    <button type="button" id="natal-som" class="natal-som" hidden aria-pressed="false">🔕 Sons de Natal</button>
     <button type="button" id="tema" class="tema" hidden>Tema</button>
   </header>
   <main>{% block main %}{% endblock %}</main>

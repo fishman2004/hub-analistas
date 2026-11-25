@@ -1820,7 +1820,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
                                 "default_folder": str(anexos.default_folder()), "usage": anexos.usage(db),
                                 "trash": trash, "trash_days": anexos.TRASH_DAYS},
                     paineis=panel_config(db), drive=drive.drive_config(db),
-                    natal_cfg=natal.config(db), natal_modos=natal.MODES, natal_hoje=natal.is_on(db, clock().date()),
+                    natal_cfg=natal.config(db), natal_modos=natal.MODES, natal_tv=natal.TV_STYLES, natal_hoje=natal.is_on(db, clock().date()),
                     drive_limits={"min": drive.MINUTES_MIN, "max": drive.MINUTES_MAX}, pombo=pombo_config(db),
                     stale_limits={"min": STALE_MIN, "max": STALE_MAX},
                     limits={"min": MIN_SECONDS, "max": MAX_SECONDS, "page_min": PAGE_MIN, "page_max": PAGE_MAX}, **ctx)
@@ -1905,12 +1905,12 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
 
     @app.post("/configuracoes/natal")
     def configuracoes_natal(request: Request, modo: str = Form("auto"), musica: str = Form(""),
-                            volume: str = Form(str(natal.DEFAULT_VOLUME))):
+                            volume: str = Form(str(natal.DEFAULT_VOLUME)), tv: str = Form("vermelho")):
         user, stop = admin_only(request)
         if stop:
             return stop
         try:
-            natal.save_config(db, clock(), user, modo, bool(musica), volume)
+            natal.save_config(db, clock(), user, modo, bool(musica), volume, tv)
         except ValidationError as exc:
             return config_page(request, user, 422, error_natal=str(exc))
         return config_page(request, user, ok_natal=True)

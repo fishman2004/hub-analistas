@@ -17,6 +17,13 @@
     <label class="check"><input type="radio" name="modo" value="{{ valor }}" {% if natal_cfg.mode == valor %}checked{% endif %}> {{ rotulo }}</label>
     {% endfor %}
   </fieldset>
+  <fieldset class="escolhas">
+    <legend>Versão na TV</legend>
+    {% for valor, rotulo in natal_tv.items() %}
+    <label class="check"><input type="radio" name="tv" value="{{ valor }}" {% if natal_cfg.tv_style == valor %}checked{% endif %}> {{ rotulo }}</label>
+    {% endfor %}
+  </fieldset>
+  <p class="ajuda">No app, cada pessoa escolhe a sua no botão <strong>Tema</strong> do topo: <strong>Natal</strong> (vermelho) ou <strong>Natal preto</strong>. Essas duas dá para escolher mesmo fora da época.</p>
   <div>
     <label class="check"><input type="checkbox" name="musica" value="1" {% if natal_cfg.music %}checked{% endif %}> Música de fundo na TV da sala</label>
     <p class="ajuda">Melodias de Natal de domínio público, tocadas pelo próprio Hub (sem internet). A música para sozinha nos modos sem som (como <strong>Reunião na sala</strong>) e baixa enquanto os sinos de um aviso tocam. Na própria TV, a tecla <kbd>M</kbd> liga e desliga a música até recarregar a página.</p>

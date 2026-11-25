@@ -294,6 +294,7 @@
       noel: [240, 420, 40],  // de 4 a 7 minutos entre uma passada e outra
       aoPassar: () => { if (window.HubNatal.musica.ligada) window.HubNatal.guizosDoTreno(); },
     });
+    document.body.classList.toggle("natal-preto", natalLigado && n.estilo === "preto");
     const contagem = document.getElementById("natal-contagem");
     contagem.hidden = !natalLigado;
     if (natalLigado) contagem.textContent = textoNatal(n.faltam);

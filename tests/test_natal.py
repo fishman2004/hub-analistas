@@ -62,7 +62,8 @@ def test_app_wears_the_theme_only_when_on(db):
     ana, _ = team(db, NOVEMBRO)
     c = login(create_app(db, clock=lambda: NOVEMBRO), ana)
     html = c.get("/").text
-    assert 'class="natal"' not in html and "natal.css" not in html and 'id="natal-som"' not in html
+    # fora da época, sem o tema; o CSS e o botão ficam prontos (escondidos) para quem escolher "Natal" no Tema
+    assert 'class="natal"' not in html
     natal.save_config(db, NOVEMBRO, ana, "ligado", True, "25")
     html = c.get("/").text
     assert '<html lang="pt-BR" class="natal">' in html and "natal.css" in html and 'id="natal-som"' in html
@@ -79,11 +80,12 @@ def test_tv_payload(db):
     ana, _ = team(db, NOVEMBRO)
     app = create_app(db, clock=lambda: NOVEMBRO)
     tv = TestClient(app, base_url=BASE)
-    assert tv.get("/api/tv").json()["natal"] == {"ligado": False, "musica": False, "volume": 25, "faltam": None}
+    assert tv.get("/api/tv").json()["natal"] == {"ligado": False, "musica": False, "volume": 25, "estilo": "vermelho", "faltam": None}
     natal.save_config(db, NOVEMBRO, ana, "ligado", True, "30")
-    assert tv.get("/api/tv").json()["natal"] == {"ligado": True, "musica": True, "volume": 30, "faltam": 30}
-    natal.save_config(db, NOVEMBRO, ana, "ligado", False, "30")
+    assert tv.get("/api/tv").json()["natal"] == {"ligado": True, "musica": True, "volume": 30, "estilo": "vermelho", "faltam": 30}
+    natal.save_config(db, NOVEMBRO, ana, "ligado", False, "30", "preto")
     assert tv.get("/api/tv").json()["natal"]["musica"] is False
+    assert tv.get("/api/tv").json()["natal"]["estilo"] == "preto"
     html = tv.get("/tv").text
     assert "natal.js" in html and "natal.css" in html and 'id="natal-contagem"' in html
 
@@ -110,12 +112,15 @@ def test_config_page_and_route(db):
     assert "Tema de Natal" in html and 'id="natal-ouvir"' in html
     r = admin.post("/configuracoes/natal", data={"modo": "ligado", "musica": "1", "volume": "35"})
     assert r.status_code == 200 and "Salvo." in r.text and 'class="natal"' in r.text
-    assert natal.config(db) == {"mode": "ligado", "music": True, "volume": 35}
+    assert natal.config(db) == {"mode": "ligado", "music": True, "volume": 35, "tv_style": "vermelho"}
+    admin.post("/configuracoes/natal", data={"modo": "ligado", "musica": "1", "volume": "35", "tv": "preto"})
+    assert natal.config(db)["tv_style"] == "preto"
+    assert admin.post("/configuracoes/natal", data={"modo": "ligado", "volume": "35", "tv": "azul"}).status_code == 422
     r = admin.post("/configuracoes/natal", data={"modo": "ligado", "volume": "abc"})
     assert r.status_code == 422 and "Volume da música" in r.text
     # sem a caixinha marcada, a música fica desligada; e fica no histórico
     admin.post("/configuracoes/natal", data={"modo": "auto", "volume": "25"})
-    assert natal.config(db) == {"mode": "auto", "music": False, "volume": 25}
+    assert natal.config(db) == {"mode": "auto", "music": False, "volume": 25, "tv_style": "vermelho"}
     assert "mudou o tema de Natal" in admin.get("/historico").text
 
 
@@ -127,3 +132,10 @@ def test_static_files_are_served(db):
     assert c.get("/static/natal-gorro.svg").status_code == 200
     css = c.get("/static/natal.css").text
     assert "prefers-reduced-motion" in css
+
+
+def test_personal_theme_offers_both_christmas_options(db):
+    js = TestClient(create_app(db, clock=lambda: NOVEMBRO), base_url=BASE).get("/static/tema.js").text
+    assert '"natal", "natal-preto"' in js and "Natal preto" in js
+    css = TestClient(create_app(db, clock=lambda: NOVEMBRO), base_url=BASE).get("/static/natal.css").text
+    assert 'html.natal[data-tema="natal-preto"]' in css and "body[data-tv].natal-preto" in css
