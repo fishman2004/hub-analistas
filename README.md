@@ -78,6 +78,8 @@ flowchart LR
 5. Em outro PC, abra `http://NOME-DO-PC-RESERVA:8800` e clique em **Criar o primeiro administrador**. Depois, cada pessoa pede o cadastro na tela Entrar e você aprova em **Pessoas** (ou cadastra a equipe direto em **Pessoas**).
 6. Usa o Pombo? Em **Configurações → Pombo**, informe a pasta do histórico (a mesma escolhida no Pombo de cada analista, em Configurações › Pasta do histórico). Os envios de hoje aparecem na página **Envios** e na TV.
 
+Para tirar o Hub do PC, dois cliques em **`desinstalar.bat`** (ele pergunta antes o que fazer com os dados: manter, guardar uma cópia na Área de Trabalho ou apagar). [Detalhes](docs/instalacao.md#desinstalar).
+
 Primeira vez na empresa? Comece pelo [teste de rede](docs/primeiro-uso.md).
 
 ### Quer só ver funcionando?

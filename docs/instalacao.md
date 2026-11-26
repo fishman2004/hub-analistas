@@ -40,3 +40,20 @@ Para restaurar uma cópia:
 ## Atualizar para uma versão nova
 
 Extraia o ZIP novo por cima da pasta e rode `instalar.bat` de novo. Os dados ficam em `%LOCALAPPDATA%\Hub` e não são apagados.
+
+## Desinstalar
+
+Dois cliques em **`desinstalar.bat`**, na pasta do Hub. Não precisa de administrador. Ele:
+
+1. Pede confirmação (**S** para continuar, **N** para sair sem mexer em nada).
+2. Fecha o Hub, se estiver aberto (o servidor sem janela).
+3. Mostra onde estão os dados e pergunta o que fazer com eles:
+   - **1 · Manter** (recomendado): os dados ficam em `%LOCALAPPDATA%\Hub`. Se instalar de novo, volta tudo como estava.
+   - **2 · Guardar uma cópia e apagar**: grava `Hub - copia AAAA-MM-DD HHMM.zip` na Área de Trabalho (o banco inteiro, as cópias diárias, os anexos, as planilhas e o log) e só então apaga os dados. Se a cópia falhar, os dados não são apagados.
+   - **3 · Apagar sem cópia**: só depois de digitar `APAGAR`. Não tem volta.
+4. Tira o Hub do "abrir junto com o Windows" (apaga o `Hub.cmd` da pasta Inicializar).
+5. Apaga os arquivos do programa (a pasta `.venv` e os arquivos que vieram no ZIP) e, por último, o próprio `desinstalar.bat`. A pasta só some se ficar vazia: nada que você colocou nela é apagado.
+
+Pastas que um administrador escolheu em **Configurações** fora de `%LOCALAPPDATA%\Hub` (planilhas dos painéis, anexos ou PHD numa pasta da rede, por exemplo) **nunca são apagadas**: o desinstalador só mostra quais são. O Python e o Pombo também ficam. Se a TV continuar aberta no Edge, feche com **Alt+F4**.
+
+**Para voltar a usar a cópia:** instale o Hub de novo, feche-o (Gerenciador de Tarefas, processo **pythonw.exe**), apague `hub.db-wal` e `hub.db-shm` em `%LOCALAPPDATA%\Hub`, extraia o `.zip` lá dentro (substituindo os arquivos) e abra com `iniciar.bat`.
