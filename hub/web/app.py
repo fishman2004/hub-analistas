@@ -18,7 +18,7 @@ from ..db import Database, events, first_event_day, log_event
 from ..demands import (CHANGES_SEP, COLUMN_LABELS, COLUMNS, FOLDERS, MAX_DETAILS, RESERVED_TEXT, all_demands, board,
                        can_remove_file, can_see, create_demand, delete_demand, ensure_demand, find_card, find_demand,
                        is_overdue, is_owner, move_demand, search_demands, toggle_folder, touch_demand, tv_card, update_demand)
-from .. import anexos, cadastro, calendario, celular, drive, modos, natal, notas, pastas, phd, rotinas_mes, trilha
+from .. import anexos, cadastro, calendario, celular, drive, modos, natal, notas, pastas, phd, rotinas_mes, trilha, zerar
 from ..people import (PALETTE, Person, ValidationError, add_person, deactivate_person, get_person, list_people,
                       update_person)
 from ..envios import (channel_text, count_text, history_folder, pombo_config, runs_of_day, save_pombo_config,
@@ -1834,6 +1834,7 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
                     noel_limites={"min": natal.SANTA_MIN, "max": natal.SANTA_MAX}, natal_hoje=natal.is_on(db, clock().date()),
                     drive_limits={"min": drive.MINUTES_MIN, "max": drive.MINUTES_MAX}, pombo=pombo_config(db),
                     stale_limits={"min": STALE_MIN, "max": STALE_MAX},
+                    zerar_grupos=zerar.GROUPS, zerar_contagem=zerar.counts(db), zerar_palavra=zerar.CONFIRM_WORD,
                     limits={"min": MIN_SECONDS, "max": MAX_SECONDS, "page_min": PAGE_MIN, "page_max": PAGE_MAX}, **ctx)
 
     @app.get("/configuracoes", response_class=HTMLResponse)
@@ -1865,6 +1866,20 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
         except ValidationError as exc:
             return config_page(request, user, 422, error_anexos=str(exc))
         return config_page(request, user, ok_anexos=True)
+
+    @app.post("/configuracoes/zerar")
+    async def configuracoes_zerar(request: Request):
+        # zerar o histórico dos testes antes do uso oficial: só administrador, com o próprio PIN e "APAGAR"
+        user, stop = admin_only(request)
+        if stop:
+            return stop
+        form = await request.form()
+        keys = [k.removeprefix("grupo_") for k in form if k.startswith("grupo_")]
+        try:
+            result = zerar.zerar(db, clock(), user, str(form.get("pin", "")), str(form.get("confirmar", "")), keys)
+        except ValidationError as exc:
+            return config_page(request, user, 422, error_zerar=str(exc), zerar_marcados=keys)
+        return config_page(request, user, ok_zerar=result)
 
     @app.post("/configuracoes/anexos/{attachment_id}/restaurar")
     def configuracoes_anexo_restaurar(request: Request, attachment_id: int):

@@ -31,3 +31,7 @@ Siga [instalacao.md](instalacao.md) e cadastre a equipe em **Pessoas**.
 ## 4. Apresentar ao gestor
 
 O README e a TV funcionando são a apresentação.
+
+## Zerar o histórico dos testes (antes do uso oficial)
+
+Em **Configurações › Zerar o histórico** (só administrador): escolha o que apagar, digite o seu PIN e a palavra **APAGAR**. Apaga o que aconteceu nos testes (demandas, histórico, marcas das rotinas do mês e da trilha, prioridades, compromissos e ausências, entradas do banco de horas e, se marcar, as notas pessoais) e mantém pessoas, PINs, rotinas, trilhas, modos da TV, feriados e configurações. Antes, o Hub guarda uma cópia inteira do banco em `%LOCALAPPDATA%\Hub\copias\antes-de-zerar-AAAA-MM-DD-HHMM.db`; os arquivos dos anexos apagados vão para a pasta `Anexos apagados AAAA-MM-DD HHMM`.
