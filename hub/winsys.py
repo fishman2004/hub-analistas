@@ -49,3 +49,17 @@ def open_tv(url: str) -> None:
          "--autoplay-policy=no-user-gesture-required"],
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
+
+
+def stop_hub_on_port(port: int) -> None:
+    """Fecha o Hub que está escutando na porta (só um processo rodando "-m hub"; nada mais é tocado)."""
+    if sys.platform != "win32":
+        return
+    script = (
+        f"try {{ $own = (Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction Stop).OwningProcess; "
+        "Get-CimInstance Win32_Process | Where-Object { ($own -contains $_.ProcessId) -and "
+        "($_.CommandLine -like '*-m hub*') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force "
+        "-ErrorAction SilentlyContinue } } catch {}"
+    )
+    subprocess.run(["powershell", "-NoProfile", "-Command", script], timeout=30,
+                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))

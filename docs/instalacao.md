@@ -41,6 +41,8 @@ Para restaurar uma cópia:
 
 Extraia o ZIP novo por cima da pasta e rode `instalar.bat` de novo. Os dados ficam em `%LOCALAPPDATA%\Hub` e não são apagados.
 
+Depois, dois cliques em `iniciar.bat`. Se a versão antiga ainda estiver aberta (o servidor sem janela), ele percebe que a versão mudou, fecha a antiga e abre a nova (desde a 1.21.1). Antes disso, era preciso fechar o **pythonw.exe** no Gerenciador de Tarefas ou reiniciar o PC; sem isso, o Hub antigo continuava no ar e a tela Entrar dava "Internal Server Error" nos outros PCs.
+
 ## Desinstalar
 
 Dois cliques em **`desinstalar.bat`**, na pasta do Hub. Não precisa de administrador. Ele:

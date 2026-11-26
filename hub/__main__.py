@@ -9,9 +9,10 @@ from datetime import date, datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from . import __version__
 from .db import Database
 from .paths import data_dir
-from .winsys import open_tv
+from .winsys import open_tv, stop_hub_on_port
 
 PORT = 8800
 BACKUP_EVERY_SECONDS = 24 * 3600
@@ -30,6 +31,47 @@ def acquire_port(port: int = PORT) -> socket.socket | None:
         sock.close()
         return None
     return sock
+
+
+def running_version(port: int = PORT, tries: int = 5, wait: float = 1.0) -> str | None:
+    """A versão do Hub que já está aberto na porta. None: é um Hub antigo (sem /versao) ou não responde."""
+    import json
+    import urllib.error
+    import urllib.request
+
+    for attempt in range(tries):
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/versao", timeout=3) as r:
+                return str(json.load(r).get("versao") or "") or None
+        except urllib.error.HTTPError:
+            return None  # respondeu, mas não conhece /versao: é de antes desta correção
+        except (OSError, ValueError):
+            if attempt < tries - 1:
+                time.sleep(wait)  # pode estar acabando de abrir
+    return None
+
+
+def replace_old_hub(port: int = PORT, wait_seconds: float = 15.0) -> socket.socket | None:
+    """A porta está ocupada. Se for o mesmo Hub, deixa como está (None). Se for uma versão antiga, que continuou
+    aberta depois da atualização, fecha e devolve a porta para este abrir no lugar.
+
+    Sem isto, o Hub antigo seguia servindo as páginas novas (que ele não conhece) e o Entrar dava
+    "Internal Server Error" nos outros PCs, enquanto a TV parecia normal.
+    """
+    found = running_version(port)
+    if found == __version__:
+        return None
+    log.warning("Hub aberto na porta %s é da versão %s, esta é %s: fechando o antigo", port, found or "antiga",
+                __version__)
+    stop_hub_on_port(port)
+    deadline = time.monotonic() + wait_seconds
+    while time.monotonic() < deadline:
+        sock = acquire_port(port)
+        if sock is not None:
+            return sock
+        time.sleep(0.5)
+    log.error("não consegui fechar o Hub antigo na porta %s", port)
+    return None
 
 
 def server_config(app):
@@ -61,9 +103,16 @@ def _backup_loop(db_path: Path) -> None:
 
 def main() -> None:
     tv_url = f"http://127.0.0.1:{PORT}/tv"
+    data = data_dir()
+    handler = RotatingFileHandler(data / "hub.log", maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    logging.basicConfig(level=logging.INFO, handlers=[handler])
+
     sock = acquire_port(PORT)
     if sock is None:
-        open_tv(tv_url)  # já está rodando: só mostra a TV
+        sock = replace_old_hub(PORT)  # outra versão ficou aberta depois de atualizar: troca pela nova
+    if sock is None:
+        open_tv(tv_url)  # já está rodando (a mesma versão): só mostra a TV
         return
 
     import uvicorn
@@ -72,10 +121,6 @@ def main() -> None:
     from .phd import loop as phd_loop
     from .web.app import create_app
     from .winsys import keep_awake
-
-    handler = RotatingFileHandler(data_dir() / "hub.log", maxBytes=1_000_000, backupCount=3, encoding="utf-8")
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
-    logging.basicConfig(level=logging.INFO, handlers=[handler])
 
     keep_awake()
     db = Database(data_dir() / "hub.db")
