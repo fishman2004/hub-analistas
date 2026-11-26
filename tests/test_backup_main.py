@@ -58,6 +58,7 @@ def test_second_instance_only_opens_tv(monkeypatch, tmp_path):
     holder = entry.acquire_port(port)
     opened, dbs = [], []
     monkeypatch.setattr(entry, "PORT", port)
+    monkeypatch.setattr(entry, "running_version", lambda p: entry.__version__)
     monkeypatch.setattr(entry, "open_tv", lambda url: opened.append(url))
     monkeypatch.setattr(entry, "Database", lambda *a, **k: dbs.append(1))
     monkeypatch.setenv("HUB_DADOS", str(tmp_path))
@@ -66,6 +67,52 @@ def test_second_instance_only_opens_tv(monkeypatch, tmp_path):
     finally:
         holder.close()
     assert opened == [f"http://127.0.0.1:{port}/tv"] and dbs == []
+
+
+def test_old_hub_left_open_is_replaced(monkeypatch):
+    # o Hub antigo continuou aberto depois de atualizar: o iniciar.bat fecha ele e fica com a porta
+    port = free_port()
+    holder = entry.acquire_port(port)
+    stopped = []
+
+    def stop(p):
+        stopped.append(p)
+        holder.close()
+
+    monkeypatch.setattr(entry, "running_version", lambda p: "1.20.0")
+    monkeypatch.setattr(entry, "stop_hub_on_port", stop)
+    sock = entry.replace_old_hub(port, wait_seconds=5)
+    try:
+        assert stopped == [port] and sock is not None
+    finally:
+        sock and sock.close()
+
+
+def test_same_version_is_left_alone(monkeypatch):
+    stopped = []
+    monkeypatch.setattr(entry, "running_version", lambda p: entry.__version__)
+    monkeypatch.setattr(entry, "stop_hub_on_port", lambda p: stopped.append(p))
+    assert entry.replace_old_hub(free_port()) is None and stopped == []
+
+
+def test_running_version_reads_versao_and_old_hub_is_none(db):
+    import threading
+
+    import uvicorn
+    from fastapi import FastAPI
+
+    from hub.web.app import create_app
+
+    for app, expected in ((create_app(db), entry.__version__), (FastAPI(), None)):
+        port = free_port()
+        server = uvicorn.Server(uvicorn.Config(app, port=port, log_config=None, log_level="error"))
+        t = threading.Thread(target=server.run, daemon=True)
+        t.start()
+        try:
+            assert entry.running_version(port, tries=20, wait=0.25) == expected
+        finally:
+            server.should_exit = True
+            t.join(5)
 
 
 # o atalho é gravado na codificação do Prompt ("oem"), que só existe no Windows

@@ -523,6 +523,11 @@ def create_app(db: Database, clock: Callable[[], datetime] = datetime.now) -> Fa
             return page(request, "meu-pin.html", user, 422, error=str(exc))
         return page(request, "meu-pin.html", user, ok=True)
 
+    @app.get("/versao")
+    def versao():
+        # o iniciar.bat pergunta a versão do Hub que já está aberto: se for outra, fecha o antigo e abre o novo
+        return JSONResponse({"versao": __version__})
+
     # ---------- celular (fase 18) ----------
 
     @app.get("/manifest.webmanifest")
