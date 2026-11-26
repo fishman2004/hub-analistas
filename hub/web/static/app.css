@@ -81,6 +81,7 @@ button, .botao {
 }
 button.discreto, .botao.discreto { background: transparent; color: var(--azul); }
 button.perigo { background: transparent; color: var(--atraso); border-color: var(--atraso); }
+.zona-perigo { border: 1px solid var(--atraso); }
 button.link { background: none; border: none; color: var(--azul); padding: 0; font-weight: 400; text-decoration: underline; }
 
 /* presença */

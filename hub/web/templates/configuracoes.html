@@ -209,4 +209,30 @@
   </div>
   <div><button>Salvar</button></div>
 </form>
+<form class="ficha cartao-form zona-perigo" method="post" action="/configuracoes/zerar" id="zerar">
+  <h2>🧹 Zerar o histórico</h2>
+  {% if error_zerar %}<div class="erro" role="alert">{{ error_zerar }}</div>{% endif %}
+  {% if ok_zerar %}<div class="sucesso" role="status">Pronto, o histórico foi zerado.
+    {% for g in zerar_grupos if g.key in ok_zerar.apagados %}{{ g.label }}: {{ ok_zerar.apagados[g.key] }}{{ '; ' if not loop.last else '.' }}{% endfor %}
+    Cópia do banco de antes: <code>{{ ok_zerar.copia }}</code>.{% if ok_zerar.anexos %} Arquivos dos anexos guardados em <code>{{ ok_zerar.anexos }}</code>.{% endif %}</div>{% endif %}
+  <p>Para começar o uso oficial sem o que ficou dos testes. Apaga o que <strong>aconteceu</strong> e mantém o que foi <strong>montado</strong>: pessoas e PINs, rotinas, trilhas, rotinas do mês, modos da TV, feriados, pastas e todas as configurações.</p>
+  <p class="ajuda">Antes de apagar, o Hub guarda uma cópia inteira do banco em <code>%LOCALAPPDATA%\Hub\copias</code> (arquivo <code>antes-de-zerar-…db</code>). Para voltar, é só trocar o <code>hub.db</code> por ela, como numa cópia diária.</p>
+  <fieldset>
+    <legend>O que apagar</legend>
+    {% for g in zerar_grupos %}
+    <label class="check"><input type="checkbox" name="grupo_{{ g.key }}" {% if (zerar_marcados is defined and g.key in zerar_marcados) or (zerar_marcados is not defined and g.default) %}checked{% endif %}>
+      <strong>{{ g.label }}</strong> ({{ zerar_contagem[g.key] }})</label>
+    <p class="ajuda">{{ g.help }}</p>
+    {% endfor %}
+  </fieldset>
+  <div>
+    <label for="zerar-pin">Seu PIN</label>
+    <input class="curto" type="password" id="zerar-pin" name="pin" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="off" required>
+  </div>
+  <div>
+    <label for="zerar-confirmar">Digite {{ zerar_palavra }} para confirmar</label>
+    <input class="curto" type="text" id="zerar-confirmar" name="confirmar" autocomplete="off" required>
+  </div>
+  <div><button class="perigo">Zerar o histórico</button></div>
+</form>
 {% endblock %}
